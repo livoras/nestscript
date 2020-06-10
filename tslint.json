@@ -1,0 +1,26 @@
+{
+  "extends": ["tslint:recommended", "tslint-eslint-rules", "tslint-sonarts"],
+  "rules": {
+    "no-empty": false,
+    "no-console": false,
+    "semicolon": [true, "never"],
+    "object-literal-sort-keys": false,
+    "ordered-imports": false,
+    "no-var-requires": false,
+    "no-implicit-dependencies": false,
+    "no-ignored-return": false,
+    "no-dead-store": {"severity": "warning"},
+    "object-curly-spacing": [true, "always"],
+    "max-line-length": [true, {"limit": 120, "ignore-pattern": "^import |^export {(.*?)}"}],
+    "trailing-comma": [true, {"multiline": "always"}],
+    "max-file-line-count": [true, 600],
+    "no-big-function": [true, 60],
+    "ter-indent": [true, 2],
+    "no-commented-code": false,
+    "no-redundant-boolean": true,
+    "typedef": [true, "call-signature", "arrow-call-signature", "parameter", "property-declaration"]
+  },
+  "linterOptions": {
+    "exclude": []
+  }
+}

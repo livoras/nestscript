@@ -1,0 +1,25 @@
+{
+  "name": "nestscript",
+  "version": "1.0.0",
+  "description": "A script nested in JavaScript, dynamically run code in environment without `eval` and `new Function`.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livoras/nestscript.git"
+  },
+  "author": "daijiahua",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/livoras/nestscript/issues"
+  },
+  "homepage": "https://github.com/livoras/nestscript#readme",
+  "devDependencies": {
+    "tslint": "^6.1.2",
+    "tslint-eslint-rules": "^5.4.0",
+    "tslint-sonarts": "^1.9.0",
+    "typescript": "^3.9.5"
+  }
+}

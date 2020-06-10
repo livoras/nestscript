@@ -1,0 +1,25 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "*": ["types/*"] },
+    "strict": true,
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "suppressImplicitAnyIndexErrors": true,
+    "removeComments": true,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "noEmitHelpers": true,
+    "importHelpers": true,
+    "downlevelIteration": true,
+    "module": "commonjs",
+    "target": "es5",
+    "lib": [
+      "es2017",
+      "dom"
+    ]
+  }
+}
+
