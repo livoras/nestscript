@@ -7,6 +7,13 @@ export default class Example {
 
   public onLoad(): void {
     console.log("OJBK")
+    exec(`
+      this.sayHi('hello world')
+    `, this)
+  }
+
+  public sayHi(msg: string): void {
+    console.log(msg)
   }
 }
 
