@@ -5,13 +5,14 @@ export const exec = (source: string , that?: any, context?: any, callback?: (ret
   console.log(result)
 }
 
-const enum i {
+enum i {
   RET,
   PUSH,
   ADD,
   GET,
   SUB,
   JUMP,
+  CALL,
 }
 
 /**
@@ -37,33 +38,64 @@ func sub(a, b):
 end
 `
 
-const parseProgramToInstructions = (program: string): any[] => {
+class Program {
+  constructor(public globals: any, public instructions: any[]) {
+
+  }
+}
+
+const parseCodeToProgram = (program: string): Program => {
   const ins: any[] = []
-  const symbols: any[] = []
   const funcsTable = {}
+  const symbols = {}
   const funcs = program
     .trim()
     .match(/func[\s\S]+?end/g) || []
-  console.log(funcs)
 
   funcs.forEach((func: string): void => {
     if (!func) { return }
     const [funcName, args, body] = parseFunction(func)
-    console.log(funcName, args, body)
+    funcsTable[funcName] = {
+      ip: ins.length,
+      args,
+    }
+    body.forEach((stat: string): void => {
+      ins.push(...parseInstruction(stat))
+    })
   })
 
-  return ins
+  return new Program({ ...funcsTable }, ins)
 }
 
 const parseFunction = (func: string): [string, string[], string[]] => {
   const caps = func.match(/func\s+(\w[\w\d_]+)\s*?\(([\s\S]*)\)\:([\s\S]+?)\nend/)
   const funcName = caps![1]
-  const args = caps![2].split(/\s*,\s*/g).filter((s: string): boolean => !!s)
-  const body = caps![3].trim().split(';').map((s: string): string => s.trim()).filter((s: string): boolean => !!s)
+  const args = caps![2]
+    .split(/\s*,\s*/g)
+    .filter((s: string): boolean => !!s)
+  const body = caps![3]
+    .trim()
+    .split(';')
+    .map((s: string): string => s.trim())
+    .filter((s: string): boolean => !!s)
   return [funcName, args, body]
 }
 
-parseProgramToInstructions(testProgram)
+const parseInstruction = (stat: string): any[] => {
+  const ins: any[] = []
+  const cmds = stat.split(/\s+/g)
+  const cmd = cmds.shift()
+  const cmdEnum = i[cmd as string]
+  if (cmdEnum === undefined) {
+    throw new Error('Unknow command ' + cmd)
+  }
+  ins.push(cmdEnum)
+  ins.push(...cmds)
+  return ins
+}
+
+const pg = parseCodeToProgram(testProgram)
+console.log(pg)
 
 // /**
 //  * PUSH 1
