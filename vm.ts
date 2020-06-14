@@ -62,27 +62,29 @@ export class VirtualMachine {
   }
 
   public run(from: number = 0): void {
-    let isExited = false
+    let isRunning = true
     let stack = this.stack
     this.ip = from
-    while (!isExited) {
+    while (isRunning) {
       const ins = this.instructions[this.ip++]
       switch (ins) {
       case I.EXIT:
-        isExited = true
+        isRunning = false
         break
       case I.CALL:
         const newIp = this.instructions[this.ip++]
         const numArgs = this.instructions[this.ip++]
-        // -> fp
-        //    ip
-        //    numArgs
-        //    arg3
-        //    arg2
-        //    arg1
+        //      sp -> | fp      | # for restoring old fp
+        //            | ip      | # for restoring old ip
+        //            | numArgs | # for restoring old sp: old sp = current sp - numArgs - 3
+        //            | arg1    |
+        //            | arg2    |
+        //            | arg3    |
+        //  old sp -> | ....    |
         stack[++this.sp] = numArgs
         stack[++this.sp] = this.ip
         stack[++this.sp] = this.fp
+        // set to new ip and fp
         this.ip = newIp
         this.fp = this.sp
         break
@@ -90,8 +92,10 @@ export class VirtualMachine {
         const fp = this.fp
         this.fp = stack[fp]
         this.ip = stack[fp - 1]
-        this.sp = fp - stack[fp - 2] - 3 // 减去参数数量，减去三个 fp ip numArgs
-        this.stack = stack = stack.slice(0, this.sp + 1) // 清空上一帧
+        // 减去参数数量，减去三个 fp ip numArgs
+        this.sp = fp - stack[fp - 2] - 3
+        // 清空上一帧
+        this.stack = stack = stack.slice(0, this.sp + 1)
         break
       default:
         throw new Error("Unknow command " + ins)
