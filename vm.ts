@@ -35,7 +35,7 @@
  * EXIT code
  */
 export enum I {
- MOV, ADD, SUB, DIV, MOD,
+ SET, ADD, SUB, DIV, MOD,
  EXP, NEG, INC, DEC, AND,
  OR, XOR, NOT, SHL, SHR,
  JMP, JE, JNE, JG, JL,
@@ -58,7 +58,7 @@ export class VirtualMachine {
   /** 函数操作栈 */
   public stack: any[] = []
 
-  constructor (public instructions: any[]) {
+  constructor (public codes: any[]) {
   }
 
   public run(from: number = 0): void {
@@ -66,14 +66,18 @@ export class VirtualMachine {
     let stack = this.stack
     this.ip = from
     while (isRunning) {
-      const ins = this.instructions[this.ip++]
+      const ins = this.codes[this.ip++]
       switch (ins) {
       case I.EXIT:
         isRunning = false
         break
       case I.CALL:
-        const newIp = this.instructions[this.ip++]
-        const numArgs = this.instructions[this.ip++]
+        const newIp = this.codes[this.ip++]
+        const numArgs = this.codes[this.ip++]
+        //            | R3      |
+        //            | R2      |
+        //            | R1      |
+        //            | R0      |
         //      sp -> | fp      | # for restoring old fp
         //            | ip      | # for restoring old ip
         //            | numArgs | # for restoring old sp: old sp = current sp - numArgs - 3
@@ -97,6 +101,8 @@ export class VirtualMachine {
         // 清空上一帧
         this.stack = stack = stack.slice(0, this.sp + 1)
         break
+      case I.SET:
+        // TODO
       default:
         throw new Error("Unknow command " + ins)
       }
