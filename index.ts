@@ -114,6 +114,7 @@ interface IFuncInfo {
   codes: string[][],
   ip?: number,
   index?: number,
+  bytecodes?: ArrayBuffer,
 }
 
 const enum IOperatantType {
@@ -212,6 +213,9 @@ const parseCodeToProgram = (program: string): void => {
 
 const parseToStream = (funcsInfo: IFuncInfo[], stringTable: string[]) => {
   const buffer = new ArrayBuffer(0)
+  funcsInfo.forEach((funcInfo: IFuncInfo) => {
+    console.log(funcInfo.codes)
+  })
   console.log(funcsInfo, stringTable)
   return buffer
 }
@@ -249,19 +253,6 @@ const parseFunction = (func: string): IFuncInfo => {
     symbols,
     codes,
   }
-}
-
-const parseInstruction = (stat: string): any[] => {
-  const ins: any[] = []
-  const cmds = stat.split(/\s+/g)
-  const cmd = cmds.shift()
-  const cmdEnum = I[cmd as string]
-  if (cmdEnum === undefined) {
-    throw new Error('Unknow command ' + cmd)
-  }
-  ins.push(cmdEnum)
-  ins.push(...cmds)
-  return ins
 }
 
 const pg = parseCodeToProgram(testProgram)
