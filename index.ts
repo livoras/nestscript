@@ -5,15 +5,82 @@ export const exec = (source: string , that?: any, context?: any, callback?: (ret
   console.log(result)
 }
 
+/**
+ * 
+ * MOV dest src 赋值给变量
+ * 
+ * ADD d s
+ * SUB d s
+ * DIV d s
+ * MOD d s
+ * EXP d power
+ * NEG
+ * INC
+ * DEC
+ * 
+ * 
+ * AND d s
+ * OR ..
+ * XOR ..
+ * NOT d
+ * SHL d count
+ * SHR d count
+ * 
+ * JMP label
+ * JE op1 op1 label
+ * JNE op1 op1 label
+ * JG op1 op2 label
+ * JL op1 op2 label
+ * JGE op1 op2 label
+ * JLE op1 op2 label
+ * PUSH src 
+ * POP dest
+ * CALL function numArgs
+ * RET
+ * 
+ * PAUSE ms
+ * EXIT code
+ */
+
+ /**
+  * Func Add {
+  *   PARAM Y
+  *   PARAM X
+  *   VAR SUM
+  *   MOV SUM, X
+  *   ADD SUM, Y
+  *   MOV _RET_VAL, SUM
+  * }
+  * VAR
+  * PUSH
+  * POP
+  * LABEL
+  */
+
+/**
+ * 
+ * 
+ */
+
+/** 函数调用的堆栈结构
+ * X
+ * Y
+ * Z
+ * ARRAY...
+ * - old frame pointer
+ * - return instruction pointer
+ * PARAM1
+ * PARAM2
+ */
+
 enum i {
-  RET,
-  PUSH,
-  ADD,
-  GET,
-  SUB,
-  JUMP,
-  CALL,
-}
+ MOV, ADD, SUB, DIV, MOD,
+ EXP, NEG, INC, DEC, AND,
+ OR, XOR, NOT, SHL, SHR,
+ JMP, JE, JNE, JG, JL,
+ JGE, JLE, PUSH, POP, CALL,
+ RET, AUSE, EXIT,
+} 
 
 /**
  *
@@ -21,21 +88,21 @@ enum i {
  * @param that
  */
 const testProgram = `
-func main():
-  PUSH 1;
-  PUSH 5;
+func main() {
+  MOV 1;
+  MOV 5;
   ADD;
-  PUSH 3;
-  CALL sub 2;
+  MOV 3;
+  CALL sub;
   RET;
-end
+}
 
-func sub(a, b):
-  GET a;
-  GET b;
+func sub(a, b) {
+  MOV a;
+  MOV b;
   SUB;
   RET;
-end
+}
 `
 
 class Program {
@@ -50,7 +117,8 @@ const parseCodeToProgram = (program: string): Program => {
   const symbols = {}
   const funcs = program
     .trim()
-    .match(/func[\s\S]+?end/g) || []
+    .match(/func[\s\S]+?\}/g) || []
+  console.log(funcs)
 
   funcs.forEach((func: string): void => {
     if (!func) { return }
@@ -68,7 +136,7 @@ const parseCodeToProgram = (program: string): Program => {
 }
 
 const parseFunction = (func: string): [string, string[], string[]] => {
-  const caps = func.match(/func\s+(\w[\w\d_]+)\s*?\(([\s\S]*)\)\:([\s\S]+?)\nend/)
+  const caps = func.match(/func\s+(\w[\w\d_]+)\s*?\(([\s\S]*)\)\s*?\{([\s\S]+?)\n\}/)
   const funcName = caps![1]
   const args = caps![2]
     .split(/\s*,\s*/g)
