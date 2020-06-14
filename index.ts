@@ -1,4 +1,5 @@
 import * as ts from "typescript"
+import { I } from './vm'
 
 export const exec = (source: string , that?: any, context?: any, callback?: (ret: any) => void): void => {
   const result = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } })
@@ -69,73 +70,154 @@ export const exec = (source: string , that?: any, context?: any, callback?: (ret
  * ARRAY...
  * - old frame pointer
  * - return instruction pointer
+ * - num args
  * PARAM1
  * PARAM2
  */
 
-enum i {
- MOV, ADD, SUB, DIV, MOD,
- EXP, NEG, INC, DEC, AND,
- OR, XOR, NOT, SHL, SHR,
- JMP, JE, JNE, JG, JL,
- JGE, JLE, PUSH, POP, CALL,
- RET, AUSE, EXIT,
-} 
-
-/**
- *
- * @param commandSource
- * @param that
- */
 const testProgram = `
-func main() {
-  MOV 1;
-  MOV 5;
-  ADD;
-  MOV 3;
-  CALL sub;
+func bar(c, b) {
+  VAR R0;
+  MOV R0 b;
+  SUB R0 c;
+  MOV $RET R0;
   RET;
 }
 
-func sub(a, b) {
-  MOV a;
-  MOV b;
-  SUB;
+func foo(a, b) {
+  VAR R0;
+  MOV a R0;
+  ADD R0 b;
+  PUSH R0;
+  PUSH 2;
+  CALL bar 2;
+}
+
+func tow(s1, s2) {
+  MOV $RET s1;
+  ADD $RET s2;
   RET;
 }
+
+func main() {
+  CALL foo 0;
+  PUSH "HELLO";
+  PUSH 'WORLD';
+  CALL tow 2;
+}
+
 `
 
-class Program {
-  constructor(public globals: any, public instructions: any[]) {
-
-  }
+interface IFuncInfo {
+  name: string,
+  symbols: any,
+  codes: string[][],
+  ip?: number,
+  index?: number,
 }
 
-const parseCodeToProgram = (program: string): Program => {
+const enum IOperatantType {
+  REGISTER,
+  NUMBER,
+  FUNCTION_INDEX,
+  STRING,
+  ARG_COUNT,
+  RETURN_VALUE,
+}
+
+interface IOperant {
+  type: IOperatantType,
+  value: any,
+}
+
+const parseCodeToProgram = (program: string): void => {
   const ins: any[] = []
   const funcsTable = {}
   const symbols = {}
+  const stringTable: string[] = []
   const funcs = program
     .trim()
     .match(/func[\s\S]+?\}/g) || []
-  console.log(funcs)
 
+  // 1 pass
+  const funcsInfo: any[] = []
   funcs.forEach((func: string): void => {
     if (!func) { return }
-    const [funcName, args, body] = parseFunction(func)
-    funcsTable[funcName] = {
-      ip: ins.length,
-      args,
-    }
-    body.forEach((stat: string): void => {
-      ins.push(...parseInstruction(stat))
+    const funcInfo = parseFunction(func)
+    funcInfo.index = funcsInfo.length
+    funcsInfo.push(funcInfo)
+    funcsTable[funcInfo.name] = funcInfo
+  })
+
+  // 2 pass
+  funcsInfo.forEach((funcInfo: IFuncInfo): void => {
+    const symbols = funcInfo.symbols
+    funcInfo.codes.forEach((code: any[]): void => {
+      const op = code[0]
+      code[0] = I[op]
+      if (op === 'CALL') {
+        code[1] = {
+          type: IOperatantType.FUNCTION_INDEX,
+          value: funcsTable[code[1]].index,
+        }
+        code[2] = {
+          type: IOperatantType.ARG_COUNT,
+          value: +code[2],
+        }
+      } else {
+        code.forEach((o: any, i: number) => {
+          if (i === 0) { return }
+
+          /** 寄存器 */
+          const regIndex = symbols[o]
+          if (regIndex !== undefined) {
+            code[i] = {
+              type: IOperatantType.REGISTER,
+              value: regIndex,
+            }
+            return
+          }
+
+          /** 返回类型 */
+          if (o === '$RET') {
+            code[i] = {
+              type: IOperatantType.RETURN_VALUE,
+            }
+            return
+          }
+
+          /** 字符串 */
+          if (o.match(/^\"[\s\S]+\"$/) || o.match(/^\'[\s\S]+\'$/)) {
+            code[i] = {
+              type: IOperatantType.STRING,
+              value: stringTable.length,
+            }
+            stringTable.push(o)
+            return
+          }
+
+          /** Number */
+          code[i] = {
+            type: IOperatantType.NUMBER,
+            value: +o,
+          }
+        })
+      }
     })
   })
 
-  return new Program({ ...funcsTable }, ins)
+  const stream = parseToStream(funcsInfo, stringTable)
+  console.log(stream)
 }
 
-const parseFunction = (func: string): [string, string[], string[]] => {
+const parseToStream = (funcsInfo: IFuncInfo[], stringTable: string[]) => {
+  const buffer = new ArrayBuffer(0)
+  console.log(funcsInfo, stringTable)
+  return buffer
+}
+
+
+const parseFunction = (func: string): IFuncInfo => {
   const caps = func.match(/func\s+(\w[\w\d_]+)\s*?\(([\s\S]*)\)\s*?\{([\s\S]+?)\n\}/)
   const funcName = caps![1]
   const args = caps![2]
@@ -146,14 +228,34 @@ const parseFunction = (func: string): [string, string[], string[]] => {
     .split(';')
     .map((s: string): string => s.trim())
     .filter((s: string): boolean => !!s)
-  return [funcName, args, body]
+    .map((s: string) => s.split(/\s+/g))
+
+  const vars = body.filter((stat: string[]) => stat[0] === 'VAR')
+  const codes = body.filter((stat: string[]) => stat[0] !== 'VAR')
+  const symbols: any = {}
+  vars.forEach((v: string[], i: number): void => {
+    symbols[v[1]] = i + 1
+  })
+  args.forEach((arg: string, i: number): void => {
+    symbols[arg] = -3 - i
+  })
+
+  if (codes[codes.length - 1][0] !== 'RET') {
+    codes.push(['RET'])
+  }
+
+  return {
+    name: funcName,
+    symbols,
+    codes,
+  }
 }
 
 const parseInstruction = (stat: string): any[] => {
   const ins: any[] = []
   const cmds = stat.split(/\s+/g)
   const cmd = cmds.shift()
-  const cmdEnum = i[cmd as string]
+  const cmdEnum = I[cmd as string]
   if (cmdEnum === undefined) {
     throw new Error('Unknow command ' + cmd)
   }
@@ -163,7 +265,6 @@ const parseInstruction = (stat: string): any[] => {
 }
 
 const pg = parseCodeToProgram(testProgram)
-console.log(pg)
 
 // /**
 //  * PUSH 1

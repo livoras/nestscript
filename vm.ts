@@ -35,7 +35,7 @@
  * EXIT code
  */
 export enum I {
- SET, ADD, SUB, DIV, MOD,
+ MOV, ADD, SUB, DIV, MOD,
  EXP, NEG, INC, DEC, AND,
  OR, XOR, NOT, SHL, SHR,
  JMP, JE, JNE, JG, JL,
@@ -101,7 +101,7 @@ export class VirtualMachine {
         // 清空上一帧
         this.stack = stack = stack.slice(0, this.sp + 1)
         break
-      case I.SET:
+      case I.MOV:
         // TODO
       default:
         throw new Error("Unknow command " + ins)
