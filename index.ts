@@ -88,7 +88,7 @@ func bar(c, b) {
 
 func foo(a, b) {
   VAR R0;
-  MOV a R0;
+  MOV R0 a;
   ADD R0 b;
   PUSH R0;
   PUSH 2;
@@ -115,6 +115,7 @@ interface IFuncInfo {
   symbols: any,
   codes: string[][],
   numArgs: number,
+  localSize: number,
   ip?: number,
   index?: number,
   bytecodes?: ArrayBuffer,
@@ -147,6 +148,7 @@ const parseCodeToProgram = (program: string): void => {
     funcInfo.codes.forEach((code: any[]): void => {
       const op = code[0]
       code[0] = I[op]
+      console.log('fun', funcInfo.name, op, I[op])
       if (op === 'CALL') {
         code[1] = {
           type: IOperatantType.FUNCTION_INDEX,
@@ -233,8 +235,9 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer =
     }
     funcInfo.codes.forEach((code: any[], i: number): void => {
 
-      const cmd = code[i]
+      const cmd = code[0]
       const setBuf = new Uint8Array(1)
+      console.log('fun code', funcInfo.name, cmd)
       setBuf[0] = cmd
       appendBuffer(setBuf.buffer)
       if (funcInfo.name === 'main' && i === 0) {
@@ -283,7 +286,7 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer =
    * stringTableBasicIndex: 1
    * globalsSize: 2
    */
-  const FUNC_SIZE = 1 + 2 // ip + numArgs
+  const FUNC_SIZE = 1 + 2 + 2 // ip + numArgs + localSize
   const globalsSize = 0
   const funcionTableBasicIndex = 5 + buffer.byteLength
   const stringTableBasicIndex = funcionTableBasicIndex + FUNC_SIZE * funcsInfo.length
@@ -299,10 +302,12 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer =
   /** Function Table */
   funcsInfo.forEach((funcInfo: IFuncInfo): void => {
     const ipBuf = new Uint8Array(1)
-    const numArgsBuf = new Uint16Array(1)
+    const numArgsAndLocal = new Uint16Array(2)
     ipBuf[0] = funcInfo.ip!
-    numArgsBuf[0] = funcInfo.numArgs
-    const funcBuf = concatBuffer(ipBuf.buffer, numArgsBuf.buffer)
+    numArgsAndLocal[0] = funcInfo.numArgs
+    numArgsAndLocal[1] = funcInfo.localSize
+    console.log(numArgsAndLocal)
+    const funcBuf = concatBuffer(ipBuf.buffer, numArgsAndLocal.buffer)
     buffer = concatBuffer(buffer, funcBuf)
   })
 
@@ -360,12 +365,14 @@ const parseFunction = (func: string): IFuncInfo => {
   } else if (codes[codes.length - 1][0] !== 'RET') {
     codes.push(['RET'])
   }
+  console.log(funcName, codes)
 
   return {
     name: funcName,
     numArgs: args.length,
     symbols,
     codes,
+    localSize: vars.length,
   }
 }
 

@@ -1,5 +1,6 @@
 import fs = require("fs")
 import { arrayBufferToString } from './utils'
+import { textSpanIntersectsWith } from 'typescript'
 /**
  *
  * MOV dest src 赋值给变量
@@ -57,6 +58,8 @@ export const enum IOperatantType {
 export interface IOperant {
   type: IOperatantType,
   value: any,
+  raw?: any,
+  index?: any,
 }
 
 export const operantBytesSize: { [x in IOperatantType]: number } = {
@@ -92,25 +95,35 @@ export class VirtualMachine {
     public stringsTable: string[],
     public entryFunctionIndex: number,
   ) {
+    // RET
+    this.stack.push(0)
+    this.sp++
   }
 
+  // tslint:disable-next-line: no-big-function
   public run(): void {
     let isRunning = true
     let stack = this.stack
     this.ip = this.functionsTable[this.entryFunctionIndex].ip
     while (isRunning) {
       const op = this.nextOperator()
-      console.log(op)
+      // console.log(op)
       switch (op) {
+      case I.PUSH: {
+        const val = this.nextOperant()
+        console.log('push', val)
+        stack[++this.sp] = val.value
+        break
+      }
       case I.EXIT: {
         console.log('exit')
         isRunning = false
         break
       }
       case I.CALL: {
-        const newIp = this.nextOperant()
+        const funcInfo: IFuncInfo = this.nextOperant().value
         const numArgs = this.nextOperant()
-        console.log('call', newIp, numArgs)
+        console.log('call', funcInfo, numArgs)
         //            | R3      |
         //            | R2      |
         //            | R1      |
@@ -126,12 +139,12 @@ export class VirtualMachine {
         stack[++this.sp] = this.ip
         stack[++this.sp] = this.fp
         // set to new ip and fp
-        this.ip = this.functionsTable[newIp.value].ip
+        this.ip = funcInfo.ip
         this.fp = this.sp
+        this.sp += funcInfo.localSize
         break
       }
       case I.RET: {
-        console.log('ret')
         const fp = this.fp
         this.fp = stack[fp]
         this.ip = stack[fp - 1]
@@ -139,13 +152,26 @@ export class VirtualMachine {
         this.sp = fp - stack[fp - 2] - 3
         // 清空上一帧
         this.stack = stack = stack.slice(0, this.sp + 1)
+        console.log('RET', stack)
         break
       }
       case I.MOV: {
-        console.log('mov`')
         const dst = this.nextOperant()
         const src = this.nextOperant()
-        console.log('dest', dst, 'src', src)
+        console.log('mov', dst, src)
+        this.stack[dst.raw] = src.value
+        break
+      }
+      case I.ADD: {
+        const dst = this.nextOperant()
+        const src = this.nextOperant()
+        console.log('add', dst, src)
+        break
+      }
+      case I.SUB: {
+        const dst = this.nextOperant()
+        const src = this.nextOperant()
+        console.log('sub', dst, src)
         break
       }
       default:
@@ -155,14 +181,14 @@ export class VirtualMachine {
   }
 
   public nextOperator(): I {
-    console.log("ip -> ", this.ip)
+    // console.log("ip -> ", this.ip)
     return readUInt8(this.codes, this.ip, ++this.ip)
   }
 
   public nextOperant(): IOperant {
     const codes = this.codes
     const valueType = readUInt8(codes, this.ip, ++this.ip)
-    console.log(valueType)
+    // console.log(valueType)
     let value: any
     switch (valueType) {
     case IOperatantType.REGISTER:
@@ -171,7 +197,6 @@ export class VirtualMachine {
     case IOperatantType.STRING:
       let j = this.ip + 2
       value = readInt16(codes, this.ip, j)
-      console.log('the value --->', value)
       this.ip = j
       break
     case IOperatantType.NUMBER:
@@ -180,17 +205,42 @@ export class VirtualMachine {
       this.ip = j
       break
     case IOperatantType.RETURN_VALUE:
+      value = 0
       break
     default:
       throw new Error("Unknown operant " + valueType)
     }
-    return { type: valueType, value }
+    return {
+      type: valueType,
+      value: this.parseValue(valueType, value),
+      raw: value,
+      index: valueType === IOperatantType.REGISTER ? (this.fp + value) : value,
+    }
+  }
+
+  public parseValue(valueType: IOperatantType, value: any): any {
+    switch (valueType) {
+    case IOperatantType.REGISTER:
+      return this.stack[this.fp + value]
+    case IOperatantType.ARG_COUNT:
+    case IOperatantType.NUMBER:
+      return value
+    case IOperatantType.STRING:
+      return this.stringsTable[value]
+    case IOperatantType.FUNCTION_INDEX:
+      return this.functionsTable[value]
+    case IOperatantType.RETURN_VALUE:
+      return this.stack[0]
+    default:
+      throw new Error("Unknown operant " + valueType)
+    }
   }
 }
 
 interface IFuncInfo {
   ip: number,
   numArgs: number,
+  localSize: number,
 }
 
 /**
@@ -225,9 +275,9 @@ const parseFunctionTable = (buffer: ArrayBuffer): IFuncInfo[] => {
   let i = 0
   while (i < buffer.byteLength) {
     const ip = readUInt8(buffer, i, i + 1)
-    const numArgs = readUInt16(buffer, i + 1, i + 3)
-    funcs.push({ ip, numArgs })
-    i += 3
+    const numArgsAndLocal = new Uint16Array(buffer.slice(i + 1, i + 1 + 2 * 2))
+    funcs.push({ ip, numArgs: numArgsAndLocal[0], localSize: numArgsAndLocal[1] })
+    i += 5
   }
   return funcs
 }
@@ -251,17 +301,14 @@ const readFloat64 = (buffer: ArrayBuffer, from: number, to: number): number => {
 }
 
 const readUInt8 = (buffer: ArrayBuffer, from: number, to: number): number => {
-  console.log('-> ', from, to, new Uint8Array(buffer.slice(from, to)))
   return (new Uint8Array(buffer.slice(from, to)))[0]
 }
 
 const readInt8 = (buffer: ArrayBuffer, from: number, to: number): number => {
-  console.log('-> ', from, to, new Int8Array(buffer.slice(from, to)))
   return (new Int8Array(buffer.slice(from, to)))[0]
 }
 
 const readInt16 = (buffer: ArrayBuffer, from: number, to: number): number => {
-  console.log('-> ', from, to, new Int16Array(buffer.slice(from, to)))
   return (new Int16Array(buffer.slice(from, to)))[0]
 }
 
