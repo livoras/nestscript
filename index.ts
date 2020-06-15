@@ -1,5 +1,7 @@
 import * as ts from "typescript"
 import { I } from './vm'
+import { concatBuffer, stringToArrayBuffer } from './utils'
+import fs = require('fs')
 
 export const exec = (source: string , that?: any, context?: any, callback?: (ret: any) => void): void => {
   const result = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } })
@@ -7,9 +9,9 @@ export const exec = (source: string , that?: any, context?: any, callback?: (ret
 }
 
 /**
- * 
+ *
  * MOV dest src 赋值给变量
- * 
+ *
  * ADD d s
  * SUB d s
  * DIV d s
@@ -18,15 +20,15 @@ export const exec = (source: string , that?: any, context?: any, callback?: (ret
  * NEG
  * INC
  * DEC
- * 
- * 
+ *
+ *
  * AND d s
  * OR ..
  * XOR ..
  * NOT d
  * SHL d count
  * SHR d count
- * 
+ *
  * JMP label
  * JE op1 op1 label
  * JNE op1 op1 label
@@ -34,11 +36,11 @@ export const exec = (source: string , that?: any, context?: any, callback?: (ret
  * JL op1 op2 label
  * JGE op1 op2 label
  * JLE op1 op2 label
- * PUSH src 
+ * PUSH src
  * POP dest
  * CALL function numArgs
  * RET
- * 
+ *
  * PAUSE ms
  * EXIT code
  */
@@ -59,8 +61,8 @@ export const exec = (source: string , that?: any, context?: any, callback?: (ret
   */
 
 /**
- * 
- * 
+ *
+ *
  */
 
 /** 函数调用的堆栈结构
@@ -112,6 +114,7 @@ interface IFuncInfo {
   name: string,
   symbols: any,
   codes: string[][],
+  numArgs: number,
   ip?: number,
   index?: number,
   bytecodes?: ArrayBuffer,
@@ -131,10 +134,22 @@ interface IOperant {
   value: any,
 }
 
+export const operantBytesSize: { [x in IOperatantType]: number } = {
+  [IOperatantType.FUNCTION_INDEX]: 2,
+  [IOperatantType.STRING]: 2,
+
+  [IOperatantType.REGISTER]: 2,
+  [IOperatantType.ARG_COUNT]: 2,
+
+  [IOperatantType.NUMBER]: 8,
+  [IOperatantType.RETURN_VALUE]: 0,
+}
+
+// tslint:disable-next-line: no-big-function
 const parseCodeToProgram = (program: string): void => {
   const ins: any[] = []
   const funcsTable = {}
-  const symbols = {}
+  const globalSymbols = {}
   const stringTable: string[] = []
   const funcs = program
     .trim()
@@ -166,7 +181,7 @@ const parseCodeToProgram = (program: string): void => {
           value: +code[2],
         }
       } else {
-        code.forEach((o: any, i: number) => {
+        code.forEach((o: any, i: number): void => {
           if (i === 0) { return }
 
           /** 寄存器 */
@@ -208,18 +223,118 @@ const parseCodeToProgram = (program: string): void => {
   })
 
   const stream = parseToStream(funcsInfo, stringTable)
+  fs.writeFileSync('bin', Buffer.from(stream))
   console.log(stream)
 }
 
-const parseToStream = (funcsInfo: IFuncInfo[], stringTable: string[]) => {
-  const buffer = new ArrayBuffer(0)
-  funcsInfo.forEach((funcInfo: IFuncInfo) => {
-    console.log(funcInfo.codes)
+// tslint:disable-next-line: no-big-function
+const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer => {
+  const stringTable = parseStringTableToBuffer(strings)
+
+  let buffer = new ArrayBuffer(0)
+  let mainFunctionIndex: number = 0
+  // tslint:disable-next-line: no-big-function
+  funcsInfo.forEach((funcInfo: IFuncInfo): void => {
+    if (funcInfo.name === 'main') {
+      mainFunctionIndex = funcInfo.index!
+    }
+
+    funcInfo.bytecodes = new ArrayBuffer(0)
+    const appendBuffer = (buf: ArrayBuffer): void => {
+      buffer = concatBuffer(buffer, buf)
+      funcInfo.bytecodes = concatBuffer(funcInfo.bytecodes!, buf)
+    }
+    funcInfo.codes.forEach((code: any[], i: number): void => {
+      funcInfo.ip = buffer.byteLength
+
+      const cmd = code[i]
+      const cmdBuf = new ArrayBuffer(1)
+      const setBuf = new Uint8Array(cmdBuf)
+      setBuf[0] = cmd
+      appendBuffer(cmdBuf)
+
+      code.forEach((o: IOperant, j: number): void => {
+        if (j === 0) { return }
+        const operantBuf = new ArrayBuffer(operantBytesSize[o.type])
+        switch (o.type) {
+        case IOperatantType.REGISTER:
+        case IOperatantType.ARG_COUNT:
+        case IOperatantType.FUNCTION_INDEX:
+        case IOperatantType.STRING:
+          const v = new Uint16Array(operantBuf)
+          v[0] = stringTable.indexes[o.value] // 把字符串索引映射成字节流索引
+          appendBuffer(operantBuf)
+          break
+        case IOperatantType.NUMBER:
+          const v2 = new Float64Array(operantBuf)
+          v2[0] = o.value
+          appendBuffer(operantBuf)
+          break
+        case IOperatantType.RETURN_VALUE:
+          break
+        default:
+          throw new Error("Unknown operant " + o.type)
+        }
+      })
+    })
   })
-  console.log(funcsInfo, stringTable)
+
+  /**
+   * Header:
+   *
+   * mainFunctionIndex: 1
+   * funcionTableBasicIndex: 1
+   * stringTableBasicIndex: 1
+   * globalsSize: 2
+   */
+  const FUNC_SIZE = 1 + 2 // ip + numArgs
+  const globalsSize = 0
+  const funcionTableBasicIndex = 5 + buffer.byteLength
+  const stringTableBasicIndex = funcionTableBasicIndex + FUNC_SIZE * funcsInfo.length
+  const headerView = new Uint8Array(3)
+  headerView[0] = mainFunctionIndex
+  headerView[1] = funcionTableBasicIndex
+  headerView[2] = stringTableBasicIndex
+  const globalView = new Uint16Array(1)
+  globalView[0] = globalsSize
+  const headerBuf = concatBuffer(headerView.buffer, globalView.buffer)
+  buffer = concatBuffer(headerBuf, buffer)
+
+  /** Function Table */
+  funcsInfo.forEach((funcInfo: IFuncInfo): void => {
+    const ipBuf = new Uint8Array(1)
+    const numArgsBuf = new Uint16Array(1)
+    ipBuf[0] = funcInfo.ip!
+    numArgsBuf[0] = funcInfo.numArgs
+    const funcBuf = concatBuffer(ipBuf.buffer, numArgsBuf.buffer)
+    buffer = concatBuffer(buffer, funcBuf)
+  })
+
+  /** append string buffer */
+  buffer = concatBuffer(buffer, stringTable.buffer)
+
   return buffer
 }
 
+const parseStringTableToBuffer = (stringTable: string[]): {
+  buffer: ArrayBuffer,
+  indexes: { [x in number]: number },
+} => {
+  /** String Table */
+  let strBuf = new ArrayBuffer(0)
+  const indexes: any = {}
+  stringTable.forEach((str: string, i: number): void => {
+    indexes[i] = strBuf.byteLength
+    const lenBuf = new Uint32Array(1)
+    lenBuf[0] = str.length
+    strBuf = concatBuffer(strBuf, lenBuf.buffer)
+    strBuf = concatBuffer(strBuf, stringToArrayBuffer(str))
+  })
+  return {
+    buffer: strBuf,
+    indexes,
+  }
+}
 
 const parseFunction = (func: string): IFuncInfo => {
   const caps = func.match(/func\s+(\w[\w\d_]+)\s*?\(([\s\S]*)\)\s*?\{([\s\S]+?)\n\}/)
@@ -232,10 +347,10 @@ const parseFunction = (func: string): IFuncInfo => {
     .split(';')
     .map((s: string): string => s.trim())
     .filter((s: string): boolean => !!s)
-    .map((s: string) => s.split(/\s+/g))
+    .map((s: string): string[] => s.split(/\s+/g))
 
-  const vars = body.filter((stat: string[]) => stat[0] === 'VAR')
-  const codes = body.filter((stat: string[]) => stat[0] !== 'VAR')
+  const vars = body.filter((stat: string[]): boolean => stat[0] === 'VAR')
+  const codes = body.filter((stat: string[]): boolean => stat[0] !== 'VAR')
   const symbols: any = {}
   vars.forEach((v: string[], i: number): void => {
     symbols[v[1]] = i + 1
@@ -250,23 +365,10 @@ const parseFunction = (func: string): IFuncInfo => {
 
   return {
     name: funcName,
+    numArgs: args.length,
     symbols,
     codes,
   }
 }
 
-const pg = parseCodeToProgram(testProgram)
-
-// /**
-//  * PUSH 1
-//  * PUSH 2
-//  * ADD
-//  *
-//  * CALL_WITH obj_name func_name var1 var2 var3
-//  */
-// export const execCommand = (commandSource: string, that?: any): void => {
-//   const stack = []
-//   const ip = 0
-//   const sp = 0
-//   while (ip < commandSource.)
-// }
+parseCodeToProgram(testProgram)

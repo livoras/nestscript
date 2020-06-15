@@ -2,6 +2,7 @@
   "compileOnSave": false,
   "compilerOptions": {
     "baseUrl": ".",
+    "typeRoots": ["typings/wx", "node_modules/@types"],
     "paths": { "*": ["types/*"] },
     "strict": true,
     "skipLibCheck": true,

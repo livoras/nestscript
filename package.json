@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/livoras/nestscript#readme",
   "devDependencies": {
+    "@types/node": "^14.0.13",
     "tslint": "^6.1.2",
     "tslint-eslint-rules": "^5.4.0",
     "tslint-sonarts": "^1.9.0",
