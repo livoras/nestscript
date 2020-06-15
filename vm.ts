@@ -45,6 +45,32 @@ export enum I {
  RET, AUSE, EXIT,
 }
 
+export const enum IOperatantType {
+  REGISTER,
+  NUMBER,
+  FUNCTION_INDEX,
+  STRING,
+  ARG_COUNT,
+  RETURN_VALUE,
+}
+
+export interface IOperant {
+  type: IOperatantType,
+  value: any,
+}
+
+export const operantBytesSize: { [x in IOperatantType]: number } = {
+  [IOperatantType.FUNCTION_INDEX]: 2,
+  [IOperatantType.STRING]: 2,
+
+  [IOperatantType.REGISTER]: 2,
+  [IOperatantType.ARG_COUNT]: 2,
+
+  [IOperatantType.NUMBER]: 8,
+  [IOperatantType.RETURN_VALUE]: 0,
+}
+
+
 export class VirtualMachine {
   /** 指令索引 */
   public ip: number = 0
@@ -68,19 +94,23 @@ export class VirtualMachine {
   ) {
   }
 
-  public run(from: number = 0): void {
+  public run(): void {
     let isRunning = true
     let stack = this.stack
-    this.ip = from
+    this.ip = this.functionsTable[this.entryFunctionIndex].ip
     while (isRunning) {
-      const ins = this.codes[this.ip++]
-      switch (ins) {
-      case I.EXIT:
+      const op = this.nextOperator()
+      console.log(op)
+      switch (op) {
+      case I.EXIT: {
+        console.log('exit')
         isRunning = false
         break
-      case I.CALL:
-        const newIp = this.codes[this.ip++]
-        const numArgs = this.codes[this.ip++]
+      }
+      case I.CALL: {
+        const newIp = this.nextOperant()
+        const numArgs = this.nextOperant()
+        console.log('call', newIp, numArgs)
         //            | R3      |
         //            | R2      |
         //            | R1      |
@@ -92,14 +122,16 @@ export class VirtualMachine {
         //            | arg2    |
         //            | arg3    |
         //  old sp -> | ....    |
-        stack[++this.sp] = numArgs
+        stack[++this.sp] = numArgs.value
         stack[++this.sp] = this.ip
         stack[++this.sp] = this.fp
         // set to new ip and fp
-        this.ip = newIp
+        this.ip = this.functionsTable[newIp.value].ip
         this.fp = this.sp
         break
-      case I.RET:
+      }
+      case I.RET: {
+        console.log('ret')
         const fp = this.fp
         this.fp = stack[fp]
         this.ip = stack[fp - 1]
@@ -108,12 +140,51 @@ export class VirtualMachine {
         // 清空上一帧
         this.stack = stack = stack.slice(0, this.sp + 1)
         break
-      case I.MOV:
-        // TODO
+      }
+      case I.MOV: {
+        console.log('mov`')
+        const dst = this.nextOperant()
+        const src = this.nextOperant()
+        console.log('dest', dst, 'src', src)
+        break
+      }
       default:
-        throw new Error("Unknow command " + ins)
+        throw new Error("Unknow command " + op)
       }
     }
+  }
+
+  public nextOperator(): I {
+    console.log("ip -> ", this.ip)
+    return readUInt8(this.codes, this.ip, ++this.ip)
+  }
+
+  public nextOperant(): IOperant {
+    const codes = this.codes
+    const valueType = readUInt8(codes, this.ip, ++this.ip)
+    console.log(valueType)
+    let value: any
+    switch (valueType) {
+    case IOperatantType.REGISTER:
+    case IOperatantType.ARG_COUNT:
+    case IOperatantType.FUNCTION_INDEX:
+    case IOperatantType.STRING:
+      let j = this.ip + 2
+      value = readInt16(codes, this.ip, j)
+      console.log('the value --->', value)
+      this.ip = j
+      break
+    case IOperatantType.NUMBER:
+      j = this.ip + 8
+      value = readFloat64(codes, this.ip, j)
+      this.ip = j
+      break
+    case IOperatantType.RETURN_VALUE:
+      break
+    default:
+      throw new Error("Unknown operant " + valueType)
+    }
+    return { type: valueType, value }
   }
 }
 
@@ -142,6 +213,9 @@ export const createVMFromFile = (fileName: string): VirtualMachine => {
   const codesBuf = buffer.slice(5, funcionTableBasicIndex)
   const funcsBuf = buffer.slice(funcionTableBasicIndex, stringTableBasicIndex)
   const funcsTable: IFuncInfo[] = parseFunctionTable(funcsBuf)
+  console.log(funcsTable)
+  console.log('codes length -->', codesBuf.byteLength)
+  console.log('main start index', funcsTable[mainFunctionIndex].ip)
 
   return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex)
 }
@@ -172,8 +246,23 @@ const parseStringsArray = (buffer: ArrayBuffer): string[] => {
   return strings
 }
 
+const readFloat64 = (buffer: ArrayBuffer, from: number, to: number): number => {
+  return (new Float64Array(buffer.slice(from, to)))[0]
+}
+
 const readUInt8 = (buffer: ArrayBuffer, from: number, to: number): number => {
+  console.log('-> ', from, to, new Uint8Array(buffer.slice(from, to)))
   return (new Uint8Array(buffer.slice(from, to)))[0]
+}
+
+const readInt8 = (buffer: ArrayBuffer, from: number, to: number): number => {
+  console.log('-> ', from, to, new Int8Array(buffer.slice(from, to)))
+  return (new Int8Array(buffer.slice(from, to)))[0]
+}
+
+const readInt16 = (buffer: ArrayBuffer, from: number, to: number): number => {
+  console.log('-> ', from, to, new Int16Array(buffer.slice(from, to)))
+  return (new Int16Array(buffer.slice(from, to)))[0]
 }
 
 const readUInt16 = (buffer: ArrayBuffer, from: number, to: number): number => {

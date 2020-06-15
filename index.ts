@@ -1,5 +1,5 @@
 import * as ts from "typescript"
-import { I, createVMFromFile } from './vm'
+import { I, createVMFromFile, IOperatantType, IOperant, operantBytesSize } from './vm'
 import { concatBuffer, stringToArrayBuffer } from './utils'
 import fs = require('fs')
 
@@ -120,30 +120,6 @@ interface IFuncInfo {
   bytecodes?: ArrayBuffer,
 }
 
-const enum IOperatantType {
-  REGISTER,
-  NUMBER,
-  FUNCTION_INDEX,
-  STRING,
-  ARG_COUNT,
-  RETURN_VALUE,
-}
-
-interface IOperant {
-  type: IOperatantType,
-  value: any,
-}
-
-export const operantBytesSize: { [x in IOperatantType]: number } = {
-  [IOperatantType.FUNCTION_INDEX]: 2,
-  [IOperatantType.STRING]: 2,
-
-  [IOperatantType.REGISTER]: 2,
-  [IOperatantType.ARG_COUNT]: 2,
-
-  [IOperatantType.NUMBER]: 8,
-  [IOperatantType.RETURN_VALUE]: 0,
-}
 
 // tslint:disable-next-line: no-big-function
 const parseCodeToProgram = (program: string): void => {
@@ -226,7 +202,8 @@ const parseCodeToProgram = (program: string): void => {
   fs.writeFileSync('bin', Buffer.from(stream))
 
   // test
-  createVMFromFile("bin")
+  const vm = createVMFromFile("bin")
+  vm.run()
 }
 
 /**
@@ -243,6 +220,8 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer =
   let mainFunctionIndex: number = 0
   // tslint:disable-next-line: no-big-function
   funcsInfo.forEach((funcInfo: IFuncInfo): void => {
+    funcInfo.ip = buffer.byteLength
+
     if (funcInfo.name === 'main') {
       mainFunctionIndex = funcInfo.index!
     }
@@ -253,16 +232,25 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer =
       funcInfo.bytecodes = concatBuffer(funcInfo.bytecodes!, buf)
     }
     funcInfo.codes.forEach((code: any[], i: number): void => {
-      funcInfo.ip = buffer.byteLength
 
       const cmd = code[i]
       const setBuf = new Uint8Array(1)
       setBuf[0] = cmd
       appendBuffer(setBuf.buffer)
+      if (funcInfo.name === 'main' && i === 0) {
+        console.log('first com', setBuf)
+        console.log('start address', funcInfo.ip)
+      }
 
       code.forEach((o: IOperant, j: number): void => {
         if (j === 0) { return }
         const operantBuf = new ArrayBuffer(operantBytesSize[o.type])
+        const operantTypeBuf = new Uint8Array(1)
+        operantTypeBuf[0] = o.type
+        if (funcInfo.name === 'main' && i === 0 && o.type) {
+          console.log('main first op type', operantTypeBuf)
+        }
+        appendBuffer(operantTypeBuf.buffer)
         switch (o.type) {
         case IOperatantType.REGISTER:
         case IOperatantType.ARG_COUNT:
