@@ -1,5 +1,5 @@
 import * as ts from "typescript"
-import { I } from './vm'
+import { I, createVMFromFile } from './vm'
 import { concatBuffer, stringToArrayBuffer } from './utils'
 import fs = require('fs')
 
@@ -208,7 +208,7 @@ const parseCodeToProgram = (program: string): void => {
               type: IOperatantType.STRING,
               value: stringTable.length,
             }
-            stringTable.push(o)
+            stringTable.push(o.replace(/^[\'\"]|[\'\"]$/g, ''))
             return
           }
 
@@ -224,9 +224,17 @@ const parseCodeToProgram = (program: string): void => {
 
   const stream = parseToStream(funcsInfo, stringTable)
   fs.writeFileSync('bin', Buffer.from(stream))
-  console.log(stream)
+
+  // test
+  createVMFromFile("bin")
 }
 
+/**
+ * header
+ * codes (op(1) operantType(1) value(??) oprantType value | ...)
+ * functionTable (ip(1) | numArgs(2))
+ * stringTable (len(4) str | len(4) str)
+ */
 // tslint:disable-next-line: no-big-function
 const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer => {
   const stringTable = parseStringTableToBuffer(strings)
@@ -248,10 +256,9 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer =
       funcInfo.ip = buffer.byteLength
 
       const cmd = code[i]
-      const cmdBuf = new ArrayBuffer(1)
-      const setBuf = new Uint8Array(cmdBuf)
+      const setBuf = new Uint8Array(1)
       setBuf[0] = cmd
-      appendBuffer(cmdBuf)
+      appendBuffer(setBuf.buffer)
 
       code.forEach((o: IOperant, j: number): void => {
         if (j === 0) { return }
@@ -262,7 +269,7 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer =
         case IOperatantType.FUNCTION_INDEX:
         case IOperatantType.STRING:
           const v = new Uint16Array(operantBuf)
-          v[0] = stringTable.indexes[o.value] // 把字符串索引映射成字节流索引
+          v[0] = o.value
           appendBuffer(operantBuf)
           break
         case IOperatantType.NUMBER:
@@ -278,6 +285,7 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer =
       })
     })
   })
+  console.log('codes length ->', buffer.byteLength)
 
   /**
    * Header:
@@ -359,7 +367,9 @@ const parseFunction = (func: string): IFuncInfo => {
     symbols[arg] = -3 - i
   })
 
-  if (codes[codes.length - 1][0] !== 'RET') {
+  if (funcName === 'main') {
+    codes.push(['EXIT'])
+  } else if (codes[codes.length - 1][0] !== 'RET') {
     codes.push(['RET'])
   }
 

@@ -1,3 +1,5 @@
+import fs = require("fs")
+import { arrayBufferToString } from './utils'
 /**
  *
  * MOV dest src 赋值给变量
@@ -58,7 +60,12 @@ export class VirtualMachine {
   /** 函数操作栈 */
   public stack: any[] = []
 
-  constructor (public codes: any[]) {
+  constructor (
+    public codes: ArrayBuffer,
+    public functionsTable: IFuncInfo[],
+    public stringsTable: string[],
+    public entryFunctionIndex: number,
+  ) {
   }
 
   public run(from: number = 0): void {
@@ -109,3 +116,75 @@ export class VirtualMachine {
     }
   }
 }
+
+interface IFuncInfo {
+  ip: number,
+  numArgs: number,
+}
+
+/**
+ * Header:
+ *
+ * mainFunctionIndex: 1
+ * funcionTableBasicIndex: 1
+ * stringTableBasicIndex: 1
+ * globalsSize: 2
+ */
+const BYTE = 8
+export const createVMFromFile = (fileName: string): VirtualMachine => {
+  const buffer = new Uint8Array(fs.readFileSync(fileName)).buffer
+  const mainFunctionIndex = readUInt8(buffer, 0, 1)
+  const funcionTableBasicIndex = readUInt8(buffer, 1, 2)
+  const stringTableBasicIndex = readUInt8(buffer, 2, 3)
+  const globalsSize = readUInt8(buffer, 3, 5)
+
+  const stringsTable: string[] = parseStringsArray(buffer.slice(stringTableBasicIndex))
+  const codesBuf = buffer.slice(5, funcionTableBasicIndex)
+  const funcsBuf = buffer.slice(funcionTableBasicIndex, stringTableBasicIndex)
+  const funcsTable: IFuncInfo[] = parseFunctionTable(funcsBuf)
+
+  return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex)
+}
+
+const parseFunctionTable = (buffer: ArrayBuffer): IFuncInfo[] => {
+  const funcs: IFuncInfo[] = []
+  let i = 0
+  while (i < buffer.byteLength) {
+    const ip = readUInt8(buffer, i, i + 1)
+    const numArgs = readUInt16(buffer, i + 1, i + 3)
+    funcs.push({ ip, numArgs })
+    i += 3
+  }
+  return funcs
+}
+
+const parseStringsArray = (buffer: ArrayBuffer): string[] => {
+  const strings: string[] = []
+  let i = 0
+  while(i < buffer.byteLength) {
+    const len = readUInt32(buffer, 0, 4)
+    const start = i + 4
+    const end = i + 4 + len * 2
+    const str = readString(buffer, start, end)
+    strings.push(str)
+    i = end
+  }
+  return strings
+}
+
+const readUInt8 = (buffer: ArrayBuffer, from: number, to: number): number => {
+  return (new Uint8Array(buffer.slice(from, to)))[0]
+}
+
+const readUInt16 = (buffer: ArrayBuffer, from: number, to: number): number => {
+  return (new Uint16Array(buffer.slice(from, to)))[0]
+}
+
+const readUInt32 = (buffer: ArrayBuffer, from: number, to: number): number => {
+  return (new Uint32Array(buffer.slice(from, to)))[0]
+}
+
+const readString = (buffer: ArrayBuffer, from: number, to: number): string => {
+  return arrayBufferToString(buffer.slice(from, to))
+}
+
