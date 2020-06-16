@@ -14,7 +14,7 @@
     "max-line-length": [true, {"limit": 120, "ignore-pattern": "^import |^export {(.*?)}"}],
     "trailing-comma": [true, {"multiline": "always"}],
     "max-file-line-count": [true, 600],
-    "no-big-function": [true, 60],
+    "no-big-function": [true, 200],
     "ter-indent": [true, 2],
     "no-commented-code": false,
     "no-redundant-boolean": true,

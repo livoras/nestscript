@@ -80,6 +80,7 @@ export const exec = (source: string , that?: any, context?: any, callback?: (ret
 
 const testProgram = `
 func bar(c, b) {
+  MOV G2 "YOU";
   VAR R0;
   MOV R0 b;
   SUB R0 c;
@@ -88,6 +89,7 @@ func bar(c, b) {
 }
 
 func foo(a, b) {
+  MOV G1 "DAMN ";
   VAR R0;
   MOV R0 a;
   ADD R0 b;
@@ -99,20 +101,28 @@ func foo(a, b) {
 func tow(s1, s2) {
   MOV $RET s1;
   ADD $RET s2;
+  ADD G1 G2;
   RET;
 }
 
 func main() {
+  GLOBAL G1;
+  GLOBAL G2;
+
   VAR R0;
-  PUSH 1;
   PUSH 2;
-  CALL foo 0;
+  PUSH 2;
+  CALL foo 2;
+  PRINT "======================";
+  PRINT $RET;
+  PRINT "+++++++++++++++++++++++";
   PUSH 'WORLD';
   PUSH "HELLO ";
   PRINT "HELLO WORL";
   CALL tow 2;
   MOV R0 $RET;
   PRINT R0;
+  PRINT G1;
 }
 `
 
@@ -139,6 +149,7 @@ interface IFuncInfo {
   codes: string[][],
   numArgs: number,
   localSize: number,
+  globals: any,
   ip?: number,
   index?: number,
   bytecodes?: ArrayBuffer,
@@ -157,12 +168,16 @@ const parseCodeToProgram = (program: string): void => {
 
   // 1 pass
   const funcsInfo: any[] = []
+  let globalSize: number = 0
   funcs.forEach((func: string): void => {
     if (!func) { return }
     const funcInfo = parseFunction(func)
     funcInfo.index = funcsInfo.length
     funcsInfo.push(funcInfo)
     funcsTable[funcInfo.name] = funcInfo
+    funcInfo.globals.forEach((g: string): void => {
+      globalSymbols[g] = globalSize++
+    })
   })
 
   // 2 pass
@@ -185,11 +200,21 @@ const parseCodeToProgram = (program: string): void => {
           if (i === 0) { return }
 
           /** 寄存器 */
-          const regIndex = symbols[o]
+          let regIndex = symbols[o]
           if (regIndex !== undefined) {
             code[i] = {
               type: IOperatantType.REGISTER,
               value: regIndex,
+            }
+            return
+          }
+
+          /** 全局 */
+          regIndex = globalSymbols[o]
+          if (regIndex !== undefined) {
+            code[i] = {
+              type: IOperatantType.GLOBAL,
+              value: regIndex + 1,
             }
             return
           }
@@ -223,7 +248,7 @@ const parseCodeToProgram = (program: string): void => {
   })
 
   console.log("THE STRING TABLE -> ", stringTable)
-  const stream = parseToStream(funcsInfo, stringTable)
+  const stream = parseToStream(funcsInfo, stringTable, globalSize)
   fs.writeFileSync('bin', Buffer.from(stream))
 
   // test
@@ -238,7 +263,7 @@ const parseCodeToProgram = (program: string): void => {
  * stringTable (len(4) str | len(4) str)
  */
 // tslint:disable-next-line: no-big-function
-const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer => {
+const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: number): ArrayBuffer => {
   const stringTable = parseStringTableToBuffer(strings)
 
   let buffer = new ArrayBuffer(0)
@@ -271,6 +296,7 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer =
         appendBuffer(operantTypeBuf.buffer)
         switch (o.type) {
         case IOperatantType.REGISTER:
+        case IOperatantType.GLOBAL:
         case IOperatantType.ARG_COUNT:
         case IOperatantType.FUNCTION_INDEX:
         case IOperatantType.STRING:
@@ -302,7 +328,6 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer =
    * globalsSize: 2
    */
   const FUNC_SIZE = 1 + 2 + 2 // ip + numArgs + localSize
-  const globalsSize = 0
   const funcionTableBasicIndex = 5 + buffer.byteLength
   const stringTableBasicIndex = funcionTableBasicIndex + FUNC_SIZE * funcsInfo.length
   const headerView = new Uint8Array(3)
@@ -365,7 +390,10 @@ const parseFunction = (func: string): IFuncInfo => {
     .map(parseCode)
 
   const vars = body.filter((stat: string[]): boolean => stat[0] === 'VAR')
-  const codes = body.filter((stat: string[]): boolean => stat[0] !== 'VAR')
+  const globals = body
+    .filter((stat: string[]): boolean => stat[0] === 'GLOBAL')
+    .map((stat: string[]): string => stat[1])
+  const codes = body.filter((stat: string[]): boolean => stat[0] !== 'VAR' && stat[0] !== 'GLOBAL')
   const symbols: any = {}
   vars.forEach((v: string[], i: number): void => {
     symbols[v[1]] = i + 1
@@ -387,6 +415,7 @@ const parseFunction = (func: string): IFuncInfo => {
     symbols,
     codes,
     localSize: vars.length,
+    globals,
   }
 }
 

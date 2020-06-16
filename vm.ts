@@ -48,6 +48,7 @@ export enum I {
 
 export const enum IOperatantType {
   REGISTER,
+  GLOBAL,
   NUMBER,
   FUNCTION_INDEX,
   STRING,
@@ -67,6 +68,7 @@ export const operantBytesSize: { [x in IOperatantType]: number } = {
   [IOperatantType.STRING]: 2,
 
   [IOperatantType.REGISTER]: 2,
+  [IOperatantType.GLOBAL]: 2,
   [IOperatantType.ARG_COUNT]: 2,
 
   [IOperatantType.NUMBER]: 8,
@@ -94,10 +96,13 @@ export class VirtualMachine {
     public functionsTable: IFuncInfo[],
     public stringsTable: string[],
     public entryFunctionIndex: number,
+    public globalSize: number,
   ) {
     // RET
-    this.stack.push(0)
-    this.sp++
+    const globalIndex = globalSize + 1
+    this.stack.length = globalIndex + functionsTable[entryFunctionIndex].localSize
+    this.sp = this.stack.length - 1
+    this.fp  = globalIndex
   }
 
   // tslint:disable-next-line: no-big-function
@@ -105,6 +110,7 @@ export class VirtualMachine {
     let isRunning = true
     let stack = this.stack
     this.ip = this.functionsTable[this.entryFunctionIndex].ip
+    console.log("start stack", stack)
     while (isRunning) {
       const op = this.nextOperator()
       // console.log(op)
@@ -200,6 +206,7 @@ export class VirtualMachine {
     let value: any
     switch (valueType) {
     case IOperatantType.REGISTER:
+    case IOperatantType.GLOBAL:
     case IOperatantType.ARG_COUNT:
     case IOperatantType.FUNCTION_INDEX:
     case IOperatantType.STRING:
@@ -233,6 +240,8 @@ export class VirtualMachine {
     case IOperatantType.ARG_COUNT:
     case IOperatantType.NUMBER:
       return value
+    case IOperatantType.GLOBAL:
+      return this.stack[value]
     case IOperatantType.STRING:
       return this.stringsTable[value]
     case IOperatantType.FUNCTION_INDEX:
@@ -265,7 +274,7 @@ export const createVMFromFile = (fileName: string): VirtualMachine => {
   const mainFunctionIndex = readUInt8(buffer, 0, 1)
   const funcionTableBasicIndex = readUInt8(buffer, 1, 2)
   const stringTableBasicIndex = readUInt8(buffer, 2, 3)
-  const globalsSize = readUInt8(buffer, 3, 5)
+  const globalsSize = readUInt16(buffer, 3, 5)
 
   const stringsTable: string[] = parseStringsArray(buffer.slice(stringTableBasicIndex))
   const codesBuf = buffer.slice(5, funcionTableBasicIndex)
@@ -276,7 +285,7 @@ export const createVMFromFile = (fileName: string): VirtualMachine => {
   console.log('codes length -->', codesBuf.byteLength)
   console.log('main start index', funcsTable[mainFunctionIndex].ip)
 
-  return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex)
+  return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex, globalsSize)
 }
 
 const parseFunctionTable = (buffer: ArrayBuffer): IFuncInfo[] => {
