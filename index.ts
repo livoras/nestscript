@@ -80,7 +80,7 @@ export const exec = (source: string , that?: any, context?: any, callback?: (ret
 
 const testProgram = `
 func bar(c, b) {
-  MOV G2 "YOU";
+  MOV G2 "1";
   VAR R0;
   MOV R0 b;
   SUB R0 c;
@@ -89,7 +89,7 @@ func bar(c, b) {
 }
 
 func foo(a, b) {
-  MOV G1 "DAMN ";
+  MOV G1 "loop";
   VAR R0;
   MOV R0 a;
   ADD R0 b;
@@ -113,32 +113,22 @@ func main() {
   PUSH 2;
   PUSH 2;
   CALL foo 2;
-  PRINT "======================";
   PRINT $RET;
-  PRINT "+++++++++++++++++++++++";
-  PUSH 'WORLD';
-  PUSH "HELLO ";
-  PRINT "HELLO WORL;🌹";
   CALL tow 2;
   MOV R0 $RET;
   MOV G2 1;
   MOV G1 1;
   JNE G1 G2 l2;
 
-LABEL l1:
-  PRINT "HELLO L1";
-  PRINT "HELLO L1";
-LABEL l2:
-  PRINT "HELLO L2";
-  PRINT "HELLO L2";
 LABEL l3:
-  PRINT "NEW WORL";
   PRINT R0;
   ADD R0 1;
   MOV R0 0;
   JMP l5;
 LABEL l4:
-  PRINT "LOOP";
+  PRINT "loop";
+  PRINT "loop";
+  PRINT "loop";
   PRINT R0;
   ADD R0 1;
 LABEL l5:
@@ -165,6 +155,7 @@ const parseCodeToProgram = (program: string): void => {
   const funcsTable = {}
   const globalSymbols = {}
   const stringTable: string[] = []
+  const stringIndex: any = {}
   const funcs = program
     .trim()
     .match(/func[\s\S]+?\}/g) || []
@@ -243,11 +234,18 @@ const parseCodeToProgram = (program: string): void => {
 
           /** 字符串 */
           if (o.match(/^\"[\s\S]+\"$/) || o.match(/^\'[\s\S]+\'$/)) {
+            const str = o.replace(/^[\'\"]|[\'\"]$/g, '')
+            const index = stringIndex[str]
             code[i] = {
               type: IOperatantType.STRING,
-              value: stringTable.length,
+              value: index === undefined
+                ? stringTable.length
+                : index
             }
-            stringTable.push(o.replace(/^[\'\"]|[\'\"]$/g, ''))
+            if (index === undefined) {
+              stringIndex[str] = stringTable.length
+              stringTable.push(str)
+            }
             return
           }
 
