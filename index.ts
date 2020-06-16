@@ -1,7 +1,8 @@
 import * as ts from "typescript"
 import { I, createVMFromFile, IOperatantType, IOperant, operantBytesSize } from './vm'
-import { concatBuffer, stringToArrayBuffer } from './utils'
+import { concatBuffer, stringToArrayBuffer, arrayBufferToString } from './utils'
 import fs = require('fs')
+import { parseCode } from './parse-code2'
 
 export const exec = (source: string , that?: any, context?: any, callback?: (ret: any) => void): void => {
   const result = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } })
@@ -91,7 +92,7 @@ func foo(a, b) {
   MOV R0 a;
   ADD R0 b;
   PUSH R0;
-  PUSH 2;
+  PUSH 3;
   CALL bar 2;
 }
 
@@ -102,12 +103,34 @@ func tow(s1, s2) {
 }
 
 func main() {
+  VAR R0;
+  PUSH 1;
+  PUSH 2;
   CALL foo 0;
-  PUSH "HELLO";
   PUSH 'WORLD';
+  PUSH "HELLO ";
+  PRINT "HELLO WORL";
   CALL tow 2;
+  MOV R0 $RET;
+  PRINT R0;
+}
+`
+
+const testProgram2 = `
+func foo(a) {
+  MOV $RET a;
+  RET;
 }
 
+func main() {
+  VAR R0;
+  PUSH 100;
+  CALL foo 1;
+  MOV R0 $RET;
+  ADD R0 6;
+  PUSH R0;
+  CALL foo 1;
+}
 `
 
 interface IFuncInfo {
@@ -148,7 +171,6 @@ const parseCodeToProgram = (program: string): void => {
     funcInfo.codes.forEach((code: any[]): void => {
       const op = code[0]
       code[0] = I[op]
-      console.log('fun', funcInfo.name, op, I[op])
       if (op === 'CALL') {
         code[1] = {
           type: IOperatantType.FUNCTION_INDEX,
@@ -200,6 +222,7 @@ const parseCodeToProgram = (program: string): void => {
     })
   })
 
+  console.log("THE STRING TABLE -> ", stringTable)
   const stream = parseToStream(funcsInfo, stringTable)
   fs.writeFileSync('bin', Buffer.from(stream))
 
@@ -237,22 +260,14 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer =
 
       const cmd = code[0]
       const setBuf = new Uint8Array(1)
-      console.log('fun code', funcInfo.name, cmd)
       setBuf[0] = cmd
       appendBuffer(setBuf.buffer)
-      if (funcInfo.name === 'main' && i === 0) {
-        console.log('first com', setBuf)
-        console.log('start address', funcInfo.ip)
-      }
 
       code.forEach((o: IOperant, j: number): void => {
         if (j === 0) { return }
         const operantBuf = new ArrayBuffer(operantBytesSize[o.type])
         const operantTypeBuf = new Uint8Array(1)
         operantTypeBuf[0] = o.type
-        if (funcInfo.name === 'main' && i === 0 && o.type) {
-          console.log('main first op type', operantTypeBuf)
-        }
         appendBuffer(operantTypeBuf.buffer)
         switch (o.type) {
         case IOperatantType.REGISTER:
@@ -306,7 +321,6 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[]): ArrayBuffer =
     ipBuf[0] = funcInfo.ip!
     numArgsAndLocal[0] = funcInfo.numArgs
     numArgsAndLocal[1] = funcInfo.localSize
-    console.log(numArgsAndLocal)
     const funcBuf = concatBuffer(ipBuf.buffer, numArgsAndLocal.buffer)
     buffer = concatBuffer(buffer, funcBuf)
   })
@@ -348,7 +362,7 @@ const parseFunction = (func: string): IFuncInfo => {
     .split(';')
     .map((s: string): string => s.trim())
     .filter((s: string): boolean => !!s)
-    .map((s: string): string[] => s.split(/\s+/g))
+    .map(parseCode)
 
   const vars = body.filter((stat: string[]): boolean => stat[0] === 'VAR')
   const codes = body.filter((stat: string[]): boolean => stat[0] !== 'VAR')

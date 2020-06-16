@@ -42,7 +42,7 @@ export enum I {
  EXP, NEG, INC, DEC, AND,
  OR, XOR, NOT, SHL, SHR,
  JMP, JE, JNE, JG, JL,
- JGE, JLE, PUSH, POP, CALL,
+ JGE, JLE, PUSH, POP, CALL, PRINT,
  RET, AUSE, EXIT,
 }
 
@@ -116,7 +116,8 @@ export class VirtualMachine {
         break
       }
       case I.EXIT: {
-        console.log('exit')
+        this.stack = stack = []
+        console.log('exit', stack)
         isRunning = false
         break
       }
@@ -155,23 +156,30 @@ export class VirtualMachine {
         console.log('RET', stack)
         break
       }
+      case I.PRINT: {
+        const val = this.nextOperant()
+        console.log(val.value)
+        break
+      }
       case I.MOV: {
         const dst = this.nextOperant()
         const src = this.nextOperant()
         console.log('mov', dst, src)
-        this.stack[dst.raw] = src.value
+        this.stack[dst.index] = src.value
         break
       }
       case I.ADD: {
         const dst = this.nextOperant()
         const src = this.nextOperant()
         console.log('add', dst, src)
+        this.stack[dst.index] += src.value
         break
       }
       case I.SUB: {
         const dst = this.nextOperant()
         const src = this.nextOperant()
         console.log('sub', dst, src)
+        this.stack[dst.index] -= src.value
         break
       }
       default:
@@ -263,6 +271,7 @@ export const createVMFromFile = (fileName: string): VirtualMachine => {
   const codesBuf = buffer.slice(5, funcionTableBasicIndex)
   const funcsBuf = buffer.slice(funcionTableBasicIndex, stringTableBasicIndex)
   const funcsTable: IFuncInfo[] = parseFunctionTable(funcsBuf)
+  console.log('string table', stringsTable)
   console.log(funcsTable)
   console.log('codes length -->', codesBuf.byteLength)
   console.log('main start index', funcsTable[mainFunctionIndex].ip)
@@ -286,9 +295,10 @@ const parseStringsArray = (buffer: ArrayBuffer): string[] => {
   const strings: string[] = []
   let i = 0
   while(i < buffer.byteLength) {
-    const len = readUInt32(buffer, 0, 4)
-    const start = i + 4
-    const end = i + 4 + len * 2
+    const lentOffset = i + 4
+    const len = readUInt32(buffer, i, lentOffset)
+    const start = lentOffset
+    const end = lentOffset + len * 2
     const str = readString(buffer, start, end)
     strings.push(str)
     i = end
