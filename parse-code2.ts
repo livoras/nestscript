@@ -86,4 +86,4 @@ export const parseCode = (cd: string): string[][] => {
 // console.log(parseCode(`PUSH "DIE WORLD"`))
 // console.log(parseCode(`PUSH "HELLO WORLD"`))
 // console.log(parseCode('MOV R0 1'))
-console.log(parseCode(testProgram))
+// console.log(parseCode(testProgram))

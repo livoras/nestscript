@@ -123,23 +123,25 @@ func main() {
   MOV R0 $RET;
   PRINT R0;
   PRINT G1;
-}
-`
+  PRINT G1;
+  PRINT G1;
+  PRINT G1;
+  PRINT G1;
+  JNE G1 G2 l2;
 
-const testProgram2 = `
-func foo(a) {
-  MOV $RET a;
-  RET;
-}
+LABEL l1:
+  PRINT "HELLO L1";
+  PRINT "HELLO L1";
 
-func main() {
-  VAR R0;
-  PUSH 100;
-  CALL foo 1;
-  MOV R0 $RET;
-  ADD R0 6;
-  PUSH R0;
-  CALL foo 1;
+LABEL l2:
+  PRINT "HELLO L2";
+  PRINT "HELLO L2";
+
+  MOV R0 0;
+LABEL l3:
+  PRINT "NEW WORL";
+  PRINT R0;
+  ADD R0 1;
 }
 `
 
@@ -153,12 +155,12 @@ interface IFuncInfo {
   ip?: number,
   index?: number,
   bytecodes?: ArrayBuffer,
+  labels?: any,
 }
 
 
 // tslint:disable-next-line: no-big-function
 const parseCodeToProgram = (program: string): void => {
-  const ins: any[] = []
   const funcsTable = {}
   const globalSymbols = {}
   const stringTable: string[] = []
@@ -198,6 +200,17 @@ const parseCodeToProgram = (program: string): void => {
       } else {
         code.forEach((o: any, i: number): void => {
           if (i === 0) { return }
+
+          if (
+            ['JMP'].includes(op) ||
+            (['JE', 'JNE', 'JG', 'JL', 'JGE', 'JLE'].includes(op) && i === 3)
+          ) {
+            code[i] = {
+              type: IOperatantType.ADDRESS,
+              value: funcInfo.labels[code[i]],
+            }
+            return
+          }
 
           /** 寄存器 */
           let regIndex = symbols[o]
@@ -245,6 +258,7 @@ const parseCodeToProgram = (program: string): void => {
         })
       }
     })
+    console.log('CODES => ', funcInfo.codes)
   })
 
   console.log("THE STRING TABLE -> ", stringTable)
@@ -281,7 +295,10 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
       buffer = concatBuffer(buffer, buf)
       funcInfo.bytecodes = concatBuffer(funcInfo.bytecodes!, buf)
     }
+    const codeAdresses: number[] = []
+    const labelBufferIndex: { codeIndex: number, bufferIndex: number }[] = []
     funcInfo.codes.forEach((code: any[], i: number): void => {
+      codeAdresses.push(buffer.byteLength)
 
       const cmd = code[0]
       const setBuf = new Uint8Array(1)
@@ -299,16 +316,23 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
         case IOperatantType.GLOBAL:
         case IOperatantType.ARG_COUNT:
         case IOperatantType.FUNCTION_INDEX:
-        case IOperatantType.STRING:
+        case IOperatantType.STRING: {
           const v = new Uint16Array(operantBuf)
           v[0] = o.value
           appendBuffer(operantBuf)
           break
-        case IOperatantType.NUMBER:
-          const v2 = new Float64Array(operantBuf)
-          v2[0] = o.value
+        }
+        case IOperatantType.ADDRESS: {
+          labelBufferIndex.push({ codeIndex: o.value, bufferIndex: buffer.byteLength })
           appendBuffer(operantBuf)
           break
+        }
+        case IOperatantType.NUMBER: {
+          const v = new Float64Array(operantBuf)
+          v[0] = o.value
+          appendBuffer(operantBuf)
+          break
+        }
         case IOperatantType.RETURN_VALUE:
           break
         default:
@@ -316,6 +340,18 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
         }
       })
     })
+
+    // Replace label
+    labelBufferIndex.forEach((label): void => {
+      const buf = new Uint32Array(1)
+      const address = codeAdresses[label.codeIndex]
+      buf[0] = address
+      const buf2 = new Uint8Array(buf)
+      const funBuf = new Uint8Array(buffer)
+      funBuf.set(buf2, label.bufferIndex)
+      console.log('----REPLACE', buf)
+    })
+    console.log(codeAdresses, labelBufferIndex)
   })
   console.log('codes length ->', buffer.byteLength)
 
@@ -402,15 +438,26 @@ const parseFunction = (func: string): IFuncInfo => {
   } else if (codes[codes.length - 1][0] !== 'RET') {
     codes.push(['RET'])
   }
-  console.log(funcName, codes)
+
+  const labels: any = {}
+  const codesWithoutLabel: string[][] = []
+  codes.forEach((code: string[]): void => {
+    if (code[0] === 'LABEL') {
+      labels[code[1]] = codesWithoutLabel.length
+    } else {
+      codesWithoutLabel.push(code)
+    }
+  })
+  console.log('===>', funcName, codesWithoutLabel)
 
   return {
     name: funcName,
     numArgs: args.length,
     symbols,
-    codes,
+    codes: codesWithoutLabel,
     localSize: vars.length,
     globals,
+    labels,
   }
 }
 

@@ -54,6 +54,7 @@ export const enum IOperatantType {
   STRING,
   ARG_COUNT,
   RETURN_VALUE,
+  ADDRESS,
 }
 
 export interface IOperant {
@@ -70,6 +71,7 @@ export const operantBytesSize: { [x in IOperatantType]: number } = {
   [IOperatantType.REGISTER]: 2,
   [IOperatantType.GLOBAL]: 2,
   [IOperatantType.ARG_COUNT]: 2,
+  [IOperatantType.ADDRESS]: 4,
 
   [IOperatantType.NUMBER]: 8,
   [IOperatantType.RETURN_VALUE]: 0,
@@ -188,6 +190,35 @@ export class VirtualMachine {
         this.stack[dst.index] -= src.value
         break
       }
+      case I.JMP: {
+        const address = this.nextOperant()
+        this.ip = address.value
+        break
+      }
+      case I.JE: {
+        this.jumpWithCondidtion((a: any, b: any): boolean => a === b)
+        break
+      }
+      case I.JNE: {
+        this.jumpWithCondidtion((a: any, b: any): boolean => a !== b)
+        break
+      }
+      case I.JG: {
+        this.jumpWithCondidtion((a: any, b: any): boolean => a > b)
+        break
+      }
+      case I.JL: {
+        this.jumpWithCondidtion((a: any, b: any): boolean => a < b)
+        break
+      }
+      case I.JGE: {
+        this.jumpWithCondidtion((a: any, b: any): boolean => a >= b)
+        break
+      }
+      case I.JLE: {
+        this.jumpWithCondidtion((a: any, b: any): boolean => a <= b)
+        break
+      }
       default:
         throw new Error("Unknow command " + op)
       }
@@ -212,6 +243,11 @@ export class VirtualMachine {
     case IOperatantType.STRING:
       let j = this.ip + 2
       value = readInt16(codes, this.ip, j)
+      this.ip = j
+      break
+    case IOperatantType.ADDRESS:
+      j = this.ip + 4
+      value = readUInt32(codes, this.ip, j)
       this.ip = j
       break
     case IOperatantType.NUMBER:
@@ -239,6 +275,7 @@ export class VirtualMachine {
       return this.stack[this.fp + value]
     case IOperatantType.ARG_COUNT:
     case IOperatantType.NUMBER:
+    case IOperatantType.ADDRESS:
       return value
     case IOperatantType.GLOBAL:
       return this.stack[value]
@@ -250,6 +287,16 @@ export class VirtualMachine {
       return this.stack[0]
     default:
       throw new Error("Unknown operant " + valueType)
+    }
+  }
+
+
+  public jumpWithCondidtion(cond: (a: any, b: any) => boolean): void {
+    const op1 = this.nextOperant()
+    const op2 = this.nextOperant()
+    const address = this.nextOperant()
+    if (cond(op1.value, op2.value)) {
+      this.ip = address.value
     }
   }
 }
