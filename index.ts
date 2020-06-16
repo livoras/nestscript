@@ -130,6 +130,7 @@ LABEL l4:
   PRINT "loop";
   PRINT "loop";
   PRINT R0;
+  CALL_CTX "console.log";
   ADD R0 1;
 LABEL l5:
   JL R0 10 l4;

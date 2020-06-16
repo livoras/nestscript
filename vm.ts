@@ -44,6 +44,7 @@ export enum I {
  JMP, JE, JNE, JG, JL,
  JGE, JLE, PUSH, POP, CALL, PRINT,
  RET, AUSE, EXIT,
+ CALL_CTX,
 }
 
 export const enum IOperatantType {
@@ -98,6 +99,7 @@ export class VirtualMachine {
     public stringsTable: string[],
     public entryFunctionIndex: number,
     public globalSize: number,
+    public ctx: any,
   ) {
     // RET
     const globalIndex = globalSize + 1
@@ -216,6 +218,11 @@ export class VirtualMachine {
       }
       case I.JLE: {
         this.jumpWithCondidtion((a: any, b: any): boolean => a <= b)
+        break
+      }
+      case I.CALL_CTX: {
+        const f = this.nextOperant()
+        console.log("cxall", f.value)
         break
       }
       default:
