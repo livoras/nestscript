@@ -72,7 +72,6 @@ export const operantBytesSize: { [x in IOperatantType]: number } = {
   [IOperatantType.GLOBAL]: 2,
   [IOperatantType.ARG_COUNT]: 2,
   [IOperatantType.ADDRESS]: 4,
-
   [IOperatantType.NUMBER]: 8,
   [IOperatantType.RETURN_VALUE]: 0,
 }
@@ -192,6 +191,7 @@ export class VirtualMachine {
       }
       case I.JMP: {
         const address = this.nextOperant()
+        console.log("PRINT JMP ->", address)
         this.ip = address.value
         break
       }
@@ -295,6 +295,7 @@ export class VirtualMachine {
     const op1 = this.nextOperant()
     const op2 = this.nextOperant()
     const address = this.nextOperant()
+    console.log("JUMP --->l", address)
     if (cond(op1.value, op2.value)) {
       this.ip = address.value
     }
@@ -318,19 +319,26 @@ interface IFuncInfo {
 const BYTE = 8
 export const createVMFromFile = (fileName: string): VirtualMachine => {
   const buffer = new Uint8Array(fs.readFileSync(fileName)).buffer
-  const mainFunctionIndex = readUInt8(buffer, 0, 1)
-  const funcionTableBasicIndex = readUInt8(buffer, 1, 2)
-  const stringTableBasicIndex = readUInt8(buffer, 2, 3)
-  const globalsSize = readUInt16(buffer, 3, 5)
+  const mainFunctionIndex = readUInt32(buffer, 0, 4)
+  const funcionTableBasicIndex = readUInt32(buffer, 4, 8)
+  const stringTableBasicIndex = readUInt32(buffer, 8, 12)
+  const globalsSize = readUInt32(buffer, 12, 16)
+  console.log(
+    'main function index', mainFunctionIndex,
+    'function table basic index', funcionTableBasicIndex,
+    'string table basic index', stringTableBasicIndex,
+    'globals szie ', globalsSize,
+  )
 
   const stringsTable: string[] = parseStringsArray(buffer.slice(stringTableBasicIndex))
-  const codesBuf = buffer.slice(5, funcionTableBasicIndex)
+  const codesBuf = buffer.slice(4 * 4, funcionTableBasicIndex)
   const funcsBuf = buffer.slice(funcionTableBasicIndex, stringTableBasicIndex)
   const funcsTable: IFuncInfo[] = parseFunctionTable(funcsBuf)
   console.log('string table', stringsTable)
-  console.log(funcsTable)
-  console.log('codes length -->', codesBuf.byteLength)
-  console.log('main start index', funcsTable[mainFunctionIndex].ip)
+  console.log('function table', funcsTable)
+  console.log(mainFunctionIndex, funcsTable, 'function basic index', funcionTableBasicIndex)
+  console.log('codes length -->', codesBuf.byteLength, stringTableBasicIndex)
+  console.log('main start index', funcsTable[mainFunctionIndex].ip, stringTableBasicIndex)
 
   return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex, globalsSize)
 }

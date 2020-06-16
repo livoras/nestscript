@@ -121,27 +121,28 @@ func main() {
   PRINT "HELLO WORL;🌹";
   CALL tow 2;
   MOV R0 $RET;
-  PRINT R0;
-  PRINT G1;
-  PRINT G1;
-  PRINT G1;
-  PRINT G1;
-  PRINT G1;
+  MOV G2 1;
+  MOV G1 1;
   JNE G1 G2 l2;
 
 LABEL l1:
   PRINT "HELLO L1";
   PRINT "HELLO L1";
-
 LABEL l2:
   PRINT "HELLO L2";
   PRINT "HELLO L2";
-
-  MOV R0 0;
 LABEL l3:
   PRINT "NEW WORL";
   PRINT R0;
   ADD R0 1;
+  MOV R0 0;
+  JMP l5;
+LABEL l4:
+  PRINT " LOOP";
+  PRINT R0;
+  ADD R0 1;
+LABEL l5:
+  JL R0 10 l4;
 }
 `
 
@@ -349,34 +350,33 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
       const buf2 = new Uint8Array(buf)
       const funBuf = new Uint8Array(buffer)
       funBuf.set(buf2, label.bufferIndex)
-      console.log('----REPLACE', buf)
+      console.log('----REPLACE ~~~~~~', buf)
     })
-    console.log(codeAdresses, labelBufferIndex)
+    console.log('LABAL s', codeAdresses, labelBufferIndex)
   })
   console.log('codes length ->', buffer.byteLength)
 
   /**
    * Header:
    *
-   * mainFunctionIndex: 1
-   * funcionTableBasicIndex: 1
-   * stringTableBasicIndex: 1
-   * globalsSize: 2
+   * mainFunctionIndex: 4
+   * funcionTableBasicIndex: 4
+   * stringTableBasicIndex: 4
+   * globalsSize: 4
    */
   const FUNC_SIZE = 1 + 2 + 2 // ip + numArgs + localSize
-  const funcionTableBasicIndex = 5 + buffer.byteLength
+  const funcionTableBasicIndex = 4 * 4 + buffer.byteLength
   const stringTableBasicIndex = funcionTableBasicIndex + FUNC_SIZE * funcsInfo.length
-  const headerView = new Uint8Array(3)
+  const headerView = new Uint32Array(4)
   headerView[0] = mainFunctionIndex
   headerView[1] = funcionTableBasicIndex
   headerView[2] = stringTableBasicIndex
-  const globalView = new Uint16Array(1)
-  globalView[0] = globalsSize
-  const headerBuf = concatBuffer(headerView.buffer, globalView.buffer)
-  buffer = concatBuffer(headerBuf, buffer)
+  headerView[3] = globalsSize
+  buffer = concatBuffer(headerView.buffer, buffer)
+  console.log('---> main', mainFunctionIndex, funcionTableBasicIndex, buffer.byteLength)
 
   /** Function Table */
-  funcsInfo.forEach((funcInfo: IFuncInfo): void => {
+  funcsInfo.forEach((funcInfo: IFuncInfo, i: number): void => {
     const ipBuf = new Uint8Array(1)
     const numArgsAndLocal = new Uint16Array(2)
     ipBuf[0] = funcInfo.ip!
@@ -384,9 +384,12 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
     numArgsAndLocal[1] = funcInfo.localSize
     const funcBuf = concatBuffer(ipBuf.buffer, numArgsAndLocal.buffer)
     buffer = concatBuffer(buffer, funcBuf)
+    console.log('FUNCTION -> ', funcInfo.ip, funcInfo.localSize)
   })
+  console.log('string table index ->', buffer.byteLength)
 
   /** append string buffer */
+  console.log(arrayBufferToString(stringTable.buffer), "???")
   buffer = concatBuffer(buffer, stringTable.buffer)
 
   return buffer
@@ -448,7 +451,7 @@ const parseFunction = (func: string): IFuncInfo => {
       codesWithoutLabel.push(code)
     }
   })
-  console.log('===>', funcName, codesWithoutLabel)
+  console.log('===>', funcName, codesWithoutLabel, labels)
 
   return {
     name: funcName,
