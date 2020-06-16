@@ -118,7 +118,7 @@ func main() {
   PRINT "+++++++++++++++++++++++";
   PUSH 'WORLD';
   PUSH "HELLO ";
-  PRINT "HELLO WORL";
+  PRINT "HELLO WORL;🌹";
   CALL tow 2;
   MOV R0 $RET;
   PRINT R0;
@@ -214,7 +214,7 @@ const parseCodeToProgram = (program: string): void => {
           if (regIndex !== undefined) {
             code[i] = {
               type: IOperatantType.GLOBAL,
-              value: regIndex + 1,
+              value: regIndex + 1, // 留一位给 RET
             }
             return
           }
@@ -382,12 +382,7 @@ const parseFunction = (func: string): IFuncInfo => {
   const args = caps![2]
     .split(/\s*,\s*/g)
     .filter((s: string): boolean => !!s)
-  const body = caps![3]
-    .trim()
-    .split(';')
-    .map((s: string): string => s.trim())
-    .filter((s: string): boolean => !!s)
-    .map(parseCode)
+  const body = parseCode(caps![3])
 
   const vars = body.filter((stat: string[]): boolean => stat[0] === 'VAR')
   const globals = body

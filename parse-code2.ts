@@ -1,10 +1,32 @@
-export const parseCode = (cd: string): string[] => {
+const testProgram = `
+  GLOBAL G1;
+  GLOBAL G2;
+
+  VAR R0;
+  PUSH 2;
+  PUSH 2;
+  CALL foo 2;
+  PRINT "======================";
+  PRINT $RET;
+  PRINT "+++++++++++++++++++++++";
+  PUSH 'WORLD';
+  PUSH "HELLO ";
+  PRINT "HELLO WORL";
+  CALL tow 2;
+LABEL con1:
+  MOV R0 $RET;
+  PRINT R0;
+  PRINT G1;
+`
+
+export const parseCode = (cd: string): string[][] => {
   const code = cd.trim()
-  const operants: string[] = []
+  let operants: string[] = []
   let i = 0
   let val = ""
   let isInString = false
   let oldStringStart: string = ''
+  const codes: string[][] = []
 
   while (i < code.length) {
     const c = code[i++]
@@ -27,27 +49,41 @@ export const parseCode = (cd: string): string[] => {
       continue
     }
 
-    if (c !== ' ') {
-      val += c
+    if (c === ';' || c === ':') {
+      if (val !== "") {
+        operants.push(val)
+        val = ""
+      }
+      if (operants.length > 0) {
+        codes.push(operants)
+      }
+      operants = []
       continue
     }
 
-    if (val === '') {
-      continue
+    if (c.match(/\s/)) {
+      if (val.length === 0) {
+        continue
+      } else {
+        if (val !== "") {
+          operants.push(val)
+        }
+        val = ""
+        continue
+      }
     }
 
-    operants.push(val)
-    val = ""
+    val += c
   }
 
-  if (val !== '') {
-    operants.push(val)
+  if (operants.length > 0) {
+    codes.push(operants)
   }
 
-  return operants
+  return codes
 }
 
 // console.log(parseCode(`PUSH "DIE WORLD"`))
 // console.log(parseCode(`PUSH "HELLO WORLD"`))
 // console.log(parseCode('MOV R0 1'))
-// console.log(parseCode('CALL name 1'))
+console.log(parseCode(testProgram))
