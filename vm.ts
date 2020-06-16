@@ -191,7 +191,6 @@ export class VirtualMachine {
       }
       case I.JMP: {
         const address = this.nextOperant()
-        console.log("PRINT JMP ->", address)
         this.ip = address.value
         break
       }
@@ -295,7 +294,7 @@ export class VirtualMachine {
     const op1 = this.nextOperant()
     const op2 = this.nextOperant()
     const address = this.nextOperant()
-    console.log("JUMP --->l", address)
+    // console.log("JUMP --->l", address)
     if (cond(op1.value, op2.value)) {
       this.ip = address.value
     }
@@ -347,10 +346,11 @@ const parseFunctionTable = (buffer: ArrayBuffer): IFuncInfo[] => {
   const funcs: IFuncInfo[] = []
   let i = 0
   while (i < buffer.byteLength) {
-    const ip = readUInt8(buffer, i, i + 1)
-    const numArgsAndLocal = new Uint16Array(buffer.slice(i + 1, i + 1 + 2 * 2))
+    const ipEnd = i + 4
+    const ip = readUInt32(buffer, i, ipEnd)
+    const numArgsAndLocal = new Uint16Array(buffer.slice(ipEnd, ipEnd + 2 * 2))
     funcs.push({ ip, numArgs: numArgsAndLocal[0], localSize: numArgsAndLocal[1] })
-    i += 5
+    i += 8
   }
   return funcs
 }

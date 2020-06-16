@@ -138,7 +138,7 @@ LABEL l3:
   MOV R0 0;
   JMP l5;
 LABEL l4:
-  PRINT " LOOP";
+  PRINT "LOOP";
   PRINT R0;
   ADD R0 1;
 LABEL l5:
@@ -347,9 +347,11 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
       const buf = new Uint32Array(1)
       const address = codeAdresses[label.codeIndex]
       buf[0] = address
-      const buf2 = new Uint8Array(buf)
+      const buf2 = new Uint8Array(buf.buffer)
       const funBuf = new Uint8Array(buffer)
-      funBuf.set(buf2, label.bufferIndex)
+      buf2.forEach((b: number, i: number): void => {
+        funBuf.set([b], label.bufferIndex + i)
+      })
       console.log('----REPLACE ~~~~~~', buf)
     })
     console.log('LABAL s', codeAdresses, labelBufferIndex)
@@ -364,7 +366,7 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
    * stringTableBasicIndex: 4
    * globalsSize: 4
    */
-  const FUNC_SIZE = 1 + 2 + 2 // ip + numArgs + localSize
+  const FUNC_SIZE = 4 + 2 + 2 // ip + numArgs + localSize
   const funcionTableBasicIndex = 4 * 4 + buffer.byteLength
   const stringTableBasicIndex = funcionTableBasicIndex + FUNC_SIZE * funcsInfo.length
   const headerView = new Uint32Array(4)
@@ -377,7 +379,7 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
 
   /** Function Table */
   funcsInfo.forEach((funcInfo: IFuncInfo, i: number): void => {
-    const ipBuf = new Uint8Array(1)
+    const ipBuf = new Uint32Array(1)
     const numArgsAndLocal = new Uint16Array(2)
     ipBuf[0] = funcInfo.ip!
     numArgsAndLocal[0] = funcInfo.numArgs
