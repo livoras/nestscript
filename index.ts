@@ -1,13 +1,7 @@
-import * as ts from "typescript"
 import { I, createVMFromFile, IOperatantType, IOperant, operantBytesSize } from './vm'
 import { concatBuffer, stringToArrayBuffer, arrayBufferToString } from './utils'
 import fs = require('fs')
 import { parseCode } from './parser'
-
-export const exec = (source: string , that?: any, context?: any, callback?: (ret: any) => void): void => {
-  const result = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } })
-  console.log(result)
-}
 
 /**
  *
