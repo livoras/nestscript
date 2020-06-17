@@ -1,5 +1,5 @@
 # nestscript
-A script nested in JavaScript, dynamically run code in environment without `eval` and `new Function`.
+A script nested in JavaScript, dynamically runs code in environment without `eval` and `new Function`.
 
 `nestscript` 可以让你在没有 `eval` 和 `new Function` 的环境中运行代码。
 
