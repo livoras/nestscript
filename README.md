@@ -64,3 +64,4 @@ func main() {
 * 完成基本的汇编器和虚拟机
 * 完成命令行工具 nsc，可以 `nsc compile src dest` 将文本代码 -> 二进制文件，并且用 `nsc run file` 执行
 * 斐波那契数列计算例子
+* 编译打包成第三方包
