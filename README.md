@@ -1,6 +1,12 @@
 # nestscript
 A script nested in JavaScript, dynamically run code in environment without `eval` and `new Function`.
 
+`nestscript` 可以让你在没有 `eval` 和 `new Function` 的环境中运行代码。
+
+它包含了一个简单的汇编器和编译器后端的虚拟机，可以将下面的汇编指令形式的代码编译成二进制代码，并且在虚拟机上进行执行代码。因为该虚拟机是用 JavaScript 编写的，有 JavaScript 的环境都可以执行 `nestscript` 的二进制指令。你可以把它用在 Web 前端、微信小程序等场景。
+
+`nestscript` 目前只包含编译器的后端，理论上可以将任意形式的 JS 、TS 等高级代码变编译成 `nestscript` 的 IR 指令。
+
 ```javascript
 const testProgram = `
 func bar(c, b) {
