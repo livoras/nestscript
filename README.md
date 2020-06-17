@@ -8,75 +8,49 @@ A script nested in JavaScript, dynamically run code in environment without `eval
 `nestscript` 目前只包含编译器的后端，理论上可以将任意形式的 JS 、TS 等高级代码变编译成 `nestscript` 的 IR 指令。
 
 ```javascript
-const testProgram = `
-func bar(c, b) {
-  MOV G2 "1";
-  VAR R0;
-  MOV R0 b;
-  SUB R0 c;
-  MOV $RET R0;
-  RET;
-}
+func fib(a) {
+  PUSH "斐波那契数列";
+  CALL_CTX "console" "time" 1;
+  VAR r0;
+  VAR r1;
+  VAR r2;
+  VAR tmp;
 
-func foo(a, b) {
-  MOV G1 "loop";
-  VAR R0;
-  MOV R0 a;
-  ADD R0 b;
-  PUSH R0;
-  PUSH 3;
-  CALL bar 2;
-}
+  MOV r1 1;
+  MOV r2 1;
+  MOV r0 0;
 
-func tow(s1, s2) {
-  MOV $RET s1;
-  ADD $RET s2;
-  ADD G1 G2;
-  RET;
+  JL a 3 l2;
+  SUB a 2;
+
+  JMP l1;
+LABEL l0:
+  MOV tmp r2;
+  ADD r2 r1;
+  MOV r1 tmp;
+  ADD r0 1;
+LABEL l1:
+  PRINT r2;
+  JL r0 a l0;
+  MOV $RET r2;
+  JMP l3;
+LABEL l2:
+  PRINT "DIRECT";
+  MOV $RET 1;
+LABEL l3;
+  MOV tmp $RET;
+  PUSH "斐波那契数列";
+  CALL_CTX "console" "timeEnd" 1;
+  MOV $RET tmp;
 }
 
 func main() {
-  GLOBAL G1;
-  GLOBAL G2;
-
-  VAR R0;
-  PUSH 2;
-  PUSH 2;
-  CALL foo 2;
-
-  PRINT $RET;
-  PUSH 2;
-  PUSH 2;
-  CALL tow 2;
-
-  MOV R0 $RET;
-  MOV G2 1;
-  MOV G1 1;
-  JNE G1 G2 l2;
-
-LABEL l3:
-  PRINT R0;
-  ADD R0 1;
-  MOV R0 0;
-  PUSH "check time";
-  CALL_CTX "console" "time" 1;
-  JMP l5;
-LABEL l4:
-  PRINT R0;
-  MOV_CTX G1 "name.age";
-  PUSH "LOG SOMETHING ...";
+  PUSH "THE RESULT IS";
   CALL_CTX "console" "log" 1;
-  PUSH "LOG SOMETHING ...2";
-  PUSH "LOG SOMETHING ...3";
-  CALL_CTX "console" "log" 2;
-  PRINT G1;
-  ADD R0 1;
-LABEL l5:
-  JL R0 10000 l4;
-  PUSH "check time";
-  CALL_CTX "console" "timeEnd" 1;
+  PUSH 5;
+  CALL fib 1;
+  PRINT $RET;
 }
-`
 ```
 
 * * *
