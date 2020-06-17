@@ -2,7 +2,7 @@ import { Command, flags } from '@oclif/command'
 import path = require("path")
 import fs = require("fs")
 import { parseCodeToProgram } from "nestscript"
-import { VirtualMachine, createVMFromFile } from "nestscript/vm"
+import { VirtualMachine, createVMFromArrayBuffer } from "nestscript/vm"
 
 export default class Run extends Command {
   static description = 'describe the command here'
@@ -28,7 +28,7 @@ export default class Run extends Command {
       return
     }
     const exe = this.getAbsPath(args.file)
-    const vm = createVMFromFile(exe)
+    const vm = createVMFromArrayBuffer((new Uint8Array(fs.readFileSync(exe)).buffer), { console })
     vm.run()
   }
 

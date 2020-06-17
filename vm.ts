@@ -1,6 +1,4 @@
-import fs = require("fs")
 import { arrayBufferToString, getByProp } from './utils'
-import { textSpanIntersectsWith } from 'typescript'
 /**
  *
  * MOV dest src 赋值给变量
@@ -356,8 +354,7 @@ interface IFuncInfo {
  * stringTableBasicIndex: 1
  * globalsSize: 2
  */
-export const createVMFromFile = (fileName: string): VirtualMachine => {
-  const buffer = new Uint8Array(fs.readFileSync(fileName)).buffer
+export const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMachine => {
   const mainFunctionIndex = readUInt32(buffer, 0, 4)
   const funcionTableBasicIndex = readUInt32(buffer, 4, 8)
   const stringTableBasicIndex = readUInt32(buffer, 8, 12)
@@ -379,10 +376,7 @@ export const createVMFromFile = (fileName: string): VirtualMachine => {
   console.log('codes length -->', codesBuf.byteLength, stringTableBasicIndex)
   console.log('main start index', funcsTable[mainFunctionIndex].ip, stringTableBasicIndex)
 
-  return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex, globalsSize, {
-    name: { age: "TOMY" },
-    console,
-  })
+  return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex, globalsSize, ctx)
 }
 
 const parseFunctionTable = (buffer: ArrayBuffer): IFuncInfo[] => {

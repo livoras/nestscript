@@ -1,9 +1,11 @@
 {
   "compileOnSave": false,
+  "exclude": ["nsc"],
   "compilerOptions": {
     "baseUrl": ".",
     "typeRoots": ["typings/wx", "node_modules/@types"],
     "paths": { "*": ["types/*"] },
+    "outDir": "build",
     "strict": true,
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,

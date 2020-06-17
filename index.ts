@@ -1,4 +1,4 @@
-import { I, createVMFromFile, IOperatantType, IOperant, operantBytesSize } from './vm'
+import { I, IOperatantType, IOperant, operantBytesSize } from './vm'
 import { concatBuffer, stringToArrayBuffer, arrayBufferToString } from './utils'
 import fs = require('fs')
 import { parseCode } from './parser'
