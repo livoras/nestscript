@@ -27,7 +27,7 @@ LABEL l1:
 LABEL l2:
   PRINT "DIRECT";
   MOV $RET 1;
-LABEL l3;
+LABEL l3:
   MOV tmp $RET;
   PUSH "斐波那契数列";
   CALL_CTX "console" "timeEnd" 1;
