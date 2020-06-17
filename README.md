@@ -7,6 +7,8 @@ A script nested in JavaScript, dynamically run code in environment without `eval
 
 `nestscript` 目前只包含编译器的后端，理论上可以将任意形式的 JS 、TS 等高级代码变编译成 `nestscript` 的 IR 指令。
 
+斐波那契数列：
+
 ```javascript
 func fib(a) {
   PUSH "斐波那契数列";
@@ -15,28 +17,29 @@ func fib(a) {
   VAR r1;
   VAR r2;
   VAR tmp;
-
   MOV r1 1;
   MOV r2 1;
   MOV r0 0;
-
   JL a 3 l2;
   SUB a 2;
-
   JMP l1;
+
 LABEL l0:
   MOV tmp r2;
   ADD r2 r1;
   MOV r1 tmp;
   ADD r0 1;
+
 LABEL l1:
   PRINT r2;
   JL r0 a l0;
   MOV $RET r2;
   JMP l3;
+
 LABEL l2:
   PRINT "DIRECT";
   MOV $RET 1;
+
 LABEL l3;
   MOV tmp $RET;
   PUSH "斐波那契数列";
