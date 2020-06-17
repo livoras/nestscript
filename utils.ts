@@ -41,3 +41,15 @@ export const stringToArrayBuffer = (str: string): ArrayBuffer => {
   }
   return buffer
 }
+
+export const getByProp = (obj: any, prop: string): any =>
+  prop.split('.').reduce((o: any, p: string): any => o[p], obj)
+
+// const u = { name: { age: "TOMY" } }
+// console.time("check")
+// for (let i = 0; i < 10000; i++) {
+//   console.log(u.name.age)
+//   console.log("LOG SOMETHING...")
+//   console.log("LOG SOMETHING...3", "LOG SOMETHING...2")
+// }
+// console.timeEnd("check")

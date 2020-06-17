@@ -1,5 +1,5 @@
 import fs = require("fs")
-import { arrayBufferToString } from './utils'
+import { arrayBufferToString, getByProp } from './utils'
 import { textSpanIntersectsWith } from 'typescript'
 /**
  *
@@ -44,7 +44,7 @@ export enum I {
  JMP, JE, JNE, JG, JL,
  JGE, JLE, PUSH, POP, CALL, PRINT,
  RET, AUSE, EXIT,
- CALL_CTX,
+ CALL_CTX, MOV_CTX,
 }
 
 export const enum IOperatantType {
@@ -103,9 +103,25 @@ export class VirtualMachine {
   ) {
     // RET
     const globalIndex = globalSize + 1
-    this.stack.length = globalIndex + functionsTable[entryFunctionIndex].localSize
-    this.sp = this.stack.length - 1
-    this.fp  = globalIndex
+    const mainLocalSize = functionsTable[entryFunctionIndex].localSize
+    this.fp = globalIndex // fp 指向 old fp 位置，兼容普通函数
+    this.stack[this.fp] =-1
+    this.sp = this.fp + mainLocalSize
+    this.stack.length = this.sp + 1
+    /**
+     * V2
+     * V1 -> sp ->
+     * <empty item>
+     * ...
+     * G2
+     * G1
+     * RET
+     */
+    console.log(
+      'globalIndex', globalIndex,
+      'localSize', functionsTable[entryFunctionIndex].localSize,
+    )
+    console.log("start ---> fp", this.fp, this.sp)
   }
 
   // tslint:disable-next-line: no-big-function
@@ -120,7 +136,7 @@ export class VirtualMachine {
       switch (op) {
       case I.PUSH: {
         const val = this.nextOperant()
-        console.log('push', val)
+        // console.log('push', val)
         stack[++this.sp] = val.value
         break
       }
@@ -133,7 +149,7 @@ export class VirtualMachine {
       case I.CALL: {
         const funcInfo: IFuncInfo = this.nextOperant().value
         const numArgs = this.nextOperant()
-        console.log('call', funcInfo, numArgs)
+        // console.log('call', funcInfo, numArgs)
         //            | R3      |
         //            | R2      |
         //            | R1      |
@@ -162,7 +178,7 @@ export class VirtualMachine {
         this.sp = fp - stack[fp - 2] - 3
         // 清空上一帧
         this.stack = stack = stack.slice(0, this.sp + 1)
-        console.log('RET', stack)
+        // console.log('RET', stack, 'sp ->', this.sp)
         break
       }
       case I.PRINT: {
@@ -173,21 +189,21 @@ export class VirtualMachine {
       case I.MOV: {
         const dst = this.nextOperant()
         const src = this.nextOperant()
-        console.log('mov', dst, src)
+        // console.log('mov', dst, src)
         this.stack[dst.index] = src.value
         break
       }
       case I.ADD: {
         const dst = this.nextOperant()
         const src = this.nextOperant()
-        console.log('add', dst, src)
+        // console.log('add', dst, src)
         this.stack[dst.index] += src.value
         break
       }
       case I.SUB: {
         const dst = this.nextOperant()
         const src = this.nextOperant()
-        console.log('sub', dst, src)
+        // console.log('sub', dst, src)
         this.stack[dst.index] -= src.value
         break
       }
@@ -221,8 +237,23 @@ export class VirtualMachine {
         break
       }
       case I.CALL_CTX: {
-        const f = this.nextOperant()
-        console.log("cxall", f.value)
+        const o = getByProp(this.ctx, this.nextOperant().value)
+        const f = this.nextOperant().value
+        const numArgs = this.nextOperant().value
+        const args = []
+        for (let i = 0; i < numArgs; i++) {
+          args.push(stack[this.sp--])
+        }
+        stack[0] = o[f].apply(o, args)
+        // console.log(this.stack)
+        this.stack = stack = stack.slice(0, this.sp + 1)
+        break
+      }
+      case I.MOV_CTX: {
+        const dst = this.nextOperant()
+        const propKey = this.nextOperant()
+        const src = getByProp(this.ctx, propKey.value)
+        this.stack[dst.index] = src
         break
       }
       default:
@@ -322,7 +353,6 @@ interface IFuncInfo {
  * stringTableBasicIndex: 1
  * globalsSize: 2
  */
-const BYTE = 8
 export const createVMFromFile = (fileName: string): VirtualMachine => {
   const buffer = new Uint8Array(fs.readFileSync(fileName)).buffer
   const mainFunctionIndex = readUInt32(buffer, 0, 4)
@@ -346,7 +376,10 @@ export const createVMFromFile = (fileName: string): VirtualMachine => {
   console.log('codes length -->', codesBuf.byteLength, stringTableBasicIndex)
   console.log('main start index', funcsTable[mainFunctionIndex].ip, stringTableBasicIndex)
 
-  return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex, globalsSize)
+  return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex, globalsSize, {
+    name: { age: "TOMY" },
+    console,
+  })
 }
 
 const parseFunctionTable = (buffer: ArrayBuffer): IFuncInfo[] => {
