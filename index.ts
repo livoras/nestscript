@@ -2,7 +2,7 @@ import * as ts from "typescript"
 import { I, createVMFromFile, IOperatantType, IOperant, operantBytesSize } from './vm'
 import { concatBuffer, stringToArrayBuffer, arrayBufferToString } from './utils'
 import fs = require('fs')
-import { parseCode } from './parse-code2'
+import { parseCode } from './parser'
 
 export const exec = (source: string , that?: any, context?: any, callback?: (ret: any) => void): void => {
   const result = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } })
@@ -77,77 +77,6 @@ export const exec = (source: string , that?: any, context?: any, callback?: (ret
  * PARAM1
  * PARAM2
  */
-
-const testProgram = `
-func bar(c, b) {
-  MOV G2 "1";
-  VAR R0;
-  MOV R0 b;
-  SUB R0 c;
-  MOV $RET R0;
-  RET;
-}
-
-func foo(a, b) {
-  MOV G1 "loop";
-  VAR R0;
-  MOV R0 a;
-  ADD R0 b;
-  PUSH R0;
-  PUSH 3;
-  CALL bar 2;
-}
-
-func tow(s1, s2) {
-  MOV $RET s1;
-  ADD $RET s2;
-  ADD G1 G2;
-  RET;
-}
-
-func main() {
-  GLOBAL G1;
-  GLOBAL G2;
-
-  VAR R0;
-  PUSH 2;
-  PUSH 2;
-  CALL foo 2;
-
-  PRINT $RET;
-  PUSH 2;
-  PUSH 2;
-  CALL tow 2;
-
-  MOV R0 $RET;
-  MOV G2 1;
-  MOV G1 1;
-  JNE G1 G2 l2;
-
-LABEL l3:
-  PRINT R0;
-  ADD R0 1;
-  MOV R0 0;
-  PUSH "check time";
-  CALL_CTX "console" "time" 1;
-  JMP l5;
-LABEL l4:
-  PRINT R0;
-  MOV_CTX G1 "name.age";
-  PUSH "LOG SOMETHING ...";
-  CALL_CTX "console" "log" 1;
-  PUSH "LOG SOMETHING ...2";
-  PUSH "LOG SOMETHING ...3";
-  CALL_CTX "console" "log" 2;
-  PRINT G1;
-  ADD R0 1;
-LABEL l5:
-  JL R0 1 l4;
-  PUSH "check time";
-  CALL_CTX "console" "timeEnd" 1;
-}
-`
-
 interface IFuncInfo {
   name: string,
   symbols: any,
@@ -163,7 +92,7 @@ interface IFuncInfo {
 
 
 // tslint:disable-next-line: no-big-function
-const parseCodeToProgram = (program: string): void => {
+export const parseCodeToProgram = (program: string): Buffer => {
   const funcsTable = {}
   const globalSymbols = {}
   const stringTable: string[] = []
@@ -272,13 +201,8 @@ const parseCodeToProgram = (program: string): void => {
     console.log('CODES => ', funcInfo.codes)
   })
 
-  console.log("THE STRING TABLE -> ", stringTable)
   const stream = parseToStream(funcsInfo, stringTable, globalSize)
-  fs.writeFileSync('bin', Buffer.from(stream))
-
-  // test
-  const vm = createVMFromFile("bin")
-  vm.run()
+  return Buffer.from(stream)
 }
 
 /**
@@ -362,11 +286,11 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
       buf2.forEach((b: number, i: number): void => {
         funBuf.set([b], label.bufferIndex + i)
       })
-      console.log('----REPLACE ~~~~~~', buf)
+      // console.log('----REPLACE ~~~~~~', buf)
     })
-    console.log('LABAL s', codeAdresses, labelBufferIndex)
+    // console.log('LABAL s', codeAdresses, labelBufferIndex)
   })
-  console.log('codes length ->', buffer.byteLength)
+  // console.log('codes length ->', buffer.byteLength)
 
   /**
    * Header:
@@ -385,7 +309,7 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
   headerView[2] = stringTableBasicIndex
   headerView[3] = globalsSize
   buffer = concatBuffer(headerView.buffer, buffer)
-  console.log('---> main', mainFunctionIndex, funcionTableBasicIndex, buffer.byteLength)
+  // console.log('---> main', mainFunctionIndex, funcionTableBasicIndex, buffer.byteLength)
 
   /** Function Table */
   funcsInfo.forEach((funcInfo: IFuncInfo, i: number): void => {
@@ -396,12 +320,12 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
     numArgsAndLocal[1] = funcInfo.localSize
     const funcBuf = concatBuffer(ipBuf.buffer, numArgsAndLocal.buffer)
     buffer = concatBuffer(buffer, funcBuf)
-    console.log('FUNCTION -> ', funcInfo.ip, funcInfo.localSize)
+    // console.log('FUNCTION -> ', funcInfo.ip, funcInfo.localSize)
   })
-  console.log('string table index ->', buffer.byteLength)
+  // console.log('string table index ->', buffer.byteLength)
 
   /** append string buffer */
-  console.log(arrayBufferToString(stringTable.buffer), "???")
+  // console.log(arrayBufferToString(stringTable.buffer), "???")
   buffer = concatBuffer(buffer, stringTable.buffer)
 
   return buffer
@@ -475,5 +399,3 @@ const parseFunction = (func: string): IFuncInfo => {
     labels,
   }
 }
-
-parseCodeToProgram(testProgram)

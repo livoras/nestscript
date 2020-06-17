@@ -277,21 +277,24 @@ export class VirtualMachine {
     case IOperatantType.GLOBAL:
     case IOperatantType.ARG_COUNT:
     case IOperatantType.FUNCTION_INDEX:
-    case IOperatantType.STRING:
-      let j = this.ip + 2
+    case IOperatantType.STRING: {
+      const j = this.ip + 2
       value = readInt16(codes, this.ip, j)
       this.ip = j
       break
-    case IOperatantType.ADDRESS:
-      j = this.ip + 4
+    }
+    case IOperatantType.ADDRESS: {
+      const j = this.ip + 4
       value = readUInt32(codes, this.ip, j)
       this.ip = j
       break
-    case IOperatantType.NUMBER:
-      j = this.ip + 8
+    }
+    case IOperatantType.NUMBER: {
+      const j = this.ip + 8
       value = readFloat64(codes, this.ip, j)
       this.ip = j
       break
+    }
     case IOperatantType.RETURN_VALUE:
       value = 0
       break

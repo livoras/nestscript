@@ -1,0 +1,53 @@
+{
+  "name": "nsc",
+  "version": "0.0.0",
+  "author": "Livoras Dai",
+  "bin": {
+    "nsc": "./bin/run"
+  },
+  "bugs": "https://github.com/nestscript/nsc/issues",
+  "dependencies": {
+    "@oclif/command": "^1.6.1",
+    "@oclif/config": "^1.15.1",
+    "@oclif/plugin-help": "^3.1.0",
+    "tslib": "^1.13.0"
+  },
+  "devDependencies": {
+    "@oclif/dev-cli": "^1.22.2",
+    "@types/node": "^10.17.26",
+    "globby": "^10.0.2",
+    "ts-node": "^8.10.2",
+    "nestscript": "^0.0.1",
+    "typescript": "^3.9.5"
+  },
+  "engines": {
+    "node": ">=8.0.0"
+  },
+  "files": [
+    "/bin",
+    "/lib",
+    "/npm-shrinkwrap.json",
+    "/oclif.manifest.json"
+  ],
+  "homepage": "https://github.com/nestscript/nsc",
+  "keywords": [
+    "oclif"
+  ],
+  "license": "MIT",
+  "main": "lib/index.js",
+  "oclif": {
+    "commands": "./lib/commands",
+    "bin": "nsc",
+    "plugins": [
+      "@oclif/plugin-help"
+    ]
+  },
+  "repository": "nestscript/nsc",
+  "scripts": {
+    "postpack": "rm -f oclif.manifest.json",
+    "prepack": "rm -rf lib && tsc -b && oclif-dev manifest && oclif-dev readme",
+    "test": "echo NO TESTS",
+    "version": "oclif-dev readme && git add README.md"
+  },
+  "types": "lib/index.d.ts"
+}
