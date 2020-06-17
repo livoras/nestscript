@@ -66,7 +66,7 @@ LABEL l4:
   PRINT G1;
   ADD R0 1;
 LABEL l5:
-  JL R0 1 l4;
+  JL R0 10000 l4;
   PUSH "check time";
   CALL_CTX "console" "timeEnd" 1;
 }
