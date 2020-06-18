@@ -18,7 +18,7 @@ func sayHi(a) {
   VAR R0;
   PRINT "HELL WORLD";
   PRINT a;
-  MOV R0 "Hello 🌹";
+  MOV R0 "Hello 🌹菊花";
   ADD R0 a;
   PRINT R0;
   MOV $RET R0;
