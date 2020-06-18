@@ -1,1 +1,478 @@
-!function(t){var e={};function n(r){if(e[r])return e[r].exports;var i=e[r]={i:r,l:!1,exports:{}};return t[r].call(i.exports,i,i.exports,n),i.l=!0,i.exports}n.m=t,n.c=e,n.d=function(t,e,r){n.o(t,e)||Object.defineProperty(t,e,{enumerable:!0,get:r})},n.r=function(t){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(t,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(t,"__esModule",{value:!0})},n.t=function(t,e){if(1&e&&(t=n(t)),8&e)return t;if(4&e&&"object"==typeof t&&t&&t.__esModule)return t;var r=Object.create(null);if(n.r(r),Object.defineProperty(r,"default",{enumerable:!0,value:t}),2&e&&"string"!=typeof t)for(var i in t)n.d(r,i,function(e){return t[e]}.bind(null,i));return r},n.n=function(t){var e=t&&t.__esModule?function(){return t.default}:function(){return t};return n.d(e,"a",e),e},n.o=function(t,e){return Object.prototype.hasOwnProperty.call(t,e)},n.p="",n(n.s=0)}([function(t,e,n){"use strict";var r;Object.defineProperty(e,"__esModule",{value:!0}),e.createVMFromArrayBuffer=e.VirtualMachine=e.operantBytesSize=e.I=void 0;var i,s=n(1);!function(t){t[t.MOV=0]="MOV",t[t.ADD=1]="ADD",t[t.SUB=2]="SUB",t[t.DIV=3]="DIV",t[t.MOD=4]="MOD",t[t.EXP=5]="EXP",t[t.NEG=6]="NEG",t[t.INC=7]="INC",t[t.DEC=8]="DEC",t[t.AND=9]="AND",t[t.OR=10]="OR",t[t.XOR=11]="XOR",t[t.NOT=12]="NOT",t[t.SHL=13]="SHL",t[t.SHR=14]="SHR",t[t.JMP=15]="JMP",t[t.JE=16]="JE",t[t.JNE=17]="JNE",t[t.JG=18]="JG",t[t.JL=19]="JL",t[t.JGE=20]="JGE",t[t.JLE=21]="JLE",t[t.PUSH=22]="PUSH",t[t.POP=23]="POP",t[t.CALL=24]="CALL",t[t.PRINT=25]="PRINT",t[t.RET=26]="RET",t[t.AUSE=27]="AUSE",t[t.EXIT=28]="EXIT",t[t.CALL_CTX=29]="CALL_CTX",t[t.MOV_CTX=30]="MOV_CTX"}(i=e.I||(e.I={})),e.operantBytesSize=((r={})[3]=2,r[4]=2,r[0]=2,r[1]=2,r[5]=2,r[7]=4,r[2]=8,r[6]=0,r);var a=function(){function t(t,e,n,r,i,s){this.codes=t,this.functionsTable=e,this.stringsTable=n,this.entryFunctionIndex=r,this.globalSize=i,this.ctx=s,this.ip=0,this.fp=0,this.sp=-1,this.stack=[];var a=i+1,o=e[r].localSize;this.fp=a,this.stack[this.fp]=-1,this.sp=this.fp+o,this.stack.length=this.sp+1,console.log("globalIndex",a,"localSize",e[r].localSize),console.log("start ---\x3e fp",this.fp,this.sp)}return t.prototype.run=function(){var t=!0,e=this.stack;for(this.ip=this.functionsTable[this.entryFunctionIndex].ip,console.log("start stack",e);t;){var n=this.nextOperator();switch(n){case i.PUSH:var r=this.nextOperant();e[++this.sp]=r.value;break;case i.EXIT:this.stack=e=[],console.log("exit",e),t=!1;break;case i.CALL:var a=this.nextOperant().value,o=this.nextOperant();e[++this.sp]=o.value,e[++this.sp]=this.ip,e[++this.sp]=this.fp,this.ip=a.ip,this.fp=this.sp,this.sp+=a.localSize;break;case i.RET:var c=this.fp;this.fp=e[c],this.ip=e[c-1],this.sp=c-e[c-2]-3,this.stack=e=e.slice(0,this.sp+1);break;case i.PRINT:r=this.nextOperant();console.log(r.value);break;case i.MOV:var u=this.nextOperant(),h=this.nextOperant();this.stack[u.index]=h.value;break;case i.ADD:u=this.nextOperant(),h=this.nextOperant();this.stack[u.index]+=h.value;break;case i.SUB:u=this.nextOperant(),h=this.nextOperant();this.stack[u.index]-=h.value;break;case i.JMP:var p=this.nextOperant();this.ip=p.value;break;case i.JE:this.jumpWithCondidtion((function(t,e){return t===e}));break;case i.JNE:this.jumpWithCondidtion((function(t,e){return t!==e}));break;case i.JG:this.jumpWithCondidtion((function(t,e){return t>e}));break;case i.JL:this.jumpWithCondidtion((function(t,e){return t<e}));break;case i.JGE:this.jumpWithCondidtion((function(t,e){return t>=e}));break;case i.JLE:this.jumpWithCondidtion((function(t,e){return t<=e}));break;case i.CALL_CTX:for(var l=s.getByProp(this.ctx,this.nextOperant().value),f=this.nextOperant().value,d=(o=this.nextOperant().value,[]),b=0;b<o;b++)d.push(e[this.sp--]);e[0]=l[f].apply(l,d),this.stack=e=e.slice(0,this.sp+1);break;case i.MOV_CTX:u=this.nextOperant();var y=this.nextOperant();h=s.getByProp(this.ctx,y.value);this.stack[u.index]=h;break;default:throw new Error("Unknow command "+n)}}},t.prototype.nextOperator=function(){return h(this.codes,this.ip,++this.ip)},t.prototype.nextOperant=function(){var t,e=this.codes,n=h(e,this.ip,++this.ip);switch(n){case 0:case 1:case 5:case 3:case 4:var r=this.ip+2;t=p(e,this.ip,r),this.ip=r;break;case 7:r=this.ip+4;t=l(e,this.ip,r),this.ip=r;break;case 2:r=this.ip+8;t=u(e,this.ip,r),this.ip=r;break;case 6:t=0;break;default:throw new Error("Unknown operant "+n)}return{type:n,value:this.parseValue(n,t),raw:t,index:0===n?this.fp+t:t}},t.prototype.parseValue=function(t,e){switch(t){case 0:return this.stack[this.fp+e];case 5:case 2:case 7:return e;case 1:return this.stack[e];case 4:return this.stringsTable[e];case 3:return this.functionsTable[e];case 6:return this.stack[0];default:throw new Error("Unknown operant "+t)}},t.prototype.jumpWithCondidtion=function(t){var e=this.nextOperant(),n=this.nextOperant(),r=this.nextOperant();t(e.value,n.value)&&(this.ip=r.value)},t}();e.VirtualMachine=a,e.createVMFromArrayBuffer=function(t){var e=l(t,0,4),n=l(t,4,8),r=l(t,8,12),i=l(t,12,16);console.log("main function index",e,"function table basic index",n,"string table basic index",r,"globals szie ",i);var s=c(t.slice(r)),u=t.slice(16,n),h=t.slice(n,r),p=o(h);return console.log("string table",s),console.log("function table",p),console.log(e,p,"function basic index",n),console.log("codes length --\x3e",u.byteLength,r),console.log("main start index",p[e].ip,r),new a(u,p,s,e,i,{name:{age:"TOMY"},console:console})};var o=function(t){for(var e=[],n=0;n<t.byteLength;){var r=n+4,i=l(t,n,r),s=new Uint16Array(t.slice(r,r+4));e.push({ip:i,numArgs:s[0],localSize:s[1]}),n+=8}return e},c=function(t){for(var e=[],n=0;n<t.byteLength;){var r=n+4,i=r+2*l(t,n,r),s=f(t,r,i);e.push(s),n=i}return e},u=function(t,e,n){return new Float64Array(t.slice(e,n))[0]},h=function(t,e,n){return new Uint8Array(t.slice(e,n))[0]},p=function(t,e,n){return new Int16Array(t.slice(e,n))[0]},l=function(t,e,n){return new Uint32Array(t.slice(e,n))[0]},f=function(t,e,n){return s.arrayBufferToString(t.slice(e,n))}},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.getByProp=e.stringToArrayBuffer=e.arrayBufferToString=e.concatBuffer=void 0,e.concatBuffer=function(t,e){var n=new Uint8Array(t.byteLength+e.byteLength);return n.set(new Uint8Array(t),0),n.set(new Uint8Array(e),t.byteLength),n.buffer},e.arrayBufferToString=function(t){return String.fromCharCode.apply(null,Array.from(new Uint16Array(t)))},e.stringToArrayBuffer=function(t){for(var e=t.length,n=new ArrayBuffer(2*e),r=new Uint16Array(n),i=0;i<e;i++)r[i]=t.charCodeAt(i);return n},e.getByProp=function(t,e){return e.split(".").reduce((function(t,e){return t[e]}),t)}}]);
+/******/ (function(modules) { // webpackBootstrap
+/******/ 	// The module cache
+/******/ 	var installedModules = {};
+/******/
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/
+/******/ 		// Check if module is in cache
+/******/ 		if(installedModules[moduleId]) {
+/******/ 			return installedModules[moduleId].exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = installedModules[moduleId] = {
+/******/ 			i: moduleId,
+/******/ 			l: false,
+/******/ 			exports: {}
+/******/ 		};
+/******/
+/******/ 		// Execute the module function
+/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/
+/******/ 		// Flag the module as loaded
+/******/ 		module.l = true;
+/******/
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/
+/******/
+/******/ 	// expose the modules object (__webpack_modules__)
+/******/ 	__webpack_require__.m = modules;
+/******/
+/******/ 	// expose the module cache
+/******/ 	__webpack_require__.c = installedModules;
+/******/
+/******/ 	// define getter function for harmony exports
+/******/ 	__webpack_require__.d = function(exports, name, getter) {
+/******/ 		if(!__webpack_require__.o(exports, name)) {
+/******/ 			Object.defineProperty(exports, name, { enumerable: true, get: getter });
+/******/ 		}
+/******/ 	};
+/******/
+/******/ 	// define __esModule on exports
+/******/ 	__webpack_require__.r = function(exports) {
+/******/ 		if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 			Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 		}
+/******/ 		Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 	};
+/******/
+/******/ 	// create a fake namespace object
+/******/ 	// mode & 1: value is a module id, require it
+/******/ 	// mode & 2: merge all properties of value into the ns
+/******/ 	// mode & 4: return value when already ns object
+/******/ 	// mode & 8|1: behave like require
+/******/ 	__webpack_require__.t = function(value, mode) {
+/******/ 		if(mode & 1) value = __webpack_require__(value);
+/******/ 		if(mode & 8) return value;
+/******/ 		if((mode & 4) && typeof value === 'object' && value && value.__esModule) return value;
+/******/ 		var ns = Object.create(null);
+/******/ 		__webpack_require__.r(ns);
+/******/ 		Object.defineProperty(ns, 'default', { enumerable: true, value: value });
+/******/ 		if(mode & 2 && typeof value != 'string') for(var key in value) __webpack_require__.d(ns, key, function(key) { return value[key]; }.bind(null, key));
+/******/ 		return ns;
+/******/ 	};
+/******/
+/******/ 	// getDefaultExport function for compatibility with non-harmony modules
+/******/ 	__webpack_require__.n = function(module) {
+/******/ 		var getter = module && module.__esModule ?
+/******/ 			function getDefault() { return module['default']; } :
+/******/ 			function getModuleExports() { return module; };
+/******/ 		__webpack_require__.d(getter, 'a', getter);
+/******/ 		return getter;
+/******/ 	};
+/******/
+/******/ 	// Object.prototype.hasOwnProperty.call
+/******/ 	__webpack_require__.o = function(object, property) { return Object.prototype.hasOwnProperty.call(object, property); };
+/******/
+/******/ 	// __webpack_public_path__
+/******/ 	__webpack_require__.p = "";
+/******/
+/******/
+/******/ 	// Load entry module and return exports
+/******/ 	return __webpack_require__(__webpack_require__.s = 0);
+/******/ })
+/************************************************************************/
+/******/ ([
+/* 0 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var _a;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createVMFromArrayBuffer = exports.VirtualMachine = exports.operantBytesSize = exports.I = void 0;
+var utils_1 = __webpack_require__(1);
+var I;
+(function (I) {
+    I[I["MOV"] = 0] = "MOV";
+    I[I["ADD"] = 1] = "ADD";
+    I[I["SUB"] = 2] = "SUB";
+    I[I["DIV"] = 3] = "DIV";
+    I[I["MOD"] = 4] = "MOD";
+    I[I["EXP"] = 5] = "EXP";
+    I[I["NEG"] = 6] = "NEG";
+    I[I["INC"] = 7] = "INC";
+    I[I["DEC"] = 8] = "DEC";
+    I[I["AND"] = 9] = "AND";
+    I[I["OR"] = 10] = "OR";
+    I[I["XOR"] = 11] = "XOR";
+    I[I["NOT"] = 12] = "NOT";
+    I[I["SHL"] = 13] = "SHL";
+    I[I["SHR"] = 14] = "SHR";
+    I[I["JMP"] = 15] = "JMP";
+    I[I["JE"] = 16] = "JE";
+    I[I["JNE"] = 17] = "JNE";
+    I[I["JG"] = 18] = "JG";
+    I[I["JL"] = 19] = "JL";
+    I[I["JGE"] = 20] = "JGE";
+    I[I["JLE"] = 21] = "JLE";
+    I[I["PUSH"] = 22] = "PUSH";
+    I[I["POP"] = 23] = "POP";
+    I[I["CALL"] = 24] = "CALL";
+    I[I["PRINT"] = 25] = "PRINT";
+    I[I["RET"] = 26] = "RET";
+    I[I["AUSE"] = 27] = "AUSE";
+    I[I["EXIT"] = 28] = "EXIT";
+    I[I["CALL_CTX"] = 29] = "CALL_CTX";
+    I[I["MOV_CTX"] = 30] = "MOV_CTX";
+    I[I["NEW_OBJ"] = 31] = "NEW_OBJ";
+    I[I["NEW_ARR"] = 32] = "NEW_ARR";
+    I[I["SET_KEY"] = 33] = "SET_KEY";
+})(I = exports.I || (exports.I = {}));
+exports.operantBytesSize = (_a = {},
+    _a[3] = 2,
+    _a[4] = 2,
+    _a[0] = 2,
+    _a[1] = 2,
+    _a[5] = 2,
+    _a[7] = 4,
+    _a[2] = 8,
+    _a[6] = 0,
+    _a);
+var VirtualMachine = (function () {
+    function VirtualMachine(codes, functionsTable, stringsTable, entryFunctionIndex, globalSize, ctx) {
+        this.codes = codes;
+        this.functionsTable = functionsTable;
+        this.stringsTable = stringsTable;
+        this.entryFunctionIndex = entryFunctionIndex;
+        this.globalSize = globalSize;
+        this.ctx = ctx;
+        this.ip = 0;
+        this.fp = 0;
+        this.sp = -1;
+        this.stack = [];
+        this.init();
+    }
+    VirtualMachine.prototype.init = function () {
+        var _a = this, globalSize = _a.globalSize, functionsTable = _a.functionsTable, entryFunctionIndex = _a.entryFunctionIndex;
+        var globalIndex = globalSize + 1;
+        var mainLocalSize = functionsTable[entryFunctionIndex].localSize;
+        this.fp = globalIndex;
+        this.stack[this.fp] = -1;
+        this.sp = this.fp + mainLocalSize;
+        this.stack.length = this.sp + 1;
+        console.log('globalIndex', globalIndex, 'localSize', functionsTable[entryFunctionIndex].localSize);
+        console.log("start ---> fp", this.fp, this.sp);
+    };
+    VirtualMachine.prototype.run = function () {
+        var isRunning = true;
+        var stack = this.stack;
+        this.ip = this.functionsTable[this.entryFunctionIndex].ip;
+        console.log("start stack", stack);
+        while (isRunning) {
+            var op = this.nextOperator();
+            switch (op) {
+                case I.PUSH: {
+                    var val = this.nextOperant();
+                    stack[++this.sp] = val.value;
+                    break;
+                }
+                case I.EXIT: {
+                    this.stack = stack = [];
+                    console.log('exit', stack);
+                    isRunning = false;
+                    this.init();
+                    break;
+                }
+                case I.CALL: {
+                    var funcInfo = this.nextOperant().value;
+                    var numArgs = this.nextOperant();
+                    stack[++this.sp] = numArgs.value;
+                    stack[++this.sp] = this.ip;
+                    stack[++this.sp] = this.fp;
+                    this.ip = funcInfo.ip;
+                    this.fp = this.sp;
+                    this.sp += funcInfo.localSize;
+                    break;
+                }
+                case I.RET: {
+                    var fp = this.fp;
+                    this.fp = stack[fp];
+                    this.ip = stack[fp - 1];
+                    this.sp = fp - stack[fp - 2] - 3;
+                    this.stack = stack = stack.slice(0, this.sp + 1);
+                    break;
+                }
+                case I.PRINT: {
+                    var val = this.nextOperant();
+                    console.log(val.value);
+                    break;
+                }
+                case I.MOV: {
+                    var dst = this.nextOperant();
+                    var src = this.nextOperant();
+                    this.stack[dst.index] = src.value;
+                    break;
+                }
+                case I.ADD: {
+                    var dst = this.nextOperant();
+                    var src = this.nextOperant();
+                    this.stack[dst.index] += src.value;
+                    break;
+                }
+                case I.SUB: {
+                    var dst = this.nextOperant();
+                    var src = this.nextOperant();
+                    this.stack[dst.index] -= src.value;
+                    break;
+                }
+                case I.JMP: {
+                    var address = this.nextOperant();
+                    this.ip = address.value;
+                    break;
+                }
+                case I.JE: {
+                    this.jumpWithCondidtion(function (a, b) { return a === b; });
+                    break;
+                }
+                case I.JNE: {
+                    this.jumpWithCondidtion(function (a, b) { return a !== b; });
+                    break;
+                }
+                case I.JG: {
+                    this.jumpWithCondidtion(function (a, b) { return a > b; });
+                    break;
+                }
+                case I.JL: {
+                    this.jumpWithCondidtion(function (a, b) { return a < b; });
+                    break;
+                }
+                case I.JGE: {
+                    this.jumpWithCondidtion(function (a, b) { return a >= b; });
+                    break;
+                }
+                case I.JLE: {
+                    this.jumpWithCondidtion(function (a, b) { return a <= b; });
+                    break;
+                }
+                case I.CALL_CTX: {
+                    var o = utils_1.getByProp(this.ctx, this.nextOperant().value);
+                    var f = this.nextOperant().value;
+                    var numArgs = this.nextOperant().value;
+                    var args = [];
+                    for (var i = 0; i < numArgs; i++) {
+                        args.push(stack[this.sp--]);
+                    }
+                    stack[0] = o[f].apply(o, args);
+                    this.stack = stack = stack.slice(0, this.sp + 1);
+                    break;
+                }
+                case I.MOV_CTX: {
+                    var dst = this.nextOperant();
+                    var propKey = this.nextOperant();
+                    var src = utils_1.getByProp(this.ctx, propKey.value);
+                    this.stack[dst.index] = src;
+                    break;
+                }
+                case I.NEW_OBJ: {
+                    var dst = this.nextOperant();
+                    var o = {};
+                    this.stack[dst.index] = o;
+                    break;
+                }
+                case I.NEW_ARR: {
+                    var dst = this.nextOperant();
+                    var o = [];
+                    this.stack[dst.index] = o;
+                    break;
+                }
+                case I.SET_KEY: {
+                    var o = this.nextOperant().value;
+                    var key = this.nextOperant().value;
+                    var value = this.nextOperant().value;
+                    o[key] = value;
+                    break;
+                }
+                default:
+                    throw new Error("Unknow command " + op);
+            }
+        }
+    };
+    VirtualMachine.prototype.nextOperator = function () {
+        return readUInt8(this.codes, this.ip, ++this.ip);
+    };
+    VirtualMachine.prototype.nextOperant = function () {
+        var codes = this.codes;
+        var valueType = readUInt8(codes, this.ip, ++this.ip);
+        var value;
+        switch (valueType) {
+            case 0:
+            case 1:
+            case 5:
+            case 3:
+            case 4: {
+                var j = this.ip + 2;
+                value = readInt16(codes, this.ip, j);
+                this.ip = j;
+                break;
+            }
+            case 7: {
+                var j = this.ip + 4;
+                value = readUInt32(codes, this.ip, j);
+                this.ip = j;
+                break;
+            }
+            case 2: {
+                var j = this.ip + 8;
+                value = readFloat64(codes, this.ip, j);
+                this.ip = j;
+                break;
+            }
+            case 6:
+                value = 0;
+                break;
+            default:
+                throw new Error("Unknown operant " + valueType);
+        }
+        return {
+            type: valueType,
+            value: this.parseValue(valueType, value),
+            raw: value,
+            index: valueType === 0 ? (this.fp + value) : value,
+        };
+    };
+    VirtualMachine.prototype.parseValue = function (valueType, value) {
+        switch (valueType) {
+            case 0:
+                return this.stack[this.fp + value];
+            case 5:
+            case 2:
+            case 7:
+                return value;
+            case 1:
+                return this.stack[value];
+            case 4:
+                return this.stringsTable[value];
+            case 3:
+                return this.functionsTable[value];
+            case 6:
+                return this.stack[0];
+            default:
+                throw new Error("Unknown operant " + valueType);
+        }
+    };
+    VirtualMachine.prototype.jumpWithCondidtion = function (cond) {
+        var op1 = this.nextOperant();
+        var op2 = this.nextOperant();
+        var address = this.nextOperant();
+        if (cond(op1.value, op2.value)) {
+            this.ip = address.value;
+        }
+    };
+    return VirtualMachine;
+}());
+exports.VirtualMachine = VirtualMachine;
+var createVMFromArrayBuffer = function (buffer, ctx) {
+    if (ctx === void 0) { ctx = {}; }
+    var mainFunctionIndex = readUInt32(buffer, 0, 4);
+    var funcionTableBasicIndex = readUInt32(buffer, 4, 8);
+    var stringTableBasicIndex = readUInt32(buffer, 8, 12);
+    var globalsSize = readUInt32(buffer, 12, 16);
+    console.log('main function index', mainFunctionIndex, 'function table basic index', funcionTableBasicIndex, 'string table basic index', stringTableBasicIndex, 'globals szie ', globalsSize);
+    var stringsTable = parseStringsArray(buffer.slice(stringTableBasicIndex));
+    var codesBuf = buffer.slice(4 * 4, funcionTableBasicIndex);
+    var funcsBuf = buffer.slice(funcionTableBasicIndex, stringTableBasicIndex);
+    var funcsTable = parseFunctionTable(funcsBuf);
+    console.log('string table', stringsTable);
+    console.log('function table', funcsTable);
+    console.log(mainFunctionIndex, funcsTable, 'function basic index', funcionTableBasicIndex);
+    console.log('codes length -->', codesBuf.byteLength, stringTableBasicIndex);
+    console.log('main start index', funcsTable[mainFunctionIndex].ip, stringTableBasicIndex);
+    return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex, globalsSize, ctx);
+};
+exports.createVMFromArrayBuffer = createVMFromArrayBuffer;
+var parseFunctionTable = function (buffer) {
+    var funcs = [];
+    var i = 0;
+    while (i < buffer.byteLength) {
+        var ipEnd = i + 4;
+        var ip = readUInt32(buffer, i, ipEnd);
+        var numArgsAndLocal = new Uint16Array(buffer.slice(ipEnd, ipEnd + 2 * 2));
+        funcs.push({ ip: ip, numArgs: numArgsAndLocal[0], localSize: numArgsAndLocal[1] });
+        i += 8;
+    }
+    return funcs;
+};
+var parseStringsArray = function (buffer) {
+    var strings = [];
+    var i = 0;
+    while (i < buffer.byteLength) {
+        var lentOffset = i + 4;
+        var len = readUInt32(buffer, i, lentOffset);
+        var start = lentOffset;
+        var end = lentOffset + len * 2;
+        var str = readString(buffer, start, end);
+        strings.push(str);
+        i = end;
+    }
+    return strings;
+};
+var readFloat64 = function (buffer, from, to) {
+    return (new Float64Array(buffer.slice(from, to)))[0];
+};
+var readUInt8 = function (buffer, from, to) {
+    return (new Uint8Array(buffer.slice(from, to)))[0];
+};
+var readInt8 = function (buffer, from, to) {
+    return (new Int8Array(buffer.slice(from, to)))[0];
+};
+var readInt16 = function (buffer, from, to) {
+    return (new Int16Array(buffer.slice(from, to)))[0];
+};
+var readUInt16 = function (buffer, from, to) {
+    return (new Uint16Array(buffer.slice(from, to)))[0];
+};
+var readUInt32 = function (buffer, from, to) {
+    return (new Uint32Array(buffer.slice(from, to)))[0];
+};
+var readString = function (buffer, from, to) {
+    return utils_1.arrayBufferToString(buffer.slice(from, to));
+};
+console.log("???");
+
+
+/***/ }),
+/* 1 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getByProp = exports.stringToArrayBuffer = exports.arrayBufferToString = exports.concatBuffer = void 0;
+exports.concatBuffer = function (buffer1, buffer2) {
+    var tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
+    tmp.set(new Uint8Array(buffer1), 0);
+    tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
+    return tmp.buffer;
+};
+exports.arrayBufferToString = function (buffer) {
+    return String.fromCharCode.apply(null, Array.from(new Uint16Array(buffer)));
+};
+exports.stringToArrayBuffer = function (str) {
+    var stringLength = str.length;
+    var buffer = new ArrayBuffer(stringLength * 2);
+    var bufferView = new Uint16Array(buffer);
+    for (var i = 0; i < stringLength; i++) {
+        bufferView[i] = str.charCodeAt(i);
+    }
+    return buffer;
+};
+exports.getByProp = function (obj, prop) {
+    return prop.split('.').reduce(function (o, p) { return o[p]; }, obj);
+};
+
+
+/***/ })
+/******/ ]);

@@ -1,0 +1,25 @@
+func main() {
+  VAR R0;
+  VAR R1;
+  PUSH "DJH";
+  CALL sayHi 1;
+
+  PRINT "HELLO WORLD 2";
+  NEW_OBJ R0;
+  SET_KEY R0 "title" $RET;
+  SET_KEY R0 "duration" 10000;
+
+  PRINT R0;
+  PUSH  R0;
+  CALL_CTX "wx" "showToast" 1;
+}
+
+func sayHi(a) {
+  VAR R0;
+  PRINT "HELL WORLD";
+  PRINT a;
+  MOV R0 "Hello 🌹";
+  ADD R0 a;
+  PRINT R0;
+  MOV $RET R0;
+}

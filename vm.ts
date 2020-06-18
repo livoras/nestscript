@@ -42,7 +42,7 @@ export enum I {
  JMP, JE, JNE, JG, JL,
  JGE, JLE, PUSH, POP, CALL, PRINT,
  RET, AUSE, EXIT,
- CALL_CTX, MOV_CTX,
+ CALL_CTX, MOV_CTX, NEW_OBJ, NEW_ARR, SET_KEY,
 }
 
 export const enum IOperatantType {
@@ -99,6 +99,11 @@ export class VirtualMachine {
     public globalSize: number,
     public ctx: any,
   ) {
+    this.init()
+  }
+
+  public init(): void {
+    const { globalSize, functionsTable, entryFunctionIndex } = this
     // RET
     const globalIndex = globalSize + 1
     const mainLocalSize = functionsTable[entryFunctionIndex].localSize
@@ -142,6 +147,7 @@ export class VirtualMachine {
         this.stack = stack = []
         console.log('exit', stack)
         isRunning = false
+        this.init()
         break
       }
       case I.CALL: {
@@ -254,6 +260,25 @@ export class VirtualMachine {
         this.stack[dst.index] = src
         break
       }
+      case I.NEW_OBJ: {
+        const dst = this.nextOperant()
+        const o = {}
+        this.stack[dst.index] = o
+        break
+      }
+      case I.NEW_ARR: {
+        const dst = this.nextOperant()
+        const o: any[] = []
+        this.stack[dst.index] = o
+        break
+      }
+      case I.SET_KEY: {
+        const o = this.nextOperant().value
+        const key = this.nextOperant().value
+        const value = this.nextOperant().value
+        o[key] = value
+        break
+      }
       default:
         throw new Error("Unknow command " + op)
       }
@@ -354,7 +379,7 @@ interface IFuncInfo {
  * stringTableBasicIndex: 1
  * globalsSize: 2
  */
-export const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMachine => {
+const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMachine => {
   const mainFunctionIndex = readUInt32(buffer, 0, 4)
   const funcionTableBasicIndex = readUInt32(buffer, 4, 8)
   const stringTableBasicIndex = readUInt32(buffer, 8, 12)
@@ -435,3 +460,5 @@ const readString = (buffer: ArrayBuffer, from: number, to: number): string => {
   return arrayBufferToString(buffer.slice(from, to))
 }
 
+console.log("???")
+export { createVMFromArrayBuffer }

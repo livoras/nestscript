@@ -1,8 +1,8 @@
-test:
-	./nsc/bin/run compile ./example/fib.nes ./example/main
+run:
+	./nsc/bin/run compile ./example/page.nes ./example/main
 	./nsc/bin/run run ./example/main
-build:
+build-dist:
 	npx tsc
 	npx webpack
-
-
+watch:
+	npx nodemon -e nes --exec "make run" example

@@ -5,6 +5,7 @@ module.exports = {
         "vm": "./build/vm.js",
     },
     optimization: {
+        minimize: false,
         // splitChunks: {
         //     cacheGroups: {
         //         commons: {
