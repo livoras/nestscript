@@ -68,7 +68,7 @@ func main() {
 * 完成
   * `NEW_ARR R0`: 字面量数组
   * `NEW_OBJ R0`: 字面量对象
-  * `SET_KEY R0 "0"`: 设置某个寄存器里面的 key value 值
+  * `SET_KEY R0 "0" "hello"`: 设置某个寄存器里面的 key value 值
   * `CALL_CTX "console" "log" 1`: 调用 ctx 里面的某个函数方法
   * `MOV_CTX R0 "console.log"`: 把 ctx 某个值移动到寄存器
 
