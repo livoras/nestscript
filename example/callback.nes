@@ -1,0 +1,29 @@
+func main () {
+  PRINT "HELLO WORLD";
+  VAR R0;
+  VAR R1;
+
+  CALLBACK R0 sayHi;
+  PUSH "LOG FROM CONSOLE 1";
+  PUSH "LOG FROM CONSOLE 2";
+  CALL_CTX "console" "log" 2;
+
+  NEW_ARR R1;
+  SET_KEY R1 "0" "good";
+  SET_KEY R1 "1" "night";
+  PUSH R0;
+  CALL_VAR R1 "forEach" 1;
+}
+
+func sayHi(a, b, c) {
+  PRINT "RESULT --> WHAT?";
+  PRINT a;
+  PRINT b;
+  PUSH a;
+  CALL say 1;
+}
+
+func say(d) {
+  PRINT "!~~~~~~~~~~~";
+  PRINT d;
+}

@@ -60,6 +60,18 @@ func main() {
 
 ## Change Log
 
+## 2020-06-19
+* `CALLBACK R0 sayHi`: 构建 JS 函数封装 `sayHi` 函数并存放到 R0 寄存器，可以用作 JS 的回调参数，见 `example/callback.nes`
+* `CALL_VAR R0 "forEach" 1`: 调用寄存器里面存值的某个方法
+
+## 2020-06-18
+* 完成
+  * `NEW_ARR R0`: 字面量数组
+  * `NEW_OBJ R0`: 字面量对象
+  * `SET_KEY R0 "0"`: 设置某个寄存器里面的 key value 值
+  * `CALL_CTX "console" "log" 1`: 调用 ctx 里面的某个函数方法
+  * `MOV_CTX R0 "console.log"`: 把 ctx 某个值移动到寄存器
+
 ### 2020-06-17
 * 完成基本的汇编器和虚拟机
 * 完成命令行工具 nsc，可以 `nsc compile src dest` 将文本代码 -> 二进制文件，并且用 `nsc run file` 执行

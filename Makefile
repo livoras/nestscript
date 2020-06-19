@@ -1,5 +1,5 @@
 run:
-	./nsc/bin/run compile ./example/page.nes ./example/main
+	./nsc/bin/run compile ./example/callback.nes ./example/main
 	./nsc/bin/run run ./example/main
 build-dist:
 	npx tsc

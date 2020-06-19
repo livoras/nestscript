@@ -42,7 +42,10 @@ export enum I {
  JMP, JE, JNE, JG, JL,
  JGE, JLE, PUSH, POP, CALL, PRINT,
  RET, AUSE, EXIT,
- CALL_CTX, MOV_CTX, NEW_OBJ, NEW_ARR, SET_KEY,
+
+ CALL_CTX, CALL_VAR, MOV_CTX,
+ NEW_OBJ, NEW_ARR, SET_KEY,
+ CALLBACK,
 }
 
 export const enum IOperatantType {
@@ -91,6 +94,8 @@ export class VirtualMachine {
   /** 函数操作栈 */
   public stack: any[] = []
 
+  public isRunning: boolean = false
+
   constructor (
     public codes: ArrayBuffer,
     public functionsTable: IFuncInfo[],
@@ -129,160 +134,181 @@ export class VirtualMachine {
 
   // tslint:disable-next-line: no-big-function
   public run(): void {
-    let isRunning = true
-    let stack = this.stack
     this.ip = this.functionsTable[this.entryFunctionIndex].ip
-    console.log("start stack", stack)
-    while (isRunning) {
-      const op = this.nextOperator()
-      // console.log(op)
-      switch (op) {
-      case I.PUSH: {
-        const val = this.nextOperant()
-        // console.log('push', val)
-        stack[++this.sp] = val.value
-        break
-      }
-      case I.EXIT: {
-        this.stack = stack = []
-        console.log('exit', stack)
-        isRunning = false
-        this.init()
-        break
-      }
-      case I.CALL: {
-        const funcInfo: IFuncInfo = this.nextOperant().value
-        const numArgs = this.nextOperant()
-        // console.log('call', funcInfo, numArgs)
-        //            | R3      |
-        //            | R2      |
-        //            | R1      |
-        //            | R0      |
-        //      sp -> | fp      | # for restoring old fp
-        //            | ip      | # for restoring old ip
-        //            | numArgs | # for restoring old sp: old sp = current sp - numArgs - 3
-        //            | arg1    |
-        //            | arg2    |
-        //            | arg3    |
-        //  old sp -> | ....    |
-        stack[++this.sp] = numArgs.value
-        stack[++this.sp] = this.ip
-        stack[++this.sp] = this.fp
-        // set to new ip and fp
-        this.ip = funcInfo.ip
-        this.fp = this.sp
-        this.sp += funcInfo.localSize
-        break
-      }
-      case I.RET: {
-        const fp = this.fp
-        this.fp = stack[fp]
-        this.ip = stack[fp - 1]
-        // 减去参数数量，减去三个 fp ip numArgs
-        this.sp = fp - stack[fp - 2] - 3
-        // 清空上一帧
-        this.stack = stack = stack.slice(0, this.sp + 1)
-        // console.log('RET', stack, 'sp ->', this.sp)
-        break
-      }
-      case I.PRINT: {
-        const val = this.nextOperant()
-        console.log(val.value)
-        break
-      }
-      case I.MOV: {
-        const dst = this.nextOperant()
-        const src = this.nextOperant()
-        // console.log('mov', dst, src)
-        this.stack[dst.index] = src.value
-        break
-      }
-      case I.ADD: {
-        const dst = this.nextOperant()
-        const src = this.nextOperant()
-        // console.log('add', dst, src)
-        this.stack[dst.index] += src.value
-        break
-      }
-      case I.SUB: {
-        const dst = this.nextOperant()
-        const src = this.nextOperant()
-        // console.log('sub', dst, src)
-        this.stack[dst.index] -= src.value
-        break
-      }
-      case I.JMP: {
-        const address = this.nextOperant()
-        this.ip = address.value
-        break
-      }
-      case I.JE: {
-        this.jumpWithCondidtion((a: any, b: any): boolean => a === b)
-        break
-      }
-      case I.JNE: {
-        this.jumpWithCondidtion((a: any, b: any): boolean => a !== b)
-        break
-      }
-      case I.JG: {
-        this.jumpWithCondidtion((a: any, b: any): boolean => a > b)
-        break
-      }
-      case I.JL: {
-        this.jumpWithCondidtion((a: any, b: any): boolean => a < b)
-        break
-      }
-      case I.JGE: {
-        this.jumpWithCondidtion((a: any, b: any): boolean => a >= b)
-        break
-      }
-      case I.JLE: {
-        this.jumpWithCondidtion((a: any, b: any): boolean => a <= b)
-        break
-      }
-      case I.CALL_CTX: {
-        const o = getByProp(this.ctx, this.nextOperant().value)
-        const f = this.nextOperant().value
-        const numArgs = this.nextOperant().value
-        const args = []
-        for (let i = 0; i < numArgs; i++) {
-          args.push(stack[this.sp--])
-        }
-        stack[0] = o[f].apply(o, args)
-        // console.log(this.stack)
-        this.stack = stack = stack.slice(0, this.sp + 1)
-        break
-      }
-      case I.MOV_CTX: {
-        const dst = this.nextOperant()
-        const propKey = this.nextOperant()
-        const src = getByProp(this.ctx, propKey.value)
-        this.stack[dst.index] = src
-        break
-      }
-      case I.NEW_OBJ: {
-        const dst = this.nextOperant()
-        const o = {}
-        this.stack[dst.index] = o
-        break
-      }
-      case I.NEW_ARR: {
-        const dst = this.nextOperant()
-        const o: any[] = []
-        this.stack[dst.index] = o
-        break
-      }
-      case I.SET_KEY: {
-        const o = this.nextOperant().value
-        const key = this.nextOperant().value
-        const value = this.nextOperant().value
-        o[key] = value
-        break
-      }
-      default:
-        throw new Error("Unknow command " + op)
-      }
+    console.log("start stack", this.stack)
+    this.isRunning = true
+    while (this.isRunning) { this.fetchAndExecute() }
+  }
+
+  public fetchAndExecute(): I {
+    const stack = this.stack
+    const op = this.nextOperator()
+    // console.log(op)
+    switch (op) {
+    case I.PUSH: {
+      this.push(this.nextOperant().value)
+      break
     }
+    case I.EXIT: {
+      console.log('exit', stack)
+      this.stack = []
+      this.isRunning = false
+      this.init()
+      break
+    }
+    case I.CALL: {
+      const funcInfo: IFuncInfo = this.nextOperant().value
+      const numArgs = this.nextOperant().value
+      this.callFunction(funcInfo, numArgs)
+      break
+    }
+    case I.RET: {
+      const fp = this.fp
+      this.fp = stack[fp]
+      this.ip = stack[fp - 1]
+      // 减去参数数量，减去三个 fp ip numArgs
+      this.sp = fp - stack[fp - 2] - 3
+      // 清空上一帧
+      this.stack = stack.slice(0, this.sp + 1)
+      // console.log('RET', stack, 'sp ->', this.sp)
+      break
+    }
+    case I.PRINT: {
+      const val = this.nextOperant()
+      console.log(val.value)
+      break
+    }
+    case I.MOV: {
+      const dst = this.nextOperant()
+      const src = this.nextOperant()
+      // console.log('mov', dst, src)
+      this.stack[dst.index] = src.value
+      break
+    }
+    case I.ADD: {
+      const dst = this.nextOperant()
+      const src = this.nextOperant()
+      // console.log('add', dst, src)
+      this.stack[dst.index] += src.value
+      break
+    }
+    case I.SUB: {
+      const dst = this.nextOperant()
+      const src = this.nextOperant()
+      // console.log('sub', dst, src)
+      this.stack[dst.index] -= src.value
+      break
+    }
+    case I.JMP: {
+      const address = this.nextOperant()
+      this.ip = address.value
+      break
+    }
+    case I.JE: {
+      this.jumpWithCondidtion((a: any, b: any): boolean => a === b)
+      break
+    }
+    case I.JNE: {
+      this.jumpWithCondidtion((a: any, b: any): boolean => a !== b)
+      break
+    }
+    case I.JG: {
+      this.jumpWithCondidtion((a: any, b: any): boolean => a > b)
+      break
+    }
+    case I.JL: {
+      this.jumpWithCondidtion((a: any, b: any): boolean => a < b)
+      break
+    }
+    case I.JGE: {
+      this.jumpWithCondidtion((a: any, b: any): boolean => a >= b)
+      break
+    }
+    case I.JLE: {
+      this.jumpWithCondidtion((a: any, b: any): boolean => a <= b)
+      break
+    }
+    case I.CALL_CTX:
+    case I.CALL_VAR: {
+      const k = this.nextOperant().value
+      const o = op === I.CALL_CTX ? getByProp(this.ctx, k) : k
+      const f = this.nextOperant().value
+      const numArgs = this.nextOperant().value
+      const args = []
+      for (let i = 0; i < numArgs; i++) {
+        args.push(stack[this.sp--])
+      }
+      stack[0] = o[f].apply(o, args)
+      // console.log(this.stack)
+      this.stack = stack.slice(0, this.sp + 1)
+      break
+    }
+    case I.MOV_CTX: {
+      const dst = this.nextOperant()
+      const propKey = this.nextOperant()
+      const src = getByProp(this.ctx, propKey.value)
+      this.stack[dst.index] = src
+      break
+    }
+    case I.NEW_OBJ: {
+      const dst = this.nextOperant()
+      const o = {}
+      this.stack[dst.index] = o
+      break
+    }
+    case I.NEW_ARR: {
+      const dst = this.nextOperant()
+      const o: any[] = []
+      this.stack[dst.index] = o
+      break
+    }
+    case I.SET_KEY: {
+      const o = this.nextOperant().value
+      const key = this.nextOperant().value
+      const value = this.nextOperant().value
+      o[key] = value
+      break
+    }
+    case I.CALLBACK: {
+      const dst = this.nextOperant()
+      const funcInfo: IFuncInfo = this.nextOperant().value
+      const callback = this.newCallback(funcInfo)
+      stack[dst.index] = callback
+      break
+    }
+
+    default:
+      throw new Error("Unknow command " + op)
+    }
+
+    return op
+  }
+
+  public push(val: any): void {
+    this.stack[++this.sp] = val
+  }
+
+  public callFunction(funcInfo: IFuncInfo, numArgs: number): void {
+    const stack = this.stack
+    // console.log('call', funcInfo, numArgs)
+    //            | R3      |
+    //            | R2      |
+    //            | R1      |
+    //            | R0      |
+    //      sp -> | fp      | # for restoring old fp
+    //            | ip      | # for restoring old ip
+    //            | numArgs | # for restoring old sp: old sp = current sp - numArgs - 3
+    //            | arg1    |
+    //            | arg2    |
+    //            | arg3    |
+    //  old sp -> | ....    |
+    stack[++this.sp] = numArgs
+    stack[++this.sp] = this.ip
+    stack[++this.sp] = this.fp
+    // set to new ip and fp
+    this.ip = funcInfo.ip
+    this.fp = this.sp
+    this.sp += funcInfo.localSize
   }
 
   public nextOperator(): I {
@@ -353,7 +379,6 @@ export class VirtualMachine {
     }
   }
 
-
   public jumpWithCondidtion(cond: (a: any, b: any) => boolean): void {
     const op1 = this.nextOperant()
     const op2 = this.nextOperant()
@@ -361,6 +386,27 @@ export class VirtualMachine {
     // console.log("JUMP --->l", address)
     if (cond(op1.value, op2.value)) {
       this.ip = address.value
+    }
+  }
+
+  public newCallback(funcInfo: IFuncInfo): () => any {
+    return (...args: any[]): any => {
+      args.reverse()
+      args.forEach((arg: any): void => this.push(arg))
+      this.callFunction(funcInfo, args.length)
+      let op: any = null
+      let callCount = 1
+      /** 回调函数的实现 */
+      while (callCount !== 0) {
+        op = this.fetchAndExecute()
+        if(op === I.CALL) {
+          callCount++
+        } else if (op === I.RET) {
+          callCount--
+        } else {
+          // do nothing..
+        }
+      }
     }
   }
 }

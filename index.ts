@@ -115,7 +115,7 @@ export const parseCodeToProgram = (program: string): Buffer => {
     funcInfo.codes.forEach((code: any[]): void => {
       const op = code[0]
       code[0] = I[op]
-      if (op === 'CALL') {
+      if (op === 'CALL' && op) {
         code[1] = {
           type: IOperatantType.FUNCTION_INDEX,
           value: funcsTable[code[1]].index,
@@ -135,6 +135,14 @@ export const parseCodeToProgram = (program: string): Buffer => {
             code[i] = {
               type: IOperatantType.ADDRESS,
               value: funcInfo.labels[code[i]],
+            }
+            return
+          }
+
+          if (['CALLBACK'].includes(op) && i === 2) {
+            code[i] = {
+              type: IOperatantType.FUNCTION_INDEX,
+              value: funcsTable[code[i]].index,
             }
             return
           }
