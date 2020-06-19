@@ -43,7 +43,7 @@ export enum I {
  JGE, JLE, PUSH, POP, CALL, PRINT,
  RET, AUSE, EXIT,
 
- CALL_CTX, CALL_VAR, MOV_CTX,
+ CALL_CTX, CALL_VAR, MOV_CTX, MOV_PROP,
  NEW_OBJ, NEW_ARR, SET_KEY,
  CALLBACK,
 }
@@ -274,6 +274,15 @@ export class VirtualMachine {
       const funcInfo: IFuncInfo = this.nextOperant().value
       const callback = this.newCallback(funcInfo)
       stack[dst.index] = callback
+      break
+    }
+    // MOV_PRO R0 R1 "arr.length";
+    case I.MOV_PROP: {
+      const dst = this.nextOperant()
+      const o = this.nextOperant().value
+      const k = this.nextOperant().value
+      const v = getByProp(o, k)
+      stack[dst.index] = v
       break
     }
 

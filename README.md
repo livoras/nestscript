@@ -63,6 +63,7 @@ func main() {
 ## 2020-06-19
 * `CALLBACK R0 sayHi`: 构建 JS 函数封装 `sayHi` 函数并存放到 R0 寄存器，可以用作 JS 的回调参数，见 `example/callback.nes`
 * `CALL_VAR R0 "forEach" 1`: 调用寄存器里面存值的某个方法
+* `MOV_PROP R0 R1 "length"`: 将 R1 寄存器的值的 "length" 的值放到 R0 寄存器中
 
 ## 2020-06-18
 * 完成

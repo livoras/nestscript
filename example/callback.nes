@@ -25,5 +25,18 @@ func sayHi(a, b, c) {
 
 func say(d) {
   PRINT "!~~~~~~~~~~~";
+  VAR R0;
+  VAR R1;
+  VAR LEN;
+
+  MOV R0 0;
+  MOV_PROP LEN d "length" ;
+  JMP l1;
+LABEL l0:
+  MOV_PROP R1 d R0;
+  PRINT R1;
+  ADD R0 1;
+LABEL l1:
+  JL R0 LEN l0;
   PRINT d;
 }

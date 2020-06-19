@@ -43,7 +43,7 @@ export const stringToArrayBuffer = (str: string): ArrayBuffer => {
 }
 
 export const getByProp = (obj: any, prop: string): any =>
-  prop.split('.').reduce((o: any, p: string): any => o[p], obj)
+  String(prop).split('.').reduce((o: any, p: string): any => o[p], obj)
 
 // const u = { name: { age: "TOMY" } }
 // console.time("check")
