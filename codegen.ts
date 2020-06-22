@@ -14,6 +14,7 @@ import {
   VariableDeclaration,
   VariableDeclarator,
   FunctionDeclaration,
+  ArrowFunctionExpression,
 } from "estree"
 
 const testCode = `
@@ -48,20 +49,30 @@ class Codegen {
 
 const codegen = new Codegen()
 const ret = codegen.parse(testCode)
-walk.recursive(ret, {}, {
+walk.recursive(ret, {
+  labelIndex: 0,
+}, {
   VariableDeclaration: (node: VariableDeclaration, state: any, c: any): void => {
-    console.log('-->', node, state)
-    // c(node, state)
+    console.log("VARIABLE...", node)
+    node.declarations.forEach((n: any): void => c(n, state))
+  },
+
+  VariableDeclarator: (node: VariableDeclarator, state: any, c: any): void => {
+    c(node.init, state)
   },
 
   FunctionDeclaration(node: FunctionDeclaration, state: any, c: any): any {
-    console.log("OJBK", node, state)
+    console.log("Function...", node)
     c(node.body, state)
   },
 
-
   Literal: (node: Literal): void => {
     // console.log('-->', node)
+  },
+
+  ArrowFunctionExpression(node: ArrowFunctionExpression, state: any, c: any): void {
+    console.log("ARROW FUNCTION...", node)
+    c(node.body, state)
   },
 })
 
