@@ -7,7 +7,7 @@ func main() {
   PRINT "HELLO WORLD 2";
   NEW_OBJ R0;
   SET_KEY R0 "title" $RET;
-  SET_KEY R0 "duration" 10000;
+  SET_KEY R0 "duration" 1000;
 
   PRINT R0;
   PUSH  R0;
@@ -18,7 +18,7 @@ func sayHi(a) {
   VAR R0;
   PRINT "HELL WORLD";
   PRINT a;
-  MOV R0 "Hello 🌹菊花";
+  MOV R0 "软羊";
   ADD R0 a;
   PRINT R0;
   MOV $RET R0;

@@ -126,10 +126,13 @@ var I;
     I[I["AUSE"] = 27] = "AUSE";
     I[I["EXIT"] = 28] = "EXIT";
     I[I["CALL_CTX"] = 29] = "CALL_CTX";
-    I[I["MOV_CTX"] = 30] = "MOV_CTX";
-    I[I["NEW_OBJ"] = 31] = "NEW_OBJ";
-    I[I["NEW_ARR"] = 32] = "NEW_ARR";
-    I[I["SET_KEY"] = 33] = "SET_KEY";
+    I[I["CALL_VAR"] = 30] = "CALL_VAR";
+    I[I["MOV_CTX"] = 31] = "MOV_CTX";
+    I[I["MOV_PROP"] = 32] = "MOV_PROP";
+    I[I["NEW_OBJ"] = 33] = "NEW_OBJ";
+    I[I["NEW_ARR"] = 34] = "NEW_ARR";
+    I[I["SET_KEY"] = 35] = "SET_KEY";
+    I[I["CALLBACK"] = 36] = "CALLBACK";
 })(I = exports.I || (exports.I = {}));
 exports.operantBytesSize = (_a = {},
     _a[3] = 2,
@@ -153,6 +156,7 @@ var VirtualMachine = (function () {
         this.fp = 0;
         this.sp = -1;
         this.stack = [];
+        this.isRunning = false;
         this.init();
     }
     VirtualMachine.prototype.init = function () {
@@ -167,138 +171,165 @@ var VirtualMachine = (function () {
         console.log("start ---> fp", this.fp, this.sp);
     };
     VirtualMachine.prototype.run = function () {
-        var isRunning = true;
-        var stack = this.stack;
         this.ip = this.functionsTable[this.entryFunctionIndex].ip;
-        console.log("start stack", stack);
-        while (isRunning) {
-            var op = this.nextOperator();
-            switch (op) {
-                case I.PUSH: {
-                    var val = this.nextOperant();
-                    stack[++this.sp] = val.value;
-                    break;
-                }
-                case I.EXIT: {
-                    this.stack = stack = [];
-                    console.log('exit', stack);
-                    isRunning = false;
-                    this.init();
-                    break;
-                }
-                case I.CALL: {
-                    var funcInfo = this.nextOperant().value;
-                    var numArgs = this.nextOperant();
-                    stack[++this.sp] = numArgs.value;
-                    stack[++this.sp] = this.ip;
-                    stack[++this.sp] = this.fp;
-                    this.ip = funcInfo.ip;
-                    this.fp = this.sp;
-                    this.sp += funcInfo.localSize;
-                    break;
-                }
-                case I.RET: {
-                    var fp = this.fp;
-                    this.fp = stack[fp];
-                    this.ip = stack[fp - 1];
-                    this.sp = fp - stack[fp - 2] - 3;
-                    this.stack = stack = stack.slice(0, this.sp + 1);
-                    break;
-                }
-                case I.PRINT: {
-                    var val = this.nextOperant();
-                    console.log(val.value);
-                    break;
-                }
-                case I.MOV: {
-                    var dst = this.nextOperant();
-                    var src = this.nextOperant();
-                    this.stack[dst.index] = src.value;
-                    break;
-                }
-                case I.ADD: {
-                    var dst = this.nextOperant();
-                    var src = this.nextOperant();
-                    this.stack[dst.index] += src.value;
-                    break;
-                }
-                case I.SUB: {
-                    var dst = this.nextOperant();
-                    var src = this.nextOperant();
-                    this.stack[dst.index] -= src.value;
-                    break;
-                }
-                case I.JMP: {
-                    var address = this.nextOperant();
-                    this.ip = address.value;
-                    break;
-                }
-                case I.JE: {
-                    this.jumpWithCondidtion(function (a, b) { return a === b; });
-                    break;
-                }
-                case I.JNE: {
-                    this.jumpWithCondidtion(function (a, b) { return a !== b; });
-                    break;
-                }
-                case I.JG: {
-                    this.jumpWithCondidtion(function (a, b) { return a > b; });
-                    break;
-                }
-                case I.JL: {
-                    this.jumpWithCondidtion(function (a, b) { return a < b; });
-                    break;
-                }
-                case I.JGE: {
-                    this.jumpWithCondidtion(function (a, b) { return a >= b; });
-                    break;
-                }
-                case I.JLE: {
-                    this.jumpWithCondidtion(function (a, b) { return a <= b; });
-                    break;
-                }
-                case I.CALL_CTX: {
-                    var o = utils_1.getByProp(this.ctx, this.nextOperant().value);
-                    var f = this.nextOperant().value;
-                    var numArgs = this.nextOperant().value;
-                    var args = [];
-                    for (var i = 0; i < numArgs; i++) {
-                        args.push(stack[this.sp--]);
-                    }
-                    stack[0] = o[f].apply(o, args);
-                    this.stack = stack = stack.slice(0, this.sp + 1);
-                    break;
-                }
-                case I.MOV_CTX: {
-                    var dst = this.nextOperant();
-                    var propKey = this.nextOperant();
-                    var src = utils_1.getByProp(this.ctx, propKey.value);
-                    this.stack[dst.index] = src;
-                    break;
-                }
-                case I.NEW_OBJ: {
-                    var dst = this.nextOperant();
-                    var o = {};
-                    this.stack[dst.index] = o;
-                    break;
-                }
-                case I.NEW_ARR: {
-                    var dst = this.nextOperant();
-                    var o = [];
-                    this.stack[dst.index] = o;
-                    break;
-                }
-                case I.SET_KEY: {
-                    var o = this.nextOperant().value;
-                    var key = this.nextOperant().value;
-                    var value = this.nextOperant().value;
-                    o[key] = value;
-                    break;
-                }
-                default:
-                    throw new Error("Unknow command " + op);
-            }
+        console.log("start stack", this.stack);
+        this.isRunning = true;
+        while (this.isRunning) {
+            this.fetchAndExecute();
         }
+    };
+    VirtualMachine.prototype.fetchAndExecute = function () {
+        var stack = this.stack;
+        var op = this.nextOperator();
+        switch (op) {
+            case I.PUSH: {
+                this.push(this.nextOperant().value);
+                break;
+            }
+            case I.EXIT: {
+                console.log('exit', stack);
+                this.stack = [];
+                this.isRunning = false;
+                this.init();
+                break;
+            }
+            case I.CALL: {
+                var funcInfo = this.nextOperant().value;
+                var numArgs = this.nextOperant().value;
+                this.callFunction(funcInfo, numArgs);
+                break;
+            }
+            case I.RET: {
+                var fp = this.fp;
+                this.fp = stack[fp];
+                this.ip = stack[fp - 1];
+                this.sp = fp - stack[fp - 2] - 3;
+                this.stack = stack.slice(0, this.sp + 1);
+                break;
+            }
+            case I.PRINT: {
+                var val = this.nextOperant();
+                console.log(val.value);
+                break;
+            }
+            case I.MOV: {
+                var dst = this.nextOperant();
+                var src = this.nextOperant();
+                this.stack[dst.index] = src.value;
+                break;
+            }
+            case I.ADD: {
+                var dst = this.nextOperant();
+                var src = this.nextOperant();
+                this.stack[dst.index] += src.value;
+                break;
+            }
+            case I.SUB: {
+                var dst = this.nextOperant();
+                var src = this.nextOperant();
+                this.stack[dst.index] -= src.value;
+                break;
+            }
+            case I.JMP: {
+                var address = this.nextOperant();
+                this.ip = address.value;
+                break;
+            }
+            case I.JE: {
+                this.jumpWithCondidtion(function (a, b) { return a === b; });
+                break;
+            }
+            case I.JNE: {
+                this.jumpWithCondidtion(function (a, b) { return a !== b; });
+                break;
+            }
+            case I.JG: {
+                this.jumpWithCondidtion(function (a, b) { return a > b; });
+                break;
+            }
+            case I.JL: {
+                this.jumpWithCondidtion(function (a, b) { return a < b; });
+                break;
+            }
+            case I.JGE: {
+                this.jumpWithCondidtion(function (a, b) { return a >= b; });
+                break;
+            }
+            case I.JLE: {
+                this.jumpWithCondidtion(function (a, b) { return a <= b; });
+                break;
+            }
+            case I.CALL_CTX:
+            case I.CALL_VAR: {
+                var k = this.nextOperant().value;
+                var o = op === I.CALL_CTX ? utils_1.getByProp(this.ctx, k) : k;
+                var f = this.nextOperant().value;
+                var numArgs = this.nextOperant().value;
+                var args = [];
+                for (var i = 0; i < numArgs; i++) {
+                    args.push(stack[this.sp--]);
+                }
+                stack[0] = o[f].apply(o, args);
+                this.stack = stack.slice(0, this.sp + 1);
+                break;
+            }
+            case I.MOV_CTX: {
+                var dst = this.nextOperant();
+                var propKey = this.nextOperant();
+                var src = utils_1.getByProp(this.ctx, propKey.value);
+                this.stack[dst.index] = src;
+                break;
+            }
+            case I.NEW_OBJ: {
+                var dst = this.nextOperant();
+                var o = {};
+                this.stack[dst.index] = o;
+                break;
+            }
+            case I.NEW_ARR: {
+                var dst = this.nextOperant();
+                var o = [];
+                this.stack[dst.index] = o;
+                break;
+            }
+            case I.SET_KEY: {
+                var o = this.nextOperant().value;
+                var key = this.nextOperant().value;
+                var value = this.nextOperant().value;
+                o[key] = value;
+                break;
+            }
+            case I.CALLBACK: {
+                var dst = this.nextOperant();
+                var funcInfo = this.nextOperant().value;
+                var callback = this.newCallback(funcInfo);
+                stack[dst.index] = callback;
+                break;
+            }
+            case I.MOV_PROP: {
+                var dst = this.nextOperant();
+                var o = this.nextOperant().value;
+                var k = this.nextOperant().value;
+                var v = utils_1.getByProp(o, k);
+                stack[dst.index] = v;
+                break;
+            }
+            default:
+                throw new Error("Unknow command " + op);
+        }
+        return op;
+    };
+    VirtualMachine.prototype.push = function (val) {
+        this.stack[++this.sp] = val;
+    };
+    VirtualMachine.prototype.callFunction = function (funcInfo, numArgs) {
+        var stack = this.stack;
+        stack[++this.sp] = numArgs;
+        stack[++this.sp] = this.ip;
+        stack[++this.sp] = this.fp;
+        this.ip = funcInfo.ip;
+        this.fp = this.sp;
+        this.sp += funcInfo.localSize;
     };
     VirtualMachine.prototype.nextOperator = function () {
         return readUInt8(this.codes, this.ip, ++this.ip);
@@ -370,6 +401,31 @@ var VirtualMachine = (function () {
         if (cond(op1.value, op2.value)) {
             this.ip = address.value;
         }
+    };
+    VirtualMachine.prototype.newCallback = function (funcInfo) {
+        var _this = this;
+        return function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+            args.reverse();
+            args.forEach(function (arg) { return _this.push(arg); });
+            _this.callFunction(funcInfo, args.length);
+            var op = null;
+            var callCount = 1;
+            while (callCount !== 0) {
+                op = _this.fetchAndExecute();
+                if (op === I.CALL) {
+                    callCount++;
+                }
+                else if (op === I.RET) {
+                    callCount--;
+                }
+                else {
+                }
+            }
+        };
     };
     return VirtualMachine;
 }());
@@ -470,7 +526,7 @@ exports.stringToArrayBuffer = function (str) {
     return buffer;
 };
 exports.getByProp = function (obj, prop) {
-    return prop.split('.').reduce(function (o, p) { return o[p]; }, obj);
+    return String(prop).split('.').reduce(function (o, p) { return o[p]; }, obj);
 };
 
 
