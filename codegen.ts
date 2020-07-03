@@ -59,6 +59,7 @@ interface IState {
   functionIndex: number,
   functions: IFunction[],
   codes: string[],
+  reg: string,
 }
 
 class Codegen {
@@ -78,6 +79,7 @@ const state: IState = {
   functionIndex: 0,
   functions: [],
   codes: [],
+  reg: '', // 寄存器的名字
 }
 const parseToCode = (ast: any): void => {
   const newFunctionName = (): string => {
@@ -91,6 +93,16 @@ const parseToCode = (ast: any): void => {
     return funcName
   }
 
+  let registerCounter = 0
+  let maxRegister = 0
+
+  const newRegister = (): string => {
+    const r = `_r${registerCounter++}_`
+    maxRegister = Math.max(maxRegister, registerCounter)
+    return r
+  }
+  const freeRegister = (): number => registerCounter--
+
   walk.recursive(ast, state, {
     VariableDeclaration: (node: et.VariableDeclaration, s: any, c: any): void => {
       // console.log("VARIABLE...", node)
@@ -101,6 +113,7 @@ const parseToCode = (ast: any): void => {
       // console.log(node)
       if (node.id.type === 'Identifier') {
         if (node.init?.type === 'FunctionExpression' || node.init?.type === 'ArrowFunctionExpression') {
+          console.log("???")
           const funcName = parseFunc(node.init, state.isGlobal ? node.id.name : '')
           console.log("--->", funcName)
           return
@@ -118,23 +131,38 @@ const parseToCode = (ast: any): void => {
       state.functions.push({ name: node.id!.name, body: node })
     },
 
-    Literal: (node: et.Literal): void => {
+    CallExpression(node: et.CallExpression, s: any, c: any): any {
+      for (const arg of node.arguments) {
+        const reg = s.reg = newRegister()
+        c(arg, s)
+        s.codes.push(`PUSH ${reg}`)
+        freeRegister()
+      }
+
+      if (node.callee.type === "MemberExpression") {
+        // TODO
+      } else if (node.callee.type === "Identifier") {
+        s.codes.push(`CALL ${node.callee.name} ${node.arguments.length}`)
+      }
+      s.codes.push(`MOV ${s.reg} RET`)
+    },
+
+    Literal: (node: et.Literal, s: any): void => {
       // console.log('-->', node)
+      s.codes.push(`MOV ${s.reg} ${node.raw}`)
     },
 
     ArrowFunctionExpression(node: et.ArrowFunctionExpression, s: any, c: any): any {
-      // console.log("ARROW FUNCTION...", node)
-      // console.log(s.tmpVariableName, '++++')
-      // c(node.body, state)
+      parseFunc(node)
     },
 
     BlockStatement(node: et.BlockStatement, s: any, c: any): void {
       node.body.forEach((n: any): void => c(n, s))
     },
 
-    MemberExpression(node: et.MemberExpression, s: any, c: any): void {
-      console.log('THE MEMBER EXPRESSION -> ', node)
-    },
+    // MemberExpression(node: et.MemberExpression, s: any, c: any): void {
+      // console.log('THE MEMBER EXPRESSION -> ', node)
+    // },
 
     // ExpressionStatement(node: et.ExpressionStatement, s: any, c: any): void {
     //   console.log('=-->', node.expression)
@@ -155,7 +183,7 @@ while (state.functions.length > 0) {
   const funcAst = state.functions.shift()
   state.codes.push(getFunctionDecleration(funcAst!))
   state.locals = {}
-  console.log(funcAst?.body.body, '-->')
+  // console.log(funcAst?.body.body, '-->')
   parseToCode(funcAst?.body.body)
   state.codes.push('}')
 }
