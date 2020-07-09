@@ -18,12 +18,17 @@ function main() {
     console.log("???")
   } else {
     amn()
+    kk()
   }
   // var a = 1
   // window.fuck = damn.good = 1
   window.console[window.sayHei()](fib(5))
   // a = 'good'
   // console.log(a.b.c.d.e.f[g.h.i.j.k[l.m['n']['o']]])
+}
+
+const kk = () => {
+  console.log("THIS IS THE BEST WORLD")
 }
 
 /*var name = "Jerry"
@@ -126,6 +131,8 @@ const parseToCode = (ast: any): void => {
   let registerCounter = 0
   let maxRegister = 0
 
+  const newLabelName = (): string => `_l${state.labelIndex++}_`
+
   const newRegister = (): string => {
     const r = `_r${registerCounter++}_`
     maxRegister = Math.max(maxRegister, registerCounter)
@@ -150,6 +157,14 @@ const parseToCode = (ast: any): void => {
       s.codes.push(`MOV ${reg} ${id}`)
     } else {
       s.codes.push(`MOV_CTX ${reg} "${id}"`)
+    }
+  }
+
+  const callIdentifier = (id: string, numArgs: number, s: IState): void => {
+    if (s.functions[id]) {
+      s.codes.push(`CALL ${id} ${numArgs}`)
+    } else {
+      s.codes.push(`CALL_CTX "${id}" ${numArgs}`)
     }
   }
 
@@ -206,7 +221,8 @@ const parseToCode = (ast: any): void => {
         freeRegister()
         freeRegister()
       } else if (node.callee.type === "Identifier") {
-        s.codes.push(`CALL ${node.callee.name} ${node.arguments.length}`)
+        callIdentifier(node.callee.name, node.arguments.length, s)
+        // s.codes.push(`CALL ${node.callee.name} ${node.arguments.length}`)
       }
       if (retReg) {
         s.codes.push(`MOV ${retReg} RET`)
@@ -341,6 +357,34 @@ const parseToCode = (ast: any): void => {
       freeReg()
     },
 
+    IfStatement(node: et.IfStatement, s: any, c: any): void {
+      const [newReg, freeReg] = newRegisterController()
+
+      const testReg = newReg()
+      const label = newLabelName()
+      const endLabel = s.endLabel
+      s.endLabel = endLabel || newReg()
+
+      s.r0 = testReg
+      c(node.test, s)
+
+      cg(`JNIF ${testReg} ${label}`)
+      c(node.consequent, s)
+      cg(`JMP ${s.endLabel}`)
+
+      cg(`LABEL ${label}:`)
+      if (node.alternate) {
+        c(node.alternate, s)
+      }
+
+      if (endLabel) {
+        cg(`LABEL ${endLabel}:`)
+        delete s.endLabel
+      }
+
+      freeReg()
+    },
+
     // ExpressionStatement(node: et.ExpressionStatement, s: any, c: any): void {
     //   console.log('=-->', node.expression)
     // },
@@ -369,6 +413,10 @@ while (state.functions.length > 0) {
     registersCodes.push(`VAR _r${i}_`)
   }
   state.codes = [getFunctionDecleration(funcAst!), ...registersCodes, ...state.codes, 'RET', '}']
+  state.codes = state.codes.map((s: string): string => {
+    if (s.startsWith('func') || s.startsWith('LABEL') || s.startsWith('}')) { return s }
+    return `    ${s}`
+  })
   // state.codes.push('}')
 }
 

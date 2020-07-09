@@ -42,7 +42,7 @@ export enum I {
  LT, GT, EQ, LE, GE, NE,
  AND, OR, XOR, NOT, SHL, SHR,
 
- JMP, JE, JNE, JG, JL,
+ JMP, JE, JNE, JG, JL, JIF, JNIF,
  JGE, JLE, PUSH, POP, CALL, PRINT,
  RET, AUSE, EXIT,
 
@@ -147,6 +147,7 @@ export class VirtualMachine {
     const stack = this.stack
     const op = this.nextOperator()
     // console.log(op)
+    // tslint:disable-next-line: max-switch-cases
     switch (op) {
     case I.PUSH: {
       this.push(this.nextOperant().value)
@@ -217,6 +218,22 @@ export class VirtualMachine {
       this.jumpWithCondidtion((a: any, b: any): boolean => a <= b)
       break
     }
+    case I.JIF: {
+      const cond = this.nextOperant()
+      const address = this.nextOperant()
+      if (cond.value) {
+        this.ip = address.value
+      }
+      break
+    }
+    case I.JNIF: {
+      const cond = this.nextOperant()
+      const address = this.nextOperant()
+      if (!cond.value) {
+        this.ip = address.value
+      }
+      break
+    }
     case I.CALL_CTX:
     case I.CALL_VAR: {
       const k = this.nextOperant().value
@@ -282,15 +299,15 @@ export class VirtualMachine {
       this.binaryExpression((a, b): any => a > b)
       break
     }
-    case I.EQUAL: {
+    case I.EQ: {
       this.binaryExpression((a, b): any => a === b)
       break
     }
-    case I.LET: {
+    case I.LE: {
       this.binaryExpression((a, b): any => a <= b)
       break
     }
-    case I.GET: {
+    case I.GE: {
       this.binaryExpression((a, b): any => a >= b)
       break
     }
