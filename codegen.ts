@@ -11,9 +11,9 @@ import { stat } from 'fs'
 const testCode = `
 function main() {
   // var a = 1
-  window.fuck = damn.good = 1
+  // window.fuck = damn.good = 1
   window.console[window.sayHei()](fib(5))
-  a = 'good'
+  // a = 'good'
   // console.log(a.b.c.d.e.f[g.h.i.j.k[l.m['n']['o']]])
 }
 
@@ -121,17 +121,16 @@ const parseToCode = (ast: any): void => {
   }
   const freeRegister = (): number => registerCounter--
 
-  const newMemberState = (): [string, string, string] => {
-    state.r0 = newRegister()
-    state.r1 = newRegister()
-    state.r2 = newRegister()
-    return [state.r0, state.r1, state.r2]
-  }
-
-  const freeMember = (): void => {
-    freeRegister()
-    freeRegister()
-    freeRegister()
+  const newRegisterController = (): [any, any] => {
+    let count = 0
+    return [(): string => {
+      count++
+      return newRegister()
+    }, (): void => {
+      for (let i = 0; i < count; i++) {
+        freeRegister()
+      }
+    }]
   }
 
   const setIdentifierToRegister = (reg: string, id: string, s: any): void => {
@@ -187,10 +186,13 @@ const parseToCode = (ast: any): void => {
       }
 
       if (node.callee.type === "MemberExpression") {
-        const [_, objReg, keyReg] = newMemberState()
+        s.r0 = null
+        const objReg = s.r1 = newRegister()
+        const keyReg = s.r2 = newRegister()
         c(node.callee, s)
         s.codes.push(`CALL_VAR ${objReg} ${keyReg} ${node.arguments.length}`)
-        freeMember()
+        freeRegister()
+        freeRegister()
       } else if (node.callee.type === "Identifier") {
         s.codes.push(`CALL ${node.callee.name} ${node.arguments.length}`)
       }
@@ -212,32 +214,15 @@ const parseToCode = (ast: any): void => {
     },
 
     MemberExpression(node: et.MemberExpression, s: any, c: any): void {
-      const teardowns: any = []
-      let valReg = s.r0
-      let objReg = s.r1
-      let keyReg = s.r2
-
-      if (!valReg) {
-        valReg = newRegister()
-        teardowns.push(freeRegister)
-      }
-
-      if (!objReg) {
-        objReg = newRegister()
-        teardowns.push(freeRegister)
-      }
-
-      if (!keyReg) {
-        keyReg = newRegister()
-        teardowns.push(freeRegister)
-      }
+      const [newReg, freeReg] = newRegisterController()
+      const valReg = s.r0
+      const objReg = s.r1 || newReg()
+      const keyReg = s.r2 || newReg()
 
       if (node.object.type === 'MemberExpression') {
         s.r0 = objReg
         s.r1 = newRegister()
-        // newMemberState()
         c(node.object, s)
-        // freeMember()
         freeRegister()
       } else if (node.object.type === 'Identifier') {
         setIdentifierToRegister(objReg, node.object.name, s)
@@ -249,9 +234,7 @@ const parseToCode = (ast: any): void => {
       if (node.property.type === 'MemberExpression') {
         s.r0 = keyReg
         s.r2 = newRegister()
-        // newMemberState()
         c(node.property, s)
-        // freeMember()
         freeRegister()
       } else if (node.property.type === 'Identifier') {
         // a.b.c.d
@@ -265,30 +248,30 @@ const parseToCode = (ast: any): void => {
         c(node.property, s)
       }
 
-      s.codes.push(`MOV_PROP ${valReg} ${objReg} ${keyReg}`)
-      teardowns.forEach((t: any): void => t())
+      if (valReg) {
+        s.codes.push(`MOV_PROP ${valReg} ${objReg} ${keyReg}`)
+      }
+      freeReg()
     },
 
     AssignmentExpression(node: et.AssignmentExpression, s: any, c: any): any {
       const left = node.left
       const right = node.right
-      const teardowns: any[] = []
+      const [newReg, freeReg] = newRegisterController()
 
       let rightReg
       if (right.type === 'Identifier') {
         rightReg = right.name
       } else {
-        s.r0 = rightReg = newRegister()
+        s.r0 = rightReg = newReg()
         c(right, s)
-        teardowns.push(freeRegister)
       }
 
       if (left.type === 'MemberExpression') {
-        s.r0 = newRegister()
-        const objReg = s.r1 = newRegister()
-        const keyReg = s.r2 = newRegister()
+        s.r0 = newReg()
+        const objReg = s.r1 = newReg()
+        const keyReg = s.r2 = newReg()
         c(left, s)
-        teardowns.push(freeRegister, freeRegister, freeRegister)
         s.codes.push(`SET_KEY ${objReg} ${keyReg} ${rightReg}`)
       } else if (left.type === 'Identifier') {
         s.codes.push(`MOV ${left.name} ${rightReg}`)
@@ -296,7 +279,23 @@ const parseToCode = (ast: any): void => {
         throw new Error('Unprocessed assignment')
       }
 
-      teardowns.forEach((t: any): void => t())
+      freeReg()
+    },
+
+    BinaryExpression(node: et.BinaryExpression, s: any, c: any): void {
+      const [newReg, freeReg] = newRegisterController()
+      const leftReg = s.r0 || newReg()
+      const rightReg = newReg()
+
+      s.r0 = leftReg
+      c(node, s)
+
+      // if (node.operator === '')
+
+      s.r0 = rightReg
+      c(node, s)
+
+      freeReg()
     },
 
     // ExpressionStatement(node: et.ExpressionStatement, s: any, c: any): void {
