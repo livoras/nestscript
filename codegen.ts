@@ -9,10 +9,15 @@ import { NONAME } from 'dns'
 import { stat } from 'fs'
 
 const testCode = `
-var name = "Jerry"
+function main() {
+  var a = 1
+  console.log(a.b.c.d.e.f[g.h.i.j.k[l.m['n']['o']]])
+}
+
+/*var name = "Jerry"
 
 const main = () => {
-  window.console.log(fib(5))
+  window.console[window.sayHei()](fib(5))
   for (let i = 0; i < 20; i++) {
     if (i % 2 === 0) {
       console.log(fib(i))
@@ -37,7 +42,7 @@ function fib(n, a, b, c) {
     console.log(a, b, c)
   }
   return j
-}
+}*/
 `
 
 const enum GlobalsType {
@@ -59,7 +64,13 @@ interface IState {
   functionIndex: number,
   functions: IFunction[],
   codes: string[],
-  reg: string,
+  r0: string,
+  r1: string,
+  r2: string,
+
+  // $obj: string,
+  // $key: string,
+  // $val: string,
 }
 
 class Codegen {
@@ -79,7 +90,9 @@ const state: IState = {
   functionIndex: 0,
   functions: [],
   codes: [],
-  reg: '', // 寄存器的名字
+  r0: '', // 寄存器的名字
+  r1: '', // 寄存器的名字
+  r2: '', //
 }
 const parseToCode = (ast: any): void => {
   const newFunctionName = (): string => {
@@ -103,6 +116,27 @@ const parseToCode = (ast: any): void => {
   }
   const freeRegister = (): number => registerCounter--
 
+  const newMemberState = (): [string, string, string] => {
+    state.r0 = newRegister()
+    state.r1 = newRegister()
+    state.r2 = newRegister()
+    return [state.r0, state.r1, state.r2]
+  }
+
+  const freeMember = (): void => {
+    freeRegister()
+    freeRegister()
+    freeRegister()
+  }
+
+  const setIdentifierToRegister = (reg: string, id: string, s: any): void => {
+    if (s.globals[id] || s.locals[id]) {
+      s.codes.push(`MOV ${reg} ${id}`)
+    } else {
+      s.codes.push(`MOV_CTX ${reg} "${id}"`)
+    }
+  }
+
   walk.recursive(ast, state, {
     VariableDeclaration: (node: et.VariableDeclaration, s: any, c: any): void => {
       // console.log("VARIABLE...", node)
@@ -111,20 +145,26 @@ const parseToCode = (ast: any): void => {
 
     VariableDeclarator: (node: et.VariableDeclarator, s: any, c: any): void => {
       // console.log(node)
+      let reg
       if (node.id.type === 'Identifier') {
         if (node.init?.type === 'FunctionExpression' || node.init?.type === 'ArrowFunctionExpression') {
-          console.log("???")
-          const funcName = parseFunc(node.init, state.isGlobal ? node.id.name : '')
-          console.log("--->", funcName)
+          parseFunc(node.init, state.isGlobal ? node.id.name : '')
+          // console.log("--->", funcName)
           return
         }
         if (state.isGlobal) {
-          state.globals[node.id.name] = GlobalsType.VARIABLE
+          s.codes.push(`GLOBAL ${node.id.name}`)
+          s.globals[node.id.name] = GlobalsType.VARIABLE
         } else {
-          state.locals[node.id.name] = GlobalsType.VARIABLE
+          s.codes.push(`VAR ${node.id.name}`)
+          s.locals[node.id.name] = GlobalsType.VARIABLE
         }
+        reg = node.id.name
+      } else {
+        // TODO
       }
-      c(node.init, state)
+      s.r0 = reg
+      c(node.init, s)
     },
 
     FunctionDeclaration(node: et.FunctionDeclaration, s: any, c: any): any {
@@ -133,23 +173,25 @@ const parseToCode = (ast: any): void => {
 
     CallExpression(node: et.CallExpression, s: any, c: any): any {
       for (const arg of node.arguments) {
-        const reg = s.reg = newRegister()
+        const reg = s.r0 = newRegister()
         c(arg, s)
         s.codes.push(`PUSH ${reg}`)
         freeRegister()
       }
 
       if (node.callee.type === "MemberExpression") {
-        // TODO
+        const [_, objReg, keyReg] = newMemberState()
+        c(node.callee, s)
+        s.codes.push(`CALL_VAR ${objReg} ${keyReg}`)
+        freeMember()
       } else if (node.callee.type === "Identifier") {
         s.codes.push(`CALL ${node.callee.name} ${node.arguments.length}`)
       }
-      s.codes.push(`MOV ${s.reg} RET`)
+      s.codes.push(`MOV ${s.r0} RET`)
     },
 
     Literal: (node: et.Literal, s: any): void => {
-      // console.log('-->', node)
-      s.codes.push(`MOV ${s.reg} ${node.raw}`)
+      s.codes.push(`MOV ${s.r0} ${node.raw}`)
     },
 
     ArrowFunctionExpression(node: et.ArrowFunctionExpression, s: any, c: any): any {
@@ -160,9 +202,63 @@ const parseToCode = (ast: any): void => {
       node.body.forEach((n: any): void => c(n, s))
     },
 
-    // MemberExpression(node: et.MemberExpression, s: any, c: any): void {
-      // console.log('THE MEMBER EXPRESSION -> ', node)
-    // },
+    MemberExpression(node: et.MemberExpression, s: any, c: any): void {
+      const teardowns: any = []
+      let valReg = s.r0
+      let objReg = s.r1
+      let keyReg = s.r2
+
+      if (!valReg) {
+        valReg = newRegister()
+        teardowns.push(freeRegister)
+      }
+
+      if (!objReg) {
+        objReg = newRegister()
+        teardowns.push(freeRegister)
+      }
+
+      if (!keyReg) {
+        keyReg = newRegister()
+        teardowns.push(freeRegister)
+      }
+
+      if (node.object.type === 'MemberExpression') {
+        s.r0 = objReg
+        s.r1 = newRegister()
+        // newMemberState()
+        c(node.object, s)
+        // freeMember()
+        freeRegister()
+      } else if (node.object.type === 'Identifier') {
+        setIdentifierToRegister(objReg, node.object.name, s)
+      } else {
+        s.r0 = objReg
+        c(node.object, s)
+      }
+
+      if (node.property.type === 'MemberExpression') {
+        s.r0 = keyReg
+        s.r2 = newRegister()
+        // newMemberState()
+        c(node.property, s)
+        // freeMember()
+        freeRegister()
+      } else if (node.property.type === 'Identifier') {
+        // a.b.c.d
+        if (node.computed) {
+          s.codes.push(`MOV ${keyReg} ${node.property.name}`)
+        } else {
+          s.codes.push(`MOV ${keyReg} "${node.property.name}"`)
+        }
+      } else {
+        s.r0 = keyReg
+        c(node.property, s)
+      }
+
+      s.codes.push(`MOV_PROP ${valReg} ${objReg} ${keyReg}`)
+      teardowns.forEach((t: any): void => t())
+    },
 
     // ExpressionStatement(node: et.ExpressionStatement, s: any, c: any): void {
     //   console.log('=-->', node.expression)
