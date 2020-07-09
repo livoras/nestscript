@@ -10,8 +10,9 @@ import { stat } from 'fs'
 
 const testCode = `
 function main() {
-  var a = 1
-  console.log(a.b.c.d.e.f[g.h.i.j.k[l.m['n']['o']]])
+  // var a = 1
+  window.console[window.sayHei()](fib(5))
+  // console.log(a.b.c.d.e.f[g.h.i.j.k[l.m['n']['o']]])
 }
 
 /*var name = "Jerry"
@@ -172,9 +173,11 @@ const parseToCode = (ast: any): void => {
     },
 
     CallExpression(node: et.CallExpression, s: any, c: any): any {
+      const retReg = s.r0
       for (const arg of node.arguments) {
         const reg = s.r0 = newRegister()
         c(arg, s)
+        // console.log('---->>', reg, node.callee)
         s.codes.push(`PUSH ${reg}`)
         freeRegister()
       }
@@ -182,12 +185,14 @@ const parseToCode = (ast: any): void => {
       if (node.callee.type === "MemberExpression") {
         const [_, objReg, keyReg] = newMemberState()
         c(node.callee, s)
-        s.codes.push(`CALL_VAR ${objReg} ${keyReg}`)
+        s.codes.push(`CALL_VAR ${objReg} ${keyReg} ${node.arguments.length}`)
         freeMember()
       } else if (node.callee.type === "Identifier") {
         s.codes.push(`CALL ${node.callee.name} ${node.arguments.length}`)
       }
-      s.codes.push(`MOV ${s.r0} RET`)
+      if (retReg) {
+        s.codes.push(`MOV ${retReg} RET`)
+      }
     },
 
     Literal: (node: et.Literal, s: any): void => {
