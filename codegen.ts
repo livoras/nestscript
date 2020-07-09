@@ -68,6 +68,7 @@ interface IState {
   r0: string,
   r1: string,
   r2: string,
+  maxRegister: number,
 
   // $obj: string,
   // $key: string,
@@ -94,6 +95,7 @@ const state: IState = {
   r0: '', // 寄存器的名字
   r1: '', // 寄存器的名字
   r2: '', //
+  maxRegister: 0,
 }
 const parseToCode = (ast: any): void => {
   const newFunctionName = (): string => {
@@ -269,6 +271,8 @@ const parseToCode = (ast: any): void => {
     //   console.log('=-->', node.expression)
     // },
   })
+
+  state.maxRegister = maxRegister
 }
 
 const getFunctionDecleration = (func: IFunction): string => {
@@ -281,12 +285,17 @@ parseToCode(ret)
 
 while (state.functions.length > 0) {
   state.isGlobal = false
+  state.maxRegister = 0
   const funcAst = state.functions.shift()
-  state.codes.push(getFunctionDecleration(funcAst!))
   state.locals = {}
   // console.log(funcAst?.body.body, '-->')
   parseToCode(funcAst?.body.body)
-  state.codes.push('}')
+  const registersCodes: string[] = []
+  for (let i = 0; i < state.maxRegister; i++) {
+    registersCodes.push(`VAR _r${i}_`)
+  }
+  state.codes = [getFunctionDecleration(funcAst!), ...registersCodes, ...state.codes, 'RET', '}']
+  // state.codes.push('}')
 }
 
 console.log(state)
