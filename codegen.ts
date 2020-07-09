@@ -11,7 +11,9 @@ import { stat } from 'fs'
 const testCode = `
 function main() {
   // var a = 1
+  window.fuck = damn.good = 1
   window.console[window.sayHei()](fib(5))
+  a = 'good'
   // console.log(a.b.c.d.e.f[g.h.i.j.k[l.m['n']['o']]])
 }
 
@@ -264,6 +266,36 @@ const parseToCode = (ast: any): void => {
       }
 
       s.codes.push(`MOV_PROP ${valReg} ${objReg} ${keyReg}`)
+      teardowns.forEach((t: any): void => t())
+    },
+
+    AssignmentExpression(node: et.AssignmentExpression, s: any, c: any): any {
+      const left = node.left
+      const right = node.right
+      const teardowns: any[] = []
+
+      let rightReg
+      if (right.type === 'Identifier') {
+        rightReg = right.name
+      } else {
+        s.r0 = rightReg = newRegister()
+        c(right, s)
+        teardowns.push(freeRegister)
+      }
+
+      if (left.type === 'MemberExpression') {
+        s.r0 = newRegister()
+        const objReg = s.r1 = newRegister()
+        const keyReg = s.r2 = newRegister()
+        c(left, s)
+        teardowns.push(freeRegister, freeRegister, freeRegister)
+        s.codes.push(`SET_KEY ${objReg} ${keyReg} ${rightReg}`)
+      } else if (left.type === 'Identifier') {
+        s.codes.push(`MOV ${left.name} ${rightReg}`)
+      } else {
+        throw new Error('Unprocessed assignment')
+      }
+
       teardowns.forEach((t: any): void => t())
     },
 
