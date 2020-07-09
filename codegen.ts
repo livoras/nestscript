@@ -27,8 +27,8 @@ function main() {
   // console.log(a.b.c.d.e.f[g.h.i.j.k[l.m['n']['o']]])
 }
 
-const kk = () => {
-  console.log("THIS IS THE BEST WORLD")
+const kk = (a, b) => {
+  console.log("THIS IS THE BEST WORLD", a, b)
 }
 
 /*var name = "Jerry"
@@ -79,6 +79,7 @@ interface IState {
   isGlobal: boolean,
   labelIndex: number,
   functionIndex: number,
+  functionTable: any,
   functions: IFunction[],
   codes: string[],
   r0: string,
@@ -107,6 +108,7 @@ const state: IState = {
   labelIndex: 0,
   functionIndex: 0,
   functions: [],
+  functionTable: {},
   codes: [],
   r0: '', // 寄存器的名字
   r1: '', // 寄存器的名字
@@ -125,6 +127,7 @@ const parseToCode = (ast: any): void => {
     const funcName = name || newFunctionName()
     state.globals[funcName] = GlobalsType.FUNCTION
     state.functions.push({ name: funcName, body: node })
+    state.functionTable[funcName] = node
     return funcName
   }
 
@@ -161,7 +164,7 @@ const parseToCode = (ast: any): void => {
   }
 
   const callIdentifier = (id: string, numArgs: number, s: IState): void => {
-    if (s.functions[id]) {
+    if (s.functionTable[id]) {
       s.codes.push(`CALL ${id} ${numArgs}`)
     } else {
       s.codes.push(`CALL_CTX "${id}" ${numArgs}`)
@@ -200,16 +203,22 @@ const parseToCode = (ast: any): void => {
 
     FunctionDeclaration(node: et.FunctionDeclaration, s: any, c: any): any {
       state.functions.push({ name: node.id!.name, body: node })
+      state.functionTable[node.id!.name] = node
     },
 
     CallExpression(node: et.CallExpression, s: any, c: any): any {
       const retReg = s.r0
       for (const arg of node.arguments) {
-        const reg = s.r0 = newRegister()
-        c(arg, s)
+        let reg
+        if (arg.type === 'Identifier') {
+          reg = arg.name
+        } else {
+          reg = s.r0 = newRegister()
+          c(arg, s)
+          freeRegister()
+        }
         // console.log('---->>', reg, node.callee)
         s.codes.push(`PUSH ${reg}`)
-        freeRegister()
       }
 
       if (node.callee.type === "MemberExpression") {
@@ -405,14 +414,20 @@ while (state.functions.length > 0) {
   state.isGlobal = false
   state.maxRegister = 0
   const funcAst = state.functions.shift()
-  state.locals = {}
+  state.locals = funcAst!.body.params.reduce((o, param): any => {
+    o[(param as et.Identifier).name] = GlobalsType.VARIABLE
+    return o
+  }, {})
   // console.log(funcAst?.body.body, '-->')
-  parseToCode(funcAst?.body.body)
+  state.codes.push(getFunctionDecleration(funcAst!))
+  const codeLen = state.codes.length
   const registersCodes: string[] = []
+  parseToCode(funcAst?.body.body)
   for (let i = 0; i < state.maxRegister; i++) {
     registersCodes.push(`VAR _r${i}_`)
   }
-  state.codes = [getFunctionDecleration(funcAst!), ...registersCodes, ...state.codes, 'RET', '}']
+  state.codes.splice(codeLen, 0, ...registersCodes)
+  state.codes.push('RET', '}')
   state.codes = state.codes.map((s: string): string => {
     if (s.startsWith('func') || s.startsWith('LABEL') || s.startsWith('}')) { return s }
     return `    ${s}`
