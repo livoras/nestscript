@@ -9,7 +9,16 @@ import { NONAME } from 'dns'
 import { stat } from 'fs'
 
 const testCode = `
+
 function main() {
+  damn.fuck = 'shit'
+  if (fuck.you < c) {
+    console.log("GOOD")
+  } else if (c > 0) {
+    console.log("???")
+  } else {
+    amn()
+  }
   // var a = 1
   // window.fuck = damn.good = 1
   window.console[window.sayHei()](fib(5))
@@ -99,10 +108,13 @@ const state: IState = {
   r2: '', //
   maxRegister: 0,
 }
+// tslint:disable-next-line: no-big-function
 const parseToCode = (ast: any): void => {
   const newFunctionName = (): string => {
     return `__$Function$__${state.functionIndex++}`
   }
+
+  const cg = (c: string): any => state.codes.push(c)
 
   const parseFunc = (node: et.FunctionExpression | et.ArrowFunctionExpression, name?: string): string => {
     const funcName = name || newFunctionName()
@@ -268,7 +280,8 @@ const parseToCode = (ast: any): void => {
       }
 
       if (left.type === 'MemberExpression') {
-        s.r0 = newReg()
+        // s.r0 = newReg()
+        s.r0 = null
         const objReg = s.r1 = newReg()
         const keyReg = s.r2 = newReg()
         c(left, s)
@@ -284,17 +297,47 @@ const parseToCode = (ast: any): void => {
 
     BinaryExpression(node: et.BinaryExpression, s: any, c: any): void {
       const [newReg, freeReg] = newRegisterController()
-      const leftReg = s.r0 || newReg()
-      const rightReg = newReg()
 
-      s.r0 = leftReg
-      c(node, s)
+      let leftReg = s.r0 || newReg()
+      let rightReg
 
-      // if (node.operator === '')
+      if (node.left.type === 'Identifier') {
+        leftReg = node.left.name
+      } else {
+        s.r0 = leftReg
+        c(node.left, s)
+      }
 
-      s.r0 = rightReg
-      c(node, s)
+      if (node.right.type === 'Identifier') {
+        rightReg = node.right.name
+      } else {
+        s.r0 = rightReg = newReg()
+        c(node.right, s)
+      }
 
+      const codeMap = {
+        '<': 'LT',
+        '>': 'GT',
+        '===': 'EQ',
+        '!==': 'NE',
+        '==': 'EQ',
+        '!=': 'NE',
+        '<=': 'LE',
+        '>=': 'GE',
+        '+': 'ADD',
+        '-': 'SUB',
+        '*': 'MUL',
+        '/': 'DIV',
+        '%': 'MOD',
+        '<<': 'SHL',
+        '>>': 'SHR',
+      }
+
+      const op = codeMap[node.operator]
+      if (!op) {
+        throw new Error(`${op} is not implemented.`)
+      }
+      cg(`${op} ${leftReg} ${rightReg}`)
       freeReg()
     },
 

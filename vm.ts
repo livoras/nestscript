@@ -36,9 +36,12 @@ import { arrayBufferToString, getByProp } from './utils'
  * EXIT code
  */
 export enum I {
- MOV, ADD, SUB, DIV, MOD,
- EXP, NEG, INC, DEC, AND,
- OR, XOR, NOT, SHL, SHR,
+ MOV, ADD, SUB, MUL, DIV, MOD,
+ EXP, NEG, INC, DEC,
+
+ LT, GT, EQ, LE, GE, NE,
+ AND, OR, XOR, NOT, SHL, SHR,
+
  JMP, JE, JNE, JG, JL,
  JGE, JLE, PUSH, POP, CALL, PRINT,
  RET, AUSE, EXIT,
@@ -185,20 +188,6 @@ export class VirtualMachine {
       this.stack[dst.index] = src.value
       break
     }
-    case I.ADD: {
-      const dst = this.nextOperant()
-      const src = this.nextOperant()
-      // console.log('add', dst, src)
-      this.stack[dst.index] += src.value
-      break
-    }
-    case I.SUB: {
-      const dst = this.nextOperant()
-      const src = this.nextOperant()
-      // console.log('sub', dst, src)
-      this.stack[dst.index] -= src.value
-      break
-    }
     case I.JMP: {
       const address = this.nextOperant()
       this.ip = address.value
@@ -285,7 +274,46 @@ export class VirtualMachine {
       stack[dst.index] = v
       break
     }
-
+    case I.LT: {
+      this.binaryExpression((a, b): any => a < b)
+      break
+    }
+    case I.GT: {
+      this.binaryExpression((a, b): any => a > b)
+      break
+    }
+    case I.EQUAL: {
+      this.binaryExpression((a, b): any => a === b)
+      break
+    }
+    case I.LET: {
+      this.binaryExpression((a, b): any => a <= b)
+      break
+    }
+    case I.GET: {
+      this.binaryExpression((a, b): any => a >= b)
+      break
+    }
+    case I.ADD: {
+      this.binaryExpression((a, b): any => a + b)
+      break
+    }
+    case I.SUB: {
+      this.binaryExpression((a, b): any => a - b)
+      break
+    }
+    case I.MUL: {
+      this.binaryExpression((a, b): any => a * b)
+      break
+    }
+    case I.DIV: {
+      this.binaryExpression((a, b): any => a / b)
+      break
+    }
+    case I.MOD: {
+      this.binaryExpression((a, b): any => a % b)
+      break
+    }
     default:
       throw new Error("Unknow command " + op)
     }
@@ -396,6 +424,13 @@ export class VirtualMachine {
     if (cond(op1.value, op2.value)) {
       this.ip = address.value
     }
+  }
+
+  public binaryExpression(exp: (a: any, b: any) => any): void {
+    const o1 = this.nextOperant()
+    const o2 = this.nextOperant()
+    const ret = exp(o1.value, o2.value)
+    this.stack[o1.index] = ret
   }
 
   public newCallback(funcInfo: IFuncInfo): () => any {
