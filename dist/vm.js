@@ -268,7 +268,6 @@ var VirtualMachine = (function () {
             case I.JF: {
                 var cond = this.nextOperant();
                 var address = this.nextOperant();
-                console.log("+++++++++++++++", address);
                 if (!cond.value) {
                     this.ip = address.value;
                 }
@@ -276,14 +275,20 @@ var VirtualMachine = (function () {
             }
             case I.CALL_CTX:
             case I.CALL_VAR: {
-                var k = this.nextOperant().value;
-                var o = op === I.CALL_CTX ? utils_1.getByProp(this.ctx, k) : k;
+                var o = void 0;
+                if (op === I.CALL_CTX) {
+                    o = this.ctx;
+                }
+                else {
+                    o = this.nextOperant().value;
+                }
                 var f = this.nextOperant().value;
                 var numArgs = this.nextOperant().value;
                 var args = [];
                 for (var i = 0; i < numArgs; i++) {
                     args.push(stack[this.sp--]);
                 }
+                console.log(o, f, op === I.CALL_CTX);
                 stack[0] = o[f].apply(o, args);
                 this.stack = stack.slice(0, this.sp + 1);
                 break;

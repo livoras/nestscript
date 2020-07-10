@@ -118,7 +118,9 @@ const parseToCode = (ast: any): void => {
     if (s.functionTable[id]) {
       cg(`CALL ${id} ${numArgs}`)
     } else {
+      // const reg = newRegister()
       cg(`CALL_CTX "${id}" ${numArgs}`)
+      // freeRegister()
     }
   }
 

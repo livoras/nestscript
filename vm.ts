@@ -239,8 +239,16 @@ export class VirtualMachine {
     }
     case I.CALL_CTX:
     case I.CALL_VAR: {
-      const k = this.nextOperant().value
-      const o = op === I.CALL_CTX ? getByProp(this.ctx, k) : k
+      let o
+
+      if (op === I.CALL_CTX) {
+        o = this.ctx
+      } else {
+        // const k = this.nextOperant().value
+        // o = getByProp(this.ctx, k)
+        o = this.nextOperant().value
+      }
+
       const f = this.nextOperant().value
       const numArgs = this.nextOperant().value
       const args = []

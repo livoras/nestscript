@@ -16,9 +16,12 @@ const main = () => {
       sayHi(i, j)
     }
   }
-  b.forEach((val) => {
-    console.log("THIS IS THE VALUE- >", val)
-  })
+  // b.forEach((val) => {
+  //   console.log("THIS IS THE VALUE- >", val)
+  // })
+  setTimeout(() => {
+    wx.showToast({ title: "OJBK" })
+  }, 3)
 }
 
 const sayHi = (a, b) => {

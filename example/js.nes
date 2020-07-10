@@ -130,11 +130,11 @@ LABEL _l5_:
     MOV i _r1_;
     JMP _l2_;
 LABEL _l3_:
+    MOV _r0_ 3;
+    PUSH _r0_;
     CALLBACK _r0_ ___f___0;
     PUSH _r0_;
-    MOV _r0_ b;
-    MOV _r1_ "forEach";
-    CALL_VAR _r0_ _r1_ 1;
+    CALL_CTX "setTimeout" 2;
 }
 func sayHi(a, b) {
     VAR _r0_;
@@ -149,6 +149,7 @@ func sayHi(a, b) {
     MOV_CTX _r0_ "console";
     MOV _r1_ "log";
     CALL_VAR _r0_ _r1_ 2;
+    MOV _r0_ RET;
     VAR j;
     MOV j 100;
     VAR i;
@@ -174,13 +175,14 @@ LABEL _l8_:
     JMP _l8_;
 LABEL _l9_:
 }
-func ___f___0(val) {
+func ___f___0() {
     VAR _r0_;
     VAR _r1_;
-    PUSH val;
-    MOV _r0_ "THIS IS THE VALUE- >";
+    NEW_OBJ _r0_;
+    MOV _r1_ "OJBK";
+    SET_KEY _r0_ "title" _r1_;
     PUSH _r0_;
-    MOV_CTX _r0_ "console";
-    MOV _r1_ "log";
-    CALL_VAR _r0_ _r1_ 2;
+    MOV_CTX _r0_ "wx";
+    MOV _r1_ "showToast";
+    CALL_VAR _r0_ _r1_ 1;
 }
