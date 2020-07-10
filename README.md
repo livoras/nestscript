@@ -60,6 +60,7 @@ func main() {
 
 ## Change Log
 ## 2020-07-10
+* 完成基本的 JS -> 汇编的转化和运行
 * 循环 codegen
 * 三种值的更新和获取
   * Identifier

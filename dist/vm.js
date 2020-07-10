@@ -99,40 +99,50 @@ var I;
     I[I["MOV"] = 0] = "MOV";
     I[I["ADD"] = 1] = "ADD";
     I[I["SUB"] = 2] = "SUB";
-    I[I["DIV"] = 3] = "DIV";
-    I[I["MOD"] = 4] = "MOD";
-    I[I["EXP"] = 5] = "EXP";
-    I[I["NEG"] = 6] = "NEG";
-    I[I["INC"] = 7] = "INC";
-    I[I["DEC"] = 8] = "DEC";
-    I[I["AND"] = 9] = "AND";
-    I[I["OR"] = 10] = "OR";
-    I[I["XOR"] = 11] = "XOR";
-    I[I["NOT"] = 12] = "NOT";
-    I[I["SHL"] = 13] = "SHL";
-    I[I["SHR"] = 14] = "SHR";
-    I[I["JMP"] = 15] = "JMP";
-    I[I["JE"] = 16] = "JE";
-    I[I["JNE"] = 17] = "JNE";
-    I[I["JG"] = 18] = "JG";
-    I[I["JL"] = 19] = "JL";
-    I[I["JGE"] = 20] = "JGE";
-    I[I["JLE"] = 21] = "JLE";
-    I[I["PUSH"] = 22] = "PUSH";
-    I[I["POP"] = 23] = "POP";
-    I[I["CALL"] = 24] = "CALL";
-    I[I["PRINT"] = 25] = "PRINT";
-    I[I["RET"] = 26] = "RET";
-    I[I["AUSE"] = 27] = "AUSE";
-    I[I["EXIT"] = 28] = "EXIT";
-    I[I["CALL_CTX"] = 29] = "CALL_CTX";
-    I[I["CALL_VAR"] = 30] = "CALL_VAR";
-    I[I["MOV_CTX"] = 31] = "MOV_CTX";
-    I[I["MOV_PROP"] = 32] = "MOV_PROP";
-    I[I["NEW_OBJ"] = 33] = "NEW_OBJ";
-    I[I["NEW_ARR"] = 34] = "NEW_ARR";
-    I[I["SET_KEY"] = 35] = "SET_KEY";
-    I[I["CALLBACK"] = 36] = "CALLBACK";
+    I[I["MUL"] = 3] = "MUL";
+    I[I["DIV"] = 4] = "DIV";
+    I[I["MOD"] = 5] = "MOD";
+    I[I["EXP"] = 6] = "EXP";
+    I[I["NEG"] = 7] = "NEG";
+    I[I["INC"] = 8] = "INC";
+    I[I["DEC"] = 9] = "DEC";
+    I[I["LT"] = 10] = "LT";
+    I[I["GT"] = 11] = "GT";
+    I[I["EQ"] = 12] = "EQ";
+    I[I["LE"] = 13] = "LE";
+    I[I["GE"] = 14] = "GE";
+    I[I["NE"] = 15] = "NE";
+    I[I["AND"] = 16] = "AND";
+    I[I["OR"] = 17] = "OR";
+    I[I["XOR"] = 18] = "XOR";
+    I[I["NOT"] = 19] = "NOT";
+    I[I["SHL"] = 20] = "SHL";
+    I[I["SHR"] = 21] = "SHR";
+    I[I["JMP"] = 22] = "JMP";
+    I[I["JE"] = 23] = "JE";
+    I[I["JNE"] = 24] = "JNE";
+    I[I["JG"] = 25] = "JG";
+    I[I["JL"] = 26] = "JL";
+    I[I["JIF"] = 27] = "JIF";
+    I[I["JF"] = 28] = "JF";
+    I[I["JGE"] = 29] = "JGE";
+    I[I["JLE"] = 30] = "JLE";
+    I[I["PUSH"] = 31] = "PUSH";
+    I[I["POP"] = 32] = "POP";
+    I[I["CALL"] = 33] = "CALL";
+    I[I["PRINT"] = 34] = "PRINT";
+    I[I["RET"] = 35] = "RET";
+    I[I["AUSE"] = 36] = "AUSE";
+    I[I["EXIT"] = 37] = "EXIT";
+    I[I["CALL_CTX"] = 38] = "CALL_CTX";
+    I[I["CALL_VAR"] = 39] = "CALL_VAR";
+    I[I["MOV_CTX"] = 40] = "MOV_CTX";
+    I[I["MOV_PROP"] = 41] = "MOV_PROP";
+    I[I["SET_CTX"] = 42] = "SET_CTX";
+    I[I["NEW_OBJ"] = 43] = "NEW_OBJ";
+    I[I["NEW_ARR"] = 44] = "NEW_ARR";
+    I[I["SET_KEY"] = 45] = "SET_KEY";
+    I[I["CALLBACK"] = 46] = "CALLBACK";
 })(I = exports.I || (exports.I = {}));
 exports.operantBytesSize = (_a = {},
     _a[3] = 2,
@@ -187,7 +197,7 @@ var VirtualMachine = (function () {
                 break;
             }
             case I.EXIT: {
-                console.log('exit', stack);
+                console.log('exit stack size -> ', stack.length);
                 this.stack = [];
                 this.isRunning = false;
                 this.init();
@@ -216,18 +226,6 @@ var VirtualMachine = (function () {
                 var dst = this.nextOperant();
                 var src = this.nextOperant();
                 this.stack[dst.index] = src.value;
-                break;
-            }
-            case I.ADD: {
-                var dst = this.nextOperant();
-                var src = this.nextOperant();
-                this.stack[dst.index] += src.value;
-                break;
-            }
-            case I.SUB: {
-                var dst = this.nextOperant();
-                var src = this.nextOperant();
-                this.stack[dst.index] -= src.value;
                 break;
             }
             case I.JMP: {
@@ -259,6 +257,23 @@ var VirtualMachine = (function () {
                 this.jumpWithCondidtion(function (a, b) { return a <= b; });
                 break;
             }
+            case I.JIF: {
+                var cond = this.nextOperant();
+                var address = this.nextOperant();
+                if (cond.value) {
+                    this.ip = address.value;
+                }
+                break;
+            }
+            case I.JF: {
+                var cond = this.nextOperant();
+                var address = this.nextOperant();
+                console.log("+++++++++++++++", address);
+                if (!cond.value) {
+                    this.ip = address.value;
+                }
+                break;
+            }
             case I.CALL_CTX:
             case I.CALL_VAR: {
                 var k = this.nextOperant().value;
@@ -278,6 +293,12 @@ var VirtualMachine = (function () {
                 var propKey = this.nextOperant();
                 var src = utils_1.getByProp(this.ctx, propKey.value);
                 this.stack[dst.index] = src;
+                break;
+            }
+            case I.SET_CTX: {
+                var propKey = this.nextOperant();
+                var val = this.nextOperant();
+                this.ctx[propKey.value] = val.value;
                 break;
             }
             case I.NEW_OBJ: {
@@ -314,7 +335,48 @@ var VirtualMachine = (function () {
                 stack[dst.index] = v;
                 break;
             }
+            case I.LT: {
+                this.binaryExpression(function (a, b) { return a < b; });
+                break;
+            }
+            case I.GT: {
+                this.binaryExpression(function (a, b) { return a > b; });
+                break;
+            }
+            case I.EQ: {
+                this.binaryExpression(function (a, b) { return a === b; });
+                break;
+            }
+            case I.LE: {
+                this.binaryExpression(function (a, b) { return a <= b; });
+                break;
+            }
+            case I.GE: {
+                this.binaryExpression(function (a, b) { return a >= b; });
+                break;
+            }
+            case I.ADD: {
+                this.binaryExpression(function (a, b) { return a + b; });
+                break;
+            }
+            case I.SUB: {
+                this.binaryExpression(function (a, b) { return a - b; });
+                break;
+            }
+            case I.MUL: {
+                this.binaryExpression(function (a, b) { return a * b; });
+                break;
+            }
+            case I.DIV: {
+                this.binaryExpression(function (a, b) { return a / b; });
+                break;
+            }
+            case I.MOD: {
+                this.binaryExpression(function (a, b) { return a % b; });
+                break;
+            }
             default:
+                console.log(this.ip);
                 throw new Error("Unknow command " + op);
         }
         return op;
@@ -401,6 +463,12 @@ var VirtualMachine = (function () {
         if (cond(op1.value, op2.value)) {
             this.ip = address.value;
         }
+    };
+    VirtualMachine.prototype.binaryExpression = function (exp) {
+        var o1 = this.nextOperant();
+        var o2 = this.nextOperant();
+        var ret = exp(o1.value, o2.value);
+        this.stack[o1.index] = ret;
     };
     VirtualMachine.prototype.newCallback = function (funcInfo) {
         var _this = this;
@@ -496,7 +564,6 @@ var readUInt32 = function (buffer, from, to) {
 var readString = function (buffer, from, to) {
     return utils_1.arrayBufferToString(buffer.slice(from, to));
 };
-console.log("???");
 
 
 /***/ }),

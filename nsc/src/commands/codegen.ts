@@ -1,14 +1,13 @@
 import { Command, flags } from '@oclif/command'
 import path = require("path")
 import fs = require("fs")
-import { generateAssemblyFromJs } from "nestscript"
-import { parseCodeToProgram } from '../../../assembler'
+import { generateAssemblyFromJs } from '../../../codegen'
 
-export default class Compile extends Command {
-  static description = 'describe the command here'
+export default class Codegen extends Command {
+  static description = 'compile js to nestscript assembly.'
 
   static examples = [
-    `$ nsc compile eg.asm target`,
+    `$ nsc codegen main.js main.nes`,
   ]
 
   static flags = {
@@ -22,7 +21,7 @@ export default class Compile extends Command {
   static args = [{ name: 'file' }, { name: 'target' }]
 
   async run() {
-    const { args, flags } = this.parse(Compile)
+    const { args, flags } = this.parse(Codegen)
     if (!args.file) {
       console.log("Please specify source file.")
       return
@@ -36,7 +35,7 @@ export default class Compile extends Command {
     const src = this.getAbsPath(args.file)
     const dst = this.getAbsPath(args.target)
     const code = fs.readFileSync(src, 'utf-8')
-    const buffer = parseCodeToProgram(code)
+    const buffer = generateAssemblyFromJs(code)
     fs.writeFileSync(dst, buffer)
     console.log("Compile done!")
   }

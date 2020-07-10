@@ -155,7 +155,7 @@ export class VirtualMachine {
       break
     }
     case I.EXIT: {
-      console.log('exit', stack)
+      console.log('exit stack size -> ', stack.length)
       this.stack = []
       this.isRunning = false
       this.init()
@@ -230,6 +230,7 @@ export class VirtualMachine {
     case I.JF: {
       const cond = this.nextOperant()
       const address = this.nextOperant()
+      // console.log("+++++++++++++++", address)
       if (!cond.value) {
         this.ip = address.value
       }
@@ -339,6 +340,7 @@ export class VirtualMachine {
       break
     }
     default:
+      console.log(this.ip)
       throw new Error("Unknow command " + op)
     }
 
@@ -574,5 +576,4 @@ const readString = (buffer: ArrayBuffer, from: number, to: number): string => {
   return arrayBufferToString(buffer.slice(from, to))
 }
 
-console.log("???")
 export { createVMFromArrayBuffer }

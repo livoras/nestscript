@@ -5,80 +5,6 @@
 const acorn = require("acorn")
 const walk = require("acorn-walk")
 import * as et from "estree"
-import { NONAME } from 'dns'
-import { stat } from 'fs'
-import { start } from 'repl'
-
-const testCode = `
-
-function main() {
-  // damn = "shi"
-  // damn.fuck = 'shit'
-  const a = true
-
-  for (let i = 0;i < 10 ; i++) {
-    console.log("111", i)
-    if (i === 5) {
-      for (damn.j = 0; damn.j < 10; damn.j++) {
-        console.log(i, j)
-        if (j === 5) {
-          break
-        }
-      }
-      break
-    }
-    console.log('1')
-  }
-
-  // if (fuck.you < c) {
-  //   console.log("GOOD")
-  // } else if (c > 0) {
-  //   console.log("???")
-  // } else {
-  //   amn()
-  //   kk()
-  // }
-  // var a = 1
-  // window.fuck = damn.good = 1
-  // window.console[window.sayHei()](fib(5))
-  // a = 'good'
-  // console.log(a.b.c.d.e.f[g.h.i.j.k[l.m['n']['o']]])
-}
-
-const kk = (a, b) => {
-  console.log("THIS IS THE BEST WORLD", a, b)
-}
-
-/*var name = "Jerry"
-
-const main = () => {
-  window.console[window.sayHei()](fib(5))
-  for (let i = 0; i < 20; i++) {
-    if (i % 2 === 0) {
-      console.log(fib(i))
-    }
-  }
-  var c = []
-  c['good'] = fib
-  Object.keys(c).forEach((k) => {
-    console.log(k)
-  })
-}
-
-function fib(n, a, b, c) {
-  if (n < 3) { return 1 }
-  let i = 1
-  let j = 1
-  n = n - 2
-  while (n-- > 0) {
-    let tmp = i
-    let j = i + j
-    let i = j
-    console.log(a, b, c)
-  }
-  return j
-}*/
-`
 
 const enum GlobalsType {
   FUNCTION,
@@ -117,7 +43,6 @@ class Codegen {
 }
 
 const codegen = new Codegen()
-const ret = codegen.parse(testCode)
 const state: IState = {
   tmpVariableName: '',
   isGlobal: true,
@@ -276,7 +201,9 @@ const parseToCode = (ast: any): void => {
 
     CallExpression(node: et.CallExpression, s: any, c: any): any {
       const retReg = s.r0
-      for (const arg of node.arguments) {
+      const args = [...node.arguments]
+      args.reverse()
+      for (const arg of args) {
         let reg
         if (arg.type === 'Identifier') {
           reg = arg.name
@@ -399,7 +326,7 @@ const parseToCode = (ast: any): void => {
     BinaryExpression(node: et.BinaryExpression, s: any, c: any): void {
       const [newReg, freeReg] = newRegisterController()
 
-      const leftReg = newReg()
+      const leftReg = s.r0 || newReg()
       const rightReg = newReg()
 
       getValueOfNode(node.left, leftReg, s, c)
@@ -484,6 +411,7 @@ const parseToCode = (ast: any): void => {
       cg(`LABEL ${startLabel}:`)
       // test
       const testReg = s.r0 = newReg()
+      console.log("---> test reg", testReg)
       c(node.test, s)
       cg(`JF ${testReg} ${endLabel}`)
       // body
@@ -537,31 +465,33 @@ const getFunctionDecleration = (func: IFunction): string => {
   return `func ${name}(${params}) {`
 }
 
-parseToCode(ret)
+export const generateAssemblyFromJs = (jsCode: string): string => {
+  const ret = codegen.parse(jsCode)
+  parseToCode(ret)
 
-while (state.functions.length > 0) {
-  state.isGlobal = false
-  state.maxRegister = 0
-  const funcAst = state.functions.shift()
-  state.locals = funcAst!.body.params.reduce((o, param): any => {
-    o[(param as et.Identifier).name] = GlobalsType.VARIABLE
-    return o
-  }, {})
-  // console.log(funcAst?.body.body, '-->')
-  state.codes.push(getFunctionDecleration(funcAst!))
-  const codeLen = state.codes.length
-  const registersCodes: string[] = []
-  parseToCode(funcAst?.body.body)
-  for (let i = 0; i < state.maxRegister; i++) {
-    registersCodes.push(`VAR _r${i}_`)
+  while (state.functions.length > 0) {
+    state.isGlobal = false
+    state.maxRegister = 0
+    const funcAst = state.functions.shift()
+    state.locals = funcAst!.body.params.reduce((o, param): any => {
+      o[(param as et.Identifier).name] = GlobalsType.VARIABLE
+      return o
+    }, {})
+    // console.log(funcAst?.body.body, '-->')
+    state.codes.push(getFunctionDecleration(funcAst!))
+    const codeLen = state.codes.length
+    const registersCodes: string[] = []
+    parseToCode(funcAst?.body.body)
+    for (let i = 0; i < state.maxRegister; i++) {
+      registersCodes.push(`VAR _r${i}_`)
+    }
+    state.codes.splice(codeLen, 0, ...registersCodes)
+    state.codes.push('}')
+    // state.codes.push('}')
   }
-  state.codes.splice(codeLen, 0, ...registersCodes)
-  state.codes.push('RET', '}')
-  // state.codes.push('}')
+  state.codes = state.codes.map((s: string): string => {
+    if (s.startsWith('func') || s.startsWith('LABEL') || s.startsWith('}')) { return s + '\n' }
+    return `    ${s};\n`
+  })
+  return state.codes.join("")
 }
-state.codes = state.codes.map((s: string): string => {
-  if (s.startsWith('func') || s.startsWith('LABEL') || s.startsWith('}')) { return s + '\n' }
-  return `    ${s};\n`
-})
-
-console.log(state.codes.join(""))

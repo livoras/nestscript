@@ -130,7 +130,8 @@ export const parseCodeToProgram = (program: string): Buffer => {
 
           if (
             ['JMP'].includes(op) ||
-            (['JE', 'JNE', 'JG', 'JL', 'JGE', 'JLE'].includes(op) && i === 3)
+            (['JE', 'JNE', 'JG', 'JL', 'JGE', 'JLE'].includes(op) && i === 3) ||
+            (['JF', 'JIF'].includes(op) && i === 2)
           ) {
             code[i] = {
               type: IOperatantType.ADDRESS,

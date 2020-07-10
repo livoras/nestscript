@@ -1,0 +1,80 @@
+func main() {
+    VAR _r0_;
+    VAR _r1_;
+    VAR _r2_;
+    VAR _r3_;
+    VAR _r4_;
+    VAR i;
+    MOV i 0;
+LABEL _l0_:
+    MOV _r0_ i;
+    MOV _r1_ 100;
+    LT _r0_ _r1_;
+    JF _r0_ _l1_;
+    PUSH i;
+    MOV _r1_ " --> ";
+    PUSH _r1_;
+    MOV_CTX _r1_ "console";
+    MOV _r2_ "log";
+    CALL_VAR _r1_ _r2_ 2;
+    MOV _r1_ i;
+    MOV _r3_ 13;
+    DIV _r1_ _r3_;
+    MOV _r2_ 1;
+    EQ _r1_ _r2_;
+    JF _r1_ _l2_;
+    PUSH i;
+    MOV _r2_ "this is the outer test";
+    PUSH _r2_;
+    MOV_CTX _r2_ "console";
+    MOV _r3_ "log";
+    CALL_VAR _r2_ _r3_ 2;
+    MOV _r2_ RET;
+    VAR j;
+    MOV j 0;
+LABEL _l4_:
+    MOV _r2_ j;
+    MOV _r3_ i;
+    LT _r2_ _r3_;
+    JF _r2_ _l5_;
+    MOV _r3_ i;
+    MOV _r4_ j;
+    ADD _r3_ _r4_;
+    PUSH _r3_;
+    PUSH j;
+    PUSH i;
+    MOV _r3_ "INNER TEST";
+    PUSH _r3_;
+    MOV_CTX _r3_ "console";
+    MOV _r4_ "log";
+    CALL_VAR _r3_ _r4_ 4;
+    PUSH j;
+    PUSH i;
+    CALL sayHi 2;
+    MOV _r3_ j;
+    ADD _r3_ 1;
+    MOV j _r3_;
+    JMP _l4_;
+LABEL _l5_:
+    JMP _l1_;
+LABEL _l2_:
+LABEL _l3_:
+    MOV _r1_ i;
+    ADD _r1_ 1;
+    MOV i _r1_;
+    JMP _l0_;
+LABEL _l1_:
+}
+func sayHi(a, b) {
+    VAR _r0_;
+    VAR _r1_;
+    MOV _r0_ a;
+    MOV _r1_ b;
+    ADD _r0_ _r1_;
+    PUSH _r0_;
+    MOV _r0_ 'GOOD -> ';
+    PUSH _r0_;
+    MOV_CTX _r0_ "console";
+    MOV _r1_ "log";
+    CALL_VAR _r0_ _r1_ 2;
+}
