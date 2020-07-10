@@ -42,11 +42,12 @@ export enum I {
  LT, GT, EQ, LE, GE, NE,
  AND, OR, XOR, NOT, SHL, SHR,
 
- JMP, JE, JNE, JG, JL, JIF, JNIF,
+ JMP, JE, JNE, JG, JL, JIF, JF,
  JGE, JLE, PUSH, POP, CALL, PRINT,
  RET, AUSE, EXIT,
 
  CALL_CTX, CALL_VAR, MOV_CTX, MOV_PROP,
+ SET_CTX, // SET_CTX "name" R1
  NEW_OBJ, NEW_ARR, SET_KEY,
  CALLBACK,
 }
@@ -226,7 +227,7 @@ export class VirtualMachine {
       }
       break
     }
-    case I.JNIF: {
+    case I.JF: {
       const cond = this.nextOperant()
       const address = this.nextOperant()
       if (!cond.value) {
@@ -254,6 +255,12 @@ export class VirtualMachine {
       const propKey = this.nextOperant()
       const src = getByProp(this.ctx, propKey.value)
       this.stack[dst.index] = src
+      break
+    }
+    case I.SET_CTX: {
+      const propKey = this.nextOperant()
+      const val = this.nextOperant()
+      this.ctx[propKey.value] = val.value
       break
     }
     case I.NEW_OBJ: {

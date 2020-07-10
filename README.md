@@ -59,6 +59,13 @@ func main() {
 * * *
 
 ## Change Log
+## 2020-07-10
+* 循环 codegen
+* 三种值的更新和获取
+  * Identifier
+    * context
+    * variables
+  * Memeber
 
 ## 2020-07-09
 * 完成二进制表达式的 codegen

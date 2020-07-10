@@ -7,22 +7,40 @@ const walk = require("acorn-walk")
 import * as et from "estree"
 import { NONAME } from 'dns'
 import { stat } from 'fs'
+import { start } from 'repl'
 
 const testCode = `
 
 function main() {
-  damn.fuck = 'shit'
-  if (fuck.you < c) {
-    console.log("GOOD")
-  } else if (c > 0) {
-    console.log("???")
-  } else {
-    amn()
-    kk()
+  // damn = "shi"
+  // damn.fuck = 'shit'
+  const a = true
+
+  for (let i = 0;i < 10 ; i++) {
+    console.log("111", i)
+    if (i === 5) {
+      for (damn.j = 0; damn.j < 10; damn.j++) {
+        console.log(i, j)
+        if (j === 5) {
+          break
+        }
+      }
+      break
+    }
+    console.log('1')
   }
+
+  // if (fuck.you < c) {
+  //   console.log("GOOD")
+  // } else if (c > 0) {
+  //   console.log("???")
+  // } else {
+  //   amn()
+  //   kk()
+  // }
   // var a = 1
   // window.fuck = damn.good = 1
-  window.console[window.sayHei()](fib(5))
+  // window.console[window.sayHei()](fib(5))
   // a = 'good'
   // console.log(a.b.c.d.e.f[g.h.i.j.k[l.m['n']['o']]])
 }
@@ -121,7 +139,12 @@ const parseToCode = (ast: any): void => {
     return `__$Function$__${state.functionIndex++}`
   }
 
-  const cg = (c: string): any => state.codes.push(c)
+  const cg = (c: string): any => {
+    const isJump = (cc: string): boolean => /^JMP/.test(cc)
+    // 不要同时跳转两次
+    if (isJump(c) && isJump(state.codes[state.codes.length - 1])) { return }
+    state.codes.push(c)
+  }
 
   const parseFunc = (node: et.FunctionExpression | et.ArrowFunctionExpression, name?: string): string => {
     const funcName = name || newFunctionName()
@@ -155,21 +178,66 @@ const parseToCode = (ast: any): void => {
     }]
   }
 
-  const setIdentifierToRegister = (reg: string, id: string, s: any): void => {
-    if (s.globals[id] || s.locals[id]) {
-      s.codes.push(`MOV ${reg} ${id}`)
-    } else {
-      s.codes.push(`MOV_CTX ${reg} "${id}"`)
-    }
-  }
+  // const setIdentifierToRegister = (reg: string, id: string, s: any): void => {
+  //   if (s.globals[id] || s.locals[id]) {
+  //     s.codes.push(`MOV ${reg} ${id}`)
+  //   } else {
+  //     s.codes.push(`MOV_CTX ${reg} "${id}"`)
+  //   }
+  // }
 
   const callIdentifier = (id: string, numArgs: number, s: IState): void => {
     if (s.functionTable[id]) {
-      s.codes.push(`CALL ${id} ${numArgs}`)
+      cg(`CALL ${id} ${numArgs}`)
     } else {
-      s.codes.push(`CALL_CTX "${id}" ${numArgs}`)
+      cg(`CALL_CTX "${id}" ${numArgs}`)
     }
   }
+
+  const hasVars = (name: string, s: any): boolean => {
+    return s.globals[name] || s.locals[name]
+  }
+
+  const setValueToNode = (node: any, reg: string, s: any, c: any): any => {
+    if (node.type === 'MemberExpression') {
+      // s.r0 = newReg()
+      s.r0 = null
+      const objReg = s.r1 = newRegister()
+      const keyReg = s.r2 = newRegister()
+      c(node, s)
+      cg(`SET_KEY ${objReg} ${keyReg} ${reg}`)
+      freeRegister()
+      freeRegister()
+    } else if (node.type === 'Identifier') {
+      // setIdentifierToRegister(node.name, reg, s)
+      // s.codes.push(`MOV ${left.name} ${rightReg}`)
+      if (hasVars(node.name, s)) {
+        cg(`MOV ${node.name} ${reg}`)
+      } else {
+        cg(`SET_CTX "${node.name}" ${reg}`)
+      }
+    } else {
+      throw new Error('Unprocessed assignment')
+    }
+  }
+
+  const getValueOfNode = (node: any, reg: string, s: any, c: any): any => {
+    if (node.type === 'Identifier') {
+      if (hasVars(node.name, s)) {
+        cg(`MOV ${reg} ${node.name}`)
+      } else {
+        cg(`MOV_CTX ${reg} "${node.name}"`)
+      }
+    } else {
+      s.r0 = reg
+      c(node, s)
+    }
+  }
+
+  const loopEndLabels: string[] = []
+  const pushLoopEndLabels = (label: string): any => loopEndLabels.push(label)
+  const popLoopEndLabels = (): any => loopEndLabels.pop()
+  const getCurrentLoopEndLabel = (): string => loopEndLabels[loopEndLabels.length - 1]
 
   walk.recursive(ast, state, {
     VariableDeclaration: (node: et.VariableDeclaration, s: any, c: any): void => {
@@ -187,10 +255,10 @@ const parseToCode = (ast: any): void => {
           return
         }
         if (state.isGlobal) {
-          s.codes.push(`GLOBAL ${node.id.name}`)
+          cg(`GLOBAL ${node.id.name}`)
           s.globals[node.id.name] = GlobalsType.VARIABLE
         } else {
-          s.codes.push(`VAR ${node.id.name}`)
+          cg(`VAR ${node.id.name}`)
           s.locals[node.id.name] = GlobalsType.VARIABLE
         }
         reg = node.id.name
@@ -218,7 +286,7 @@ const parseToCode = (ast: any): void => {
           freeRegister()
         }
         // console.log('---->>', reg, node.callee)
-        s.codes.push(`PUSH ${reg}`)
+        cg(`PUSH ${reg}`)
       }
 
       if (node.callee.type === "MemberExpression") {
@@ -226,7 +294,7 @@ const parseToCode = (ast: any): void => {
         const objReg = s.r1 = newRegister()
         const keyReg = s.r2 = newRegister()
         c(node.callee, s)
-        s.codes.push(`CALL_VAR ${objReg} ${keyReg} ${node.arguments.length}`)
+        cg(`CALL_VAR ${objReg} ${keyReg} ${node.arguments.length}`)
         freeRegister()
         freeRegister()
       } else if (node.callee.type === "Identifier") {
@@ -234,12 +302,20 @@ const parseToCode = (ast: any): void => {
         // s.codes.push(`CALL ${node.callee.name} ${node.arguments.length}`)
       }
       if (retReg) {
-        s.codes.push(`MOV ${retReg} RET`)
+        cg(`MOV ${retReg} RET`)
       }
     },
 
     Literal: (node: et.Literal, s: any): void => {
-      s.codes.push(`MOV ${s.r0} ${node.raw}`)
+      let val
+      if (node.value === true) {
+        val = 1
+      } else if (node.value === false) {
+        val = 0
+      } else {
+        val = node.raw
+      }
+      cg(`MOV ${s.r0} ${val}`)
     },
 
     ArrowFunctionExpression(node: et.ArrowFunctionExpression, s: any, c: any): any {
@@ -262,7 +338,7 @@ const parseToCode = (ast: any): void => {
         c(node.object, s)
         freeRegister()
       } else if (node.object.type === 'Identifier') {
-        setIdentifierToRegister(objReg, node.object.name, s)
+        getValueOfNode(node.object, objReg, s, c)
       } else {
         s.r0 = objReg
         c(node.object, s)
@@ -276,9 +352,9 @@ const parseToCode = (ast: any): void => {
       } else if (node.property.type === 'Identifier') {
         // a.b.c.d
         if (node.computed) {
-          s.codes.push(`MOV ${keyReg} ${node.property.name}`)
+          cg(`MOV ${keyReg} ${node.property.name}`)
         } else {
-          s.codes.push(`MOV ${keyReg} "${node.property.name}"`)
+          cg(`MOV ${keyReg} "${node.property.name}"`)
         }
       } else {
         s.r0 = keyReg
@@ -286,7 +362,7 @@ const parseToCode = (ast: any): void => {
       }
 
       if (valReg) {
-        s.codes.push(`MOV_PROP ${valReg} ${objReg} ${keyReg}`)
+        cg(`MOV_PROP ${valReg} ${objReg} ${keyReg}`)
       }
       freeReg()
     },
@@ -295,50 +371,52 @@ const parseToCode = (ast: any): void => {
       const left = node.left
       const right = node.right
       const [newReg, freeReg] = newRegisterController()
-
-      let rightReg
-      if (right.type === 'Identifier') {
-        rightReg = right.name
-      } else {
-        s.r0 = rightReg = newReg()
-        c(right, s)
-      }
-
-      if (left.type === 'MemberExpression') {
-        // s.r0 = newReg()
-        s.r0 = null
-        const objReg = s.r1 = newReg()
-        const keyReg = s.r2 = newReg()
-        c(left, s)
-        s.codes.push(`SET_KEY ${objReg} ${keyReg} ${rightReg}`)
-      } else if (left.type === 'Identifier') {
-        s.codes.push(`MOV ${left.name} ${rightReg}`)
-      } else {
-        throw new Error('Unprocessed assignment')
-      }
-
+      const rightReg = newReg()
+      // if (right.type === 'Identifier') {
+      //   rightReg = right.name
+      // } else {
+      //   s.r0 = rightReg = newReg()
+      //   c(right, s)
+      // }
+      getValueOfNode(right, rightReg, s, c)
+      setValueToNode(left, rightReg, s, c)
+      // if (left.type === 'MemberExpression') {
+      //   // s.r0 = newReg()
+      //   s.r0 = null
+      //   const objReg = s.r1 = newReg()
+      //   const keyReg = s.r2 = newReg()
+      //   c(left, s)
+      //   s.codes.push(`SET_KEY ${objReg} ${keyReg} ${rightReg}`)
+      // } else if (left.type === 'Identifier') {
+      //   setIdentifierToRegister(left.name, rightReg, s)
+      //   // s.codes.push(`MOV ${left.name} ${rightReg}`)
+      // } else {
+      //   throw new Error('Unprocessed assignment')
+      // }
       freeReg()
     },
 
     BinaryExpression(node: et.BinaryExpression, s: any, c: any): void {
       const [newReg, freeReg] = newRegisterController()
 
-      let leftReg = s.r0 || newReg()
-      let rightReg
+      const leftReg = newReg()
+      const rightReg = newReg()
 
-      if (node.left.type === 'Identifier') {
-        leftReg = node.left.name
-      } else {
-        s.r0 = leftReg
-        c(node.left, s)
-      }
+      getValueOfNode(node.left, leftReg, s, c)
+      getValueOfNode(node.right, rightReg, s, c)
+      // if (node.left.type === 'Identifier') {
+      //   leftReg = node.left.name
+      // } else {
+      //   s.r0 = leftReg
+      //   c(node.left, s)
+      // }
 
-      if (node.right.type === 'Identifier') {
-        rightReg = node.right.name
-      } else {
-        s.r0 = rightReg = newReg()
-        c(node.right, s)
-      }
+      // if (node.right.type === 'Identifier') {
+      //   rightReg = node.right.name
+      // } else {
+      //   s.r0 = rightReg = newReg()
+      //   c(node.right, s)
+      // }
 
       const codeMap = {
         '<': 'LT',
@@ -370,27 +448,78 @@ const parseToCode = (ast: any): void => {
       const [newReg, freeReg] = newRegisterController()
 
       const testReg = newReg()
-      const label = newLabelName()
-      const endLabel = s.endLabel
-      s.endLabel = endLabel || newReg()
+      const nextLabel = newLabelName()
+      const hasEndLabel = !!s.endLabel
+      const endLabel = s.endLabel || newLabelName()
+      s.endLabel = endLabel
 
       s.r0 = testReg
       c(node.test, s)
 
-      cg(`JNIF ${testReg} ${label}`)
+      cg(`JF ${testReg} ${nextLabel}`)
       c(node.consequent, s)
-      cg(`JMP ${s.endLabel}`)
+      cg(`JMP ${endLabel}`)
 
-      cg(`LABEL ${label}:`)
+      cg(`LABEL ${nextLabel}:`)
       if (node.alternate) {
         c(node.alternate, s)
       }
 
-      if (endLabel) {
+      // console.log("THE FUCKING LABEL", endLabel)
+      if (!hasEndLabel) {
         cg(`LABEL ${endLabel}:`)
         delete s.endLabel
       }
 
+      freeReg()
+    },
+
+    ForStatement(node: et.ForStatement, s: any, c: any): any {
+      const [newReg, freeReg] = newRegisterController()
+      const startLabel = newLabelName()
+      const endLabel = newLabelName()
+      pushLoopEndLabels(endLabel)
+      // init
+      c(node.init, s)
+      cg(`LABEL ${startLabel}:`)
+      // test
+      const testReg = s.r0 = newReg()
+      c(node.test, s)
+      cg(`JF ${testReg} ${endLabel}`)
+      // body
+      s.forEndLabel = endLabel
+      s.r0 = null
+      c(node.body, s)
+      // update
+      s.r0 = null
+      c(node.update, s)
+      cg(`JMP ${startLabel}`)
+      // end
+      cg(`LABEL ${endLabel}:`)
+      popLoopEndLabels()
+      freeReg()
+    },
+
+    BreakStatement(node: et.BreakStatement, s: any, c: any): any {
+      const endLabel = getCurrentLoopEndLabel()
+      if (!endLabel) {
+        throw new Error("Not end label, cannot use `break` here.")
+      }
+      // cg(`JMP ${endLabel} (break)`)
+      cg(`JMP ${endLabel}`)
+    },
+
+    UpdateExpression(node: et.UpdateExpression, s: any, c: any): any {
+      const op = node.operator
+      const [newReg, freeReg] = newRegisterController()
+      const reg = newReg()
+      getValueOfNode(node.argument, reg, s, c)
+      if (op === '++') {
+        cg(`ADD ${reg} 1`)
+      } else if (op === '--') {
+        cg(`SUB ${reg} 1`)
+      }
+      setValueToNode(node.argument, reg, s, c)
       freeReg()
     },
 
@@ -428,11 +557,11 @@ while (state.functions.length > 0) {
   }
   state.codes.splice(codeLen, 0, ...registersCodes)
   state.codes.push('RET', '}')
-  state.codes = state.codes.map((s: string): string => {
-    if (s.startsWith('func') || s.startsWith('LABEL') || s.startsWith('}')) { return s }
-    return `    ${s}`
-  })
   // state.codes.push('}')
 }
+state.codes = state.codes.map((s: string): string => {
+  if (s.startsWith('func') || s.startsWith('LABEL') || s.startsWith('}')) { return s + '\n' }
+  return `    ${s};\n`
+})
 
-console.log(state)
+console.log(state.codes.join(""))
