@@ -30,6 +30,7 @@ interface IState {
   r1: string,
   r2: string,
   maxRegister: number,
+  currentFunctionName: string,
 
   // $obj: string,
   // $key: string,
@@ -57,11 +58,13 @@ const state: IState = {
   r1: '', // 寄存器的名字
   r2: '', //
   maxRegister: 0,
+  currentFunctionName: '',
 }
 // tslint:disable-next-line: no-big-function
 const parseToCode = (ast: any): void => {
   const newFunctionName = (): string => {
-    return `__$Function$__${state.functionIndex++}`
+    state.currentFunctionName = `___f___${state.functionIndex++}`
+    return state.currentFunctionName
   }
 
   const cg = (c: string): any => {
@@ -210,6 +213,13 @@ const parseToCode = (ast: any): void => {
         } else {
           reg = s.r0 = newRegister()
           c(arg, s)
+          if (
+            arg.type === 'FunctionExpression' ||
+            arg.type === 'ArrowFunctionExpression'
+          ) {
+            // console.log("++++++++++++++++><", arg, s.currentFunctionName)
+            cg(`CALLBACK ${reg} ${s.currentFunctionName}`)
+          }
           freeRegister()
         }
         // console.log('---->>', reg, node.callee)

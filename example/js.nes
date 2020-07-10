@@ -130,6 +130,11 @@ LABEL _l5_:
     MOV i _r1_;
     JMP _l2_;
 LABEL _l3_:
+    CALLBACK _r0_ ___f___0;
+    PUSH _r0_;
+    MOV _r0_ b;
+    MOV _r1_ "forEach";
+    CALL_VAR _r0_ _r1_ 1;
 }
 func sayHi(a, b) {
     VAR _r0_;
@@ -168,4 +173,14 @@ LABEL _l8_:
     MOV i _r1_;
     JMP _l8_;
 LABEL _l9_:
+}
+func ___f___0(val) {
+    VAR _r0_;
+    VAR _r1_;
+    PUSH val;
+    MOV _r0_ "THIS IS THE VALUE- >";
+    PUSH _r0_;
+    MOV_CTX _r0_ "console";
+    MOV _r1_ "log";
+    CALL_VAR _r0_ _r1_ 2;
 }

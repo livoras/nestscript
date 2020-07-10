@@ -16,6 +16,9 @@ const main = () => {
       sayHi(i, j)
     }
   }
+  b.forEach((val) => {
+    console.log("THIS IS THE VALUE- >", val)
+  })
 }
 
 const sayHi = (a, b) => {
