@@ -265,6 +265,7 @@ const parseToCode = (ast: any): void => {
         c(node.object, s)
         freeRegister()
       } else if (node.object.type === 'Identifier') {
+        console.log(objReg, '---?', node.object.name)
         getValueOfNode(node.object, objReg, s, c)
       } else {
         s.r0 = objReg
@@ -291,6 +292,9 @@ const parseToCode = (ast: any): void => {
       if (valReg) {
         cg(`MOV_PROP ${valReg} ${objReg} ${keyReg}`)
       }
+      s.r0 = null
+      s.r1 = null
+      s.r2 = null
       freeReg()
     },
 
@@ -407,21 +411,27 @@ const parseToCode = (ast: any): void => {
       const endLabel = newLabelName()
       pushLoopEndLabels(endLabel)
       // init
-      c(node.init, s)
+      if (node.init) {
+        c(node.init, s)
+      }
       cg(`LABEL ${startLabel}:`)
       // test
-      const testReg = s.r0 = newReg()
-      console.log("---> test reg", testReg)
-      c(node.test, s)
-      cg(`JF ${testReg} ${endLabel}`)
+      if (node.test) {
+        const testReg = s.r0 = newReg()
+        console.log("---> test reg", testReg)
+        c(node.test, s)
+        cg(`JF ${testReg} ${endLabel}`)
+      }
       // body
       s.forEndLabel = endLabel
       s.r0 = null
       c(node.body, s)
       // update
-      s.r0 = null
-      c(node.update, s)
-      cg(`JMP ${startLabel}`)
+      if (node.update) {
+        s.r0 = null
+        c(node.update, s)
+        cg(`JMP ${startLabel}`)
+      }
       // end
       cg(`LABEL ${endLabel}:`)
       popLoopEndLabels()
@@ -448,6 +458,46 @@ const parseToCode = (ast: any): void => {
         cg(`SUB ${reg} 1`)
       }
       setValueToNode(node.argument, reg, s, c)
+      freeReg()
+    },
+
+    ObjectExpression(node: et.ObjectExpression, s: any, c: any): any {
+      const [newReg, freeReg] = newRegisterController()
+      const reg = s.r0 || newReg()
+      cg(`NEW_OBJ ${reg}`)
+      for (const prop of node.properties) {
+        s.r0 = reg
+        c(prop, s)
+      }
+      freeReg()
+    },
+
+    ArrayExpression(node: et.ArrayExpression, s: any, c: any): any {
+      const [newReg, freeReg] = newRegisterController()
+      const reg = s.r0 || newReg()
+      cg(`NEW_ARR ${reg}`)
+      node.elements.forEach((el: any, i: number): void => {
+        const valReg = s.r0 = newRegister()
+        c(el, s)
+        cg(`SET_KEY ${reg} ${i} ${valReg}`)
+        freeRegister()
+      })
+      freeReg()
+    },
+
+    Property(node: et.Property, s: any, c: any): any {
+      const objReg = s.r0
+      const [newReg, freeReg] = newRegisterController()
+      const valReg = newReg()
+      let key
+      if (node.key.type === "Identifier") {
+        key = node.key.name
+      } else if (node.key.type === "Literal") {
+        key = node.key.value
+      }
+      // getValueOfNode(node.key, keyReg, s, c)
+      getValueOfNode(node.value, valReg, s, c)
+      cg(`SET_KEY ${objReg} "${key}" ${valReg}`)
       freeReg()
     },
 

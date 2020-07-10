@@ -144,6 +144,7 @@ export class VirtualMachine {
     while (this.isRunning) { this.fetchAndExecute() }
   }
 
+  // tslint:disable-next-line: no-big-function
   public fetchAndExecute(): I {
     const stack = this.stack
     const op = this.nextOperator()

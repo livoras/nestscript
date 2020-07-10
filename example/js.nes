@@ -4,13 +4,78 @@ func main() {
     VAR _r2_;
     VAR _r3_;
     VAR _r4_;
+    VAR _r5_;
+    VAR a;
+    NEW_OBJ a;
+    MOV _r0_ 'b';
+    SET_KEY a "a" _r0_;
+    MOV _r0_ 'm';
+    SET_KEY a "k" _r0_;
+    NEW_OBJ _r0_;
+    MOV _r1_ 'good';
+    SET_KEY _r0_ "d" _r1_;
+    SET_KEY a "c" _r0_;
+    VAR b;
+    NEW_ARR b;
+    MOV _r0_ 1;
+    SET_KEY b 0 _r0_;
+    MOV _r0_ 2;
+    SET_KEY b 1 _r0_;
+    MOV _r0_ 3;
+    SET_KEY b 2 _r0_;
+    NEW_OBJ _r0_;
+    MOV _r1_ a;
+    SET_KEY _r0_ "c" _r1_;
+    SET_KEY b 3 _r0_;
+    VAR c;
+    NEW_OBJ c;
+    MOV _r0_ a;
+    SET_KEY c "a" _r0_;
+    MOV _r0_ b;
+    SET_KEY c "b" _r0_;
+    MOV _r0_ 0;
+    SET_KEY c "i" _r0_;
+    MOV _r0_ 0;
+    SET_CTX "i" _r0_;
+LABEL _l0_:
+    MOV _r2_ c;
+    MOV _r3_ "i";
+    MOV_PROP _r0_ _r2_ _r3_;
+    MOV _r2_ b;
+    MOV _r3_ "length";
+    MOV_PROP _r1_ _r2_ _r3_;
+    LT _r0_ _r1_;
+    JF _r0_ _l1_;
+    PUSH b;
+    MOV _r2_ c;
+    MOV _r3_ "i";
+    MOV_PROP _r1_ _r2_ _r3_;
+    PUSH _r1_;
+    MOV _r2_ b;
+    MOV _r5_ c;
+    MOV _r4_ "i";
+    MOV_PROP _r3_ _r5_ _r4_;
+    MOV_PROP _r1_ _r2_ _r3_;
+    PUSH _r1_;
+    MOV_CTX _r1_ "console";
+    MOV _r2_ "log";
+    CALL_VAR _r1_ _r2_ 3;
+    MOV _r2_ c;
+    MOV _r3_ "i";
+    MOV_PROP _r1_ _r2_ _r3_;
+    ADD _r1_ 1;
+    MOV _r2_ c;
+    MOV _r3_ "i";
+    SET_KEY _r2_ _r3_ _r1_;
+    JMP _l0_;
+LABEL _l1_:
     VAR i;
     MOV i 0;
-LABEL _l0_:
+LABEL _l2_:
     MOV _r0_ i;
     MOV _r1_ 100;
     LT _r0_ _r1_;
-    JF _r0_ _l1_;
+    JF _r0_ _l3_;
     PUSH i;
     MOV _r1_ " --> ";
     PUSH _r1_;
@@ -22,7 +87,7 @@ LABEL _l0_:
     DIV _r1_ _r3_;
     MOV _r2_ 1;
     EQ _r1_ _r2_;
-    JF _r1_ _l2_;
+    JF _r1_ _l4_;
     PUSH i;
     MOV _r2_ "this is the outer test";
     PUSH _r2_;
@@ -32,11 +97,11 @@ LABEL _l0_:
     MOV _r2_ RET;
     VAR j;
     MOV j 0;
-LABEL _l4_:
+LABEL _l6_:
     MOV _r2_ j;
     MOV _r3_ i;
     LT _r2_ _r3_;
-    JF _r2_ _l5_;
+    JF _r2_ _l7_;
     MOV _r3_ i;
     MOV _r4_ j;
     ADD _r3_ _r4_;
@@ -48,22 +113,23 @@ LABEL _l4_:
     MOV_CTX _r3_ "console";
     MOV _r4_ "log";
     CALL_VAR _r3_ _r4_ 4;
-    PUSH j;
-    PUSH i;
-    CALL sayHi 2;
     MOV _r3_ j;
     ADD _r3_ 1;
     MOV j _r3_;
-    JMP _l4_;
+    JMP _l6_;
+LABEL _l7_:
+    JMP _l3_;
+    PUSH j;
+    PUSH i;
+    CALL sayHi 2;
+    JMP _l5_;
+LABEL _l4_:
 LABEL _l5_:
-    JMP _l1_;
-LABEL _l2_:
-LABEL _l3_:
     MOV _r1_ i;
     ADD _r1_ 1;
     MOV i _r1_;
-    JMP _l0_;
-LABEL _l1_:
+    JMP _l2_;
+LABEL _l3_:
 }
 func sayHi(a, b) {
     VAR _r0_;
@@ -82,11 +148,11 @@ func sayHi(a, b) {
     MOV j 100;
     VAR i;
     MOV i 30;
-LABEL _l6_:
+LABEL _l8_:
     MOV _r0_ i;
     MOV _r1_ j;
     LT _r0_ _r1_;
-    JF _r0_ _l7_;
+    JF _r0_ _l9_;
     MOV _r1_ j;
     SUB _r1_ 1;
     MOV j _r1_;
@@ -100,6 +166,6 @@ LABEL _l6_:
     MOV _r1_ i;
     ADD _r1_ 1;
     MOV i _r1_;
-    JMP _l6_;
-LABEL _l7_:
+    JMP _l8_;
+LABEL _l9_:
 }
