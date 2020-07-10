@@ -68,6 +68,7 @@ LABEL _l1_:
 func sayHi(a, b) {
     VAR _r0_;
     VAR _r1_;
+    VAR _r2_;
     MOV _r0_ a;
     MOV _r1_ b;
     ADD _r0_ _r1_;
@@ -77,4 +78,28 @@ func sayHi(a, b) {
     MOV_CTX _r0_ "console";
     MOV _r1_ "log";
     CALL_VAR _r0_ _r1_ 2;
+    VAR j;
+    MOV j 100;
+    VAR i;
+    MOV i 30;
+LABEL _l6_:
+    MOV _r0_ i;
+    MOV _r1_ j;
+    LT _r0_ _r1_;
+    JF _r0_ _l7_;
+    MOV _r1_ j;
+    SUB _r1_ 1;
+    MOV j _r1_;
+    PUSH j;
+    PUSH i;
+    MOV _r1_ 'youth';
+    PUSH _r1_;
+    MOV_CTX _r1_ "console";
+    MOV _r2_ "log";
+    CALL_VAR _r1_ _r2_ 3;
+    MOV _r1_ i;
+    ADD _r1_ 1;
+    MOV i _r1_;
+    JMP _l6_;
+LABEL _l7_:
 }

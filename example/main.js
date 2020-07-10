@@ -14,4 +14,9 @@ const main = () => {
 
 const sayHi = (a, b) => {
   console.log('GOOD -> ', a + b)
+  const j = 100
+  for (let i = 30; i < j; i++) {
+    j--
+    console.log('youth', i, j)
+  }
 }
