@@ -288,7 +288,6 @@ var VirtualMachine = (function () {
                 for (var i = 0; i < numArgs; i++) {
                     args.push(stack[this.sp--]);
                 }
-                console.log(o, f, op === I.CALL_CTX);
                 stack[0] = o[f].apply(o, args);
                 this.stack = stack.slice(0, this.sp + 1);
                 break;

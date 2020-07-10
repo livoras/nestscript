@@ -35,6 +35,8 @@ func main() {
     SET_KEY c "b" _r0_;
     MOV _r0_ 0;
     SET_KEY c "i" _r0_;
+    VAR ppp;
+    MOV ppp 0;
     MOV _r0_ 0;
     SET_CTX "i" _r0_;
 LABEL _l0_:
@@ -113,6 +115,9 @@ LABEL _l6_:
     MOV_CTX _r3_ "console";
     MOV _r4_ "log";
     CALL_VAR _r3_ _r4_ 4;
+    MOV _r3_ ppp;
+    ADD _r3_ 1;
+    MOV ppp _r3_;
     MOV _r3_ j;
     ADD _r3_ 1;
     MOV j _r3_;
@@ -130,6 +135,10 @@ LABEL _l5_:
     MOV i _r1_;
     JMP _l2_;
 LABEL _l3_:
+    PUSH ppp;
+    MOV_CTX _r0_ "console";
+    MOV _r1_ "log";
+    CALL_VAR _r0_ _r1_ 1;
     MOV _r0_ 3;
     PUSH _r0_;
     CALLBACK _r0_ ___f___0;
@@ -179,7 +188,7 @@ func ___f___0() {
     VAR _r0_;
     VAR _r1_;
     NEW_OBJ _r0_;
-    MOV _r1_ "OJBK";
+    MOV _r1_ "GOodNigh.";
     SET_KEY _r0_ "title" _r1_;
     PUSH _r0_;
     MOV_CTX _r0_ "wx";

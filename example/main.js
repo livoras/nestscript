@@ -2,6 +2,7 @@ const main = () => {
   const a = { a: 'b', 'k': 'm', c: { d: 'good' } }
   const b = [1, 2, 3, { c: a }]
   const c = { a, b, i: 0 }
+  let ppp = 0
   for (i = 0; c.i < b.length; c.i++) {
     console.log(b[c.i], c.i, b)
   }
@@ -11,6 +12,7 @@ const main = () => {
       console.log("this is the outer test", i)
       for (let j = 0; j < i; j++) {
         console.log("INNER TEST", i, j, i + j)
+        ppp++
       }
       break
       sayHi(i, j)
@@ -19,8 +21,9 @@ const main = () => {
   // b.forEach((val) => {
   //   console.log("THIS IS THE VALUE- >", val)
   // })
+  console.log(ppp)
   setTimeout(() => {
-    wx.showToast({ title: "OJBK" })
+    wx.showToast({ title: "GOodNigh."  })
   }, 3)
 }
 
