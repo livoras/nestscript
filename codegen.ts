@@ -265,7 +265,7 @@ const parseToCode = (ast: any): void => {
         c(node.object, s)
         freeRegister()
       } else if (node.object.type === 'Identifier') {
-        console.log(objReg, '---?', node.object.name)
+        // console.log(objReg, '---?', node.object.name)
         getValueOfNode(node.object, objReg, s, c)
       } else {
         s.r0 = objReg
@@ -418,7 +418,7 @@ const parseToCode = (ast: any): void => {
       // test
       if (node.test) {
         const testReg = s.r0 = newReg()
-        console.log("---> test reg", testReg)
+        // console.log("---> test reg", testReg)
         c(node.test, s)
         cg(`JF ${testReg} ${endLabel}`)
       }
