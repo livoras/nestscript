@@ -1,4 +1,5 @@
 import { arrayBufferToString, getByProp } from './utils'
+import { chownSync } from 'fs'
 /**
  *
  * MOV dest src 赋值给变量
@@ -46,7 +47,7 @@ export enum I {
  JGE, JLE, PUSH, POP, CALL, PRINT,
  RET, AUSE, EXIT,
 
- CALL_CTX, CALL_VAR, MOV_CTX, MOV_PROP,
+ CALL_CTX, CALL_VAR, CALL_REG, MOV_CTX, MOV_PROP,
  SET_CTX, // SET_CTX "name" R1
  NEW_OBJ, NEW_ARR, SET_KEY,
  CALLBACK,
@@ -258,6 +259,17 @@ export class VirtualMachine {
       stack[0] = o[f].apply(o, args)
       // console.log(this.stack)
       this.stack = stack.slice(0, this.sp + 1)
+      break
+    }
+    case I.CALL_REG: {
+      const f = this.nextOperant().value
+      const numArgs = this.nextOperant().value
+      const args = []
+      for (let i = 0; i < numArgs; i++) {
+        args.push(stack[this.sp--])
+      }
+      // console.log(stack, f)
+      f(...args)
       break
     }
     case I.MOV_CTX: {

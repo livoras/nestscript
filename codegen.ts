@@ -5,6 +5,7 @@
 const acorn = require("acorn")
 const walk = require("acorn-walk")
 import * as et from "estree"
+import { notDeepEqual } from 'assert'
 
 const enum GlobalsType {
   FUNCTION,
@@ -74,11 +75,15 @@ const parseToCode = (ast: any): void => {
     state.codes.push(c)
   }
 
-  const parseFunc = (node: et.FunctionExpression | et.ArrowFunctionExpression, name?: string): string => {
-    const funcName = name || newFunctionName()
+  const parseFunc = (node: et.FunctionExpression | et.ArrowFunctionExpression, s?: any): string => {
+    const funcName = s.funcName || newFunctionName()
     state.globals[funcName] = GlobalsType.FUNCTION
     state.functions.push({ name: funcName, body: node })
     state.functionTable[funcName] = node
+    if (s.r0 && !state.isGlobal) {
+      cg(`CALLBACK ${s.r0} ${funcName}`)
+    }
+    delete s.funcName
     return funcName
   }
 
@@ -117,6 +122,8 @@ const parseToCode = (ast: any): void => {
   const callIdentifier = (id: string, numArgs: number, s: IState): void => {
     if (s.functionTable[id]) {
       cg(`CALL ${id} ${numArgs}`)
+    } else if (s.locals[id]) {
+      cg(`CALL_REG ${id} ${numArgs}`)
     } else {
       // const reg = newRegister()
       cg(`CALL_CTX "${id}" ${numArgs}`)
@@ -175,28 +182,47 @@ const parseToCode = (ast: any): void => {
       node.declarations.forEach((n: any): void => c(n, state))
     },
 
+    /** 要处理 (global, local) * (function, other) 的情况 */
     VariableDeclarator: (node: et.VariableDeclarator, s: any, c: any): void => {
       // console.log(node)
+      const [newReg, freeReg] = newRegisterController()
       let reg
+      let funcName = ''
+      const isInitFunction = node.init?.type === 'FunctionExpression' || node.init?.type === 'ArrowFunctionExpression'
       if (node.id.type === 'Identifier') {
-        if (node.init?.type === 'FunctionExpression' || node.init?.type === 'ArrowFunctionExpression') {
-          parseFunc(node.init, state.isGlobal ? node.id.name : '')
-          // console.log("--->", funcName)
-          return
-        }
-        if (state.isGlobal) {
-          cg(`GLOBAL ${node.id.name}`)
-          s.globals[node.id.name] = GlobalsType.VARIABLE
+        if (isInitFunction) {
+          reg = node.id.name // newReg()
+          if (state.isGlobal) {
+            funcName = node.id.name
+          } else {
+            s.locals[node.id.name] = GlobalsType.VARIABLE
+            cg(`VAR ${node.id.name}`)
+            funcName = newFunctionName()
+          }
         } else {
-          cg(`VAR ${node.id.name}`)
-          s.locals[node.id.name] = GlobalsType.VARIABLE
+          if (state.isGlobal) {
+            cg(`GLOBAL ${node.id.name}`)
+            s.globals[node.id.name] = GlobalsType.VARIABLE
+          } else {
+            cg(`VAR ${node.id.name}`)
+            s.locals[node.id.name] = GlobalsType.VARIABLE
+          }
+          reg = node.id.name
         }
-        reg = node.id.name
       } else {
-        // TODO
+        throw new Error("Unprocessed node.id.type " + node.id.type)
       }
-      s.r0 = reg
-      c(node.init, s)
+      if (node.init?.type === 'Identifier') {
+        if (!state.isGlobal) {
+          cg(`MOV ${reg} ${node.init.name}`)
+        }
+      } else {
+        s.r0 = reg
+        s.funcName = funcName
+        c(node.init, s)
+      }
+      freeReg()
+      delete s.funcName
     },
 
     FunctionDeclaration(node: et.FunctionDeclaration, s: any, c: any): any {
@@ -215,13 +241,13 @@ const parseToCode = (ast: any): void => {
         } else {
           reg = s.r0 = newRegister()
           c(arg, s)
-          if (
-            arg.type === 'FunctionExpression' ||
-            arg.type === 'ArrowFunctionExpression'
-          ) {
-            // console.log("++++++++++++++++><", arg, s.currentFunctionName)
-            cg(`CALLBACK ${reg} ${s.currentFunctionName}`)
-          }
+          // if (
+          //   arg.type === 'FunctionExpression' ||
+          //   arg.type === 'ArrowFunctionExpression'
+          // ) {
+          //   // console.log("++++++++++++++++><", arg, s.currentFunctionName)
+          //   cg(`CALLBACK ${reg} ${s.currentFunctionName}`)
+          // }
           freeRegister()
         }
         // console.log('---->>', reg, node.callee)
@@ -239,9 +265,15 @@ const parseToCode = (ast: any): void => {
       } else if (node.callee.type === "Identifier") {
         callIdentifier(node.callee.name, node.arguments.length, s)
         // s.codes.push(`CALL ${node.callee.name} ${node.arguments.length}`)
+      } else {
+        const ret = s.r0 = newRegister()
+        c(node.callee, s)
+        freeRegister()
+        cg(`CALL_REG ${ret} ${node.arguments.length}`)
+        // throw new Error("Unkonw CallExpression type -> " + node.callee.type)
       }
       if (retReg) {
-        cg(`MOV ${retReg} RET`)
+        cg(`MOV ${retReg} $RET`)
       }
     },
 
@@ -258,7 +290,11 @@ const parseToCode = (ast: any): void => {
     },
 
     ArrowFunctionExpression(node: et.ArrowFunctionExpression, s: any, c: any): any {
-      parseFunc(node)
+      parseFunc(node, s)
+    },
+
+    FunctionExpression(node: et.FunctionExpression, s: any, c: any): any {
+      parseFunc(node, s)
     },
 
     BlockStatement(node: et.BlockStatement, s: any, c: any): void {
@@ -511,6 +547,13 @@ const parseToCode = (ast: any): void => {
       getValueOfNode(node.value, valReg, s, c)
       cg(`SET_KEY ${objReg} "${key}" ${valReg}`)
       freeReg()
+    },
+
+    ReturnStatement(node: et.ReturnStatement, s: any, c: any): any {
+      const reg = s.r0 = newRegister()
+      c(node.argument, s)
+      cg(`MOV $RET ${reg}`)
+      freeRegister()
     },
 
     // ExpressionStatement(node: et.ExpressionStatement, s: any, c: any): void {
