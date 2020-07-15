@@ -36,21 +36,37 @@
 //   }
 // }
 
+// const add = () => {
+//   return () => {
+//     console.log("HELLO WORLD!++++++++++++++++=")
+//     return "GOT IT!"
+//   }
+// }
+
 const add = () => {
-  return () => {
-    console.log("HELLO WORLD!++++++++++++++++=")
-    return "GOT IT!"
+  let d = 10
+  return (a, b) => {
+    d++
+    console.log(d)
+    setTimeout(() => {
+      const c = 'good'
+      d--
+      console.log(d, c)
+    }, 10)
+    return a + b + d 
   }
 }
 
-const main = () => {
-  const b = () => {
-    console.log("WHAT KKKKKKK")
-    return "OK"
-  }
-  const c = b
-  const d = add()
-  for (let i = 0; i < 10; i++) {
-    console.log("GOOD", b(), c(), d())
-  }
+function main() {
+  const k = add()
+  console.log(k(1, 2), 'good')
+  // const b = () => {
+  //   console.log("WHAT KKKKKKK")
+  //   return "OK"
+  // }
+  // const c = b
+  // const d = add()
+  // for (let i = 0; i < 10; i++) {
+  //   console.log("GOOD", b(), c(), d())
+  // }
 }

@@ -45,7 +45,7 @@ export enum I {
 
  JMP, JE, JNE, JG, JL, JIF, JF,
  JGE, JLE, PUSH, POP, CALL, PRINT,
- RET, AUSE, EXIT,
+ RET, PAUSE, EXIT,
 
  CALL_CTX, CALL_VAR, CALL_REG, MOV_CTX, MOV_PROP,
  SET_CTX, // SET_CTX "name" R1
@@ -256,6 +256,7 @@ export class VirtualMachine {
       for (let i = 0; i < numArgs; i++) {
         args.push(stack[this.sp--])
       }
+      // console.log('-->', f)
       stack[0] = o[f].apply(o, args)
       // console.log(this.stack)
       this.stack = stack.slice(0, this.sp + 1)

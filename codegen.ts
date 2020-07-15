@@ -5,33 +5,46 @@
 const acorn = require("acorn")
 const walk = require("acorn-walk")
 import * as et from "estree"
-import { notDeepEqual } from 'assert'
+import { notDeepEqual, strict } from 'assert'
+import { I } from 'vm'
+import { type } from 'os'
 
-const enum GlobalsType {
-  FUNCTION,
-  VARIABLE,
+const enum VariableType {
+  FUNCTION = 1,
+  VARIABLE = 2,
+  CLOSURE = 3,
+}
+
+interface IScope {
+  params: any,
+  locals: any,
 }
 
 interface IFunction {
   name: string,
   body: et.FunctionExpression | et.ArrowFunctionExpression | et.FunctionDeclaration,
+  scopes: IScope[], // 存储作用域链
+  // params: { [x in string]: 1 }[],
 }
 
 interface IState {
   tmpVariableName: string,
   globals: any,
   locals: any,
+  params: any,
+  scopes: IScope[],
   isGlobal: boolean,
   labelIndex: number,
   functionIndex: number,
   functionTable: any,
   functions: IFunction[],
-  codes: string[],
-  r0: string,
-  r1: string,
-  r2: string,
+  codes: (string | (() => string))[],
+  r0: string | null,
+  r1: string | null,
+  r2: string | null,
   maxRegister: number,
   currentFunctionName: string,
+  funcName: string,
 
   // $obj: string,
   // $key: string,
@@ -50,10 +63,13 @@ const state: IState = {
   isGlobal: true,
   globals: {},
   locals: {},
+  params: {},
+  scopes: [],
   labelIndex: 0,
   functionIndex: 0,
   functions: [],
   functionTable: {},
+  funcName: '',
   codes: [],
   r0: '', // 寄存器的名字
   r1: '', // 寄存器的名字
@@ -68,18 +84,18 @@ const parseToCode = (ast: any): void => {
     return state.currentFunctionName
   }
 
-  const cg = (c: string): any => {
-    const isJump = (cc: string): boolean => /^JMP/.test(cc)
-    // 不要同时跳转两次
-    if (isJump(c) && isJump(state.codes[state.codes.length - 1])) { return }
-    state.codes.push(c)
-  }
-
-  const parseFunc = (node: et.FunctionExpression | et.ArrowFunctionExpression, s?: any): string => {
+  const parseFunc = (
+    node: et.FunctionExpression | et.ArrowFunctionExpression | et.FunctionDeclaration,
+    s: IState,
+  ): string => {
     const funcName = s.funcName || newFunctionName()
-    state.globals[funcName] = GlobalsType.FUNCTION
-    state.functions.push({ name: funcName, body: node })
-    state.functionTable[funcName] = node
+    s.globals[funcName] = VariableType.FUNCTION
+    s.functions.push({
+      name: funcName,
+      body: node,
+      scopes: [...s.scopes, { params: s.params, locals: s.locals }],
+    })
+    s.functionTable[funcName] = node
     if (s.r0 && !state.isGlobal) {
       cg(`CALLBACK ${s.r0} ${funcName}`)
     }
@@ -93,11 +109,14 @@ const parseToCode = (ast: any): void => {
   const newLabelName = (): string => `_l${state.labelIndex++}_`
 
   const newRegister = (): string => {
-    const r = `_r${registerCounter++}_`
+    const r = `%r${registerCounter++}`
     maxRegister = Math.max(maxRegister, registerCounter)
     return r
   }
-  const freeRegister = (): number => registerCounter--
+  const freeRegister = (): number => {
+    state.r0 = null
+    return registerCounter--
+  }
 
   const newRegisterController = (): [any, any] => {
     let count = 0
@@ -111,59 +130,118 @@ const parseToCode = (ast: any): void => {
     }]
   }
 
-  // const setIdentifierToRegister = (reg: string, id: string, s: any): void => {
-  //   if (s.globals[id] || s.locals[id]) {
-  //     s.codes.push(`MOV ${reg} ${id}`)
-  //   } else {
-  //     s.codes.push(`MOV_CTX ${reg} "${id}"`)
-  //   }
-  // }
+  const hasLocalOrParam = (name: string, s: IState): boolean => {
+    return s.locals[name] || s.params[name]
+  }
+
+  const hasVars = (name: string, s: any): boolean => {
+    if (hasLocalOrParam(name, s)) { return true }
+    for (const scope of [...state.scopes]) {
+      if (scope.locals[name] || scope.params[name]) {
+        return true
+      }
+    }
+    return !!s.globals[name]
+  }
+
+  const getCurrentScope = (): IScope => {
+    return { params: state.params, locals: state.locals }
+  }
+
+  const touchRegister = (reg: string, currentScope: IScope, scopes: IScope[]): void => {
+    /** 这个变量当前 scope 有了就不管了 */
+    if (currentScope.locals[reg] || currentScope.params[reg]) { return }
+    for (const scope of [...scopes].reverse()) {
+      if (scope.locals[reg]) {
+        scope.locals[reg] = VariableType.CLOSURE
+        return
+      }
+      if (scope.params[reg]) {
+        scope.params[reg] = VariableType.CLOSURE
+        return
+      }
+    }
+  }
+
+  const getRegisterName = (reg: string, currentScope: IScope, scopes: IScope[], isVar: boolean = false): string => {
+    const isClosure = (v: VariableType): boolean => v === VariableType.CLOSURE
+    for (const scope of [currentScope, ...scopes].reverse()) {
+      if (
+        isClosure(scope.locals[reg]) ||
+        isClosure(scope.params[reg])
+      ) {
+        return `@${reg}`
+      }
+    }
+    return reg
+  }
+
+  const cg = (...ops: any[]): any => {
+    // const isJump = (cc: string | (() => string)): boolean => typeof cc === 'string' && /^JMP/.test(cc)
+    // 不要同时跳转两次
+    // const lastCode = state.codes[state.codes.length - 1]
+    // if (isJump(c) && isJump(lastCode)) { return }
+    const c = ops.join(' ')
+    const operator = ops[0]
+    const operants = ops.slice(1)
+    // if (ops[0] === 'MOV') {
+    //   state.codes.push(createMovCode(ops[1], ops[2], getCurrentScope()))
+    // } else {
+    const currentScope = getCurrentScope()
+    const scopes = state.scopes
+    operants.forEach((o: string): void => touchRegister(o, currentScope, scopes))
+    return state.codes.push((): string => {
+      const processedOps = operants.map((o): string => getRegisterName(o, currentScope, scopes, operator === 'VAR'))
+      return [operator, ...processedOps].join(' ')
+    })
+    // }
+  }
 
   const callIdentifier = (id: string, numArgs: number, s: IState): void => {
     if (s.functionTable[id]) {
-      cg(`CALL ${id} ${numArgs}`)
-    } else if (s.locals[id]) {
-      cg(`CALL_REG ${id} ${numArgs}`)
+      cg('CALL', id, numArgs)
+    } else if (hasLocalOrParam(id, s)) {
+      cg('CALL_REG', id, numArgs)
     } else {
       // const reg = newRegister()
-      cg(`CALL_CTX "${id}" ${numArgs}`)
+      cg('CALL_CTX', `"${id}"`, numArgs)
       // freeRegister()
     }
   }
 
-  const hasVars = (name: string, s: any): boolean => {
-    return s.globals[name] || s.locals[name]
-  }
-
-  const setValueToNode = (node: any, reg: string, s: any, c: any): any => {
+  /**
+   * 所有的操作都是先获取到临时寄存器，操作完以后再写回目标寄存器
+   * 有四种种目标操作
+   * 1. Identifier: 局部变量、context、闭包变量
+   * 2. Member
+   */
+  const setValueToNode = (node: any, reg: string, s: IState, c: any): any => {
     if (node.type === 'MemberExpression') {
       // s.r0 = newReg()
       s.r0 = null
       const objReg = s.r1 = newRegister()
       const keyReg = s.r2 = newRegister()
       c(node, s)
-      cg(`SET_KEY ${objReg} ${keyReg} ${reg}`)
+      cg(`SET_KEY`, objReg, keyReg, reg)
       freeRegister()
       freeRegister()
     } else if (node.type === 'Identifier') {
-      // setIdentifierToRegister(node.name, reg, s)
-      // s.codes.push(`MOV ${left.name} ${rightReg}`)
       if (hasVars(node.name, s)) {
-        cg(`MOV ${node.name} ${reg}`)
+        cg(`MOV`, `${ node.name }`, `${ reg }`)
       } else {
-        cg(`SET_CTX "${node.name}" ${reg}`)
+        cg(`SET_CTX`, `"${node.name}"`, `${ reg }`)
       }
     } else {
       throw new Error('Unprocessed assignment')
     }
   }
 
-  const getValueOfNode = (node: any, reg: string, s: any, c: any): any => {
+  const getValueOfNode = (node: any, reg: string, s: IState, c: any): any => {
     if (node.type === 'Identifier') {
       if (hasVars(node.name, s)) {
-        cg(`MOV ${reg} ${node.name}`)
+        cg(`MOV`, `${ reg }`, `${ node.name }`)
       } else {
-        cg(`MOV_CTX ${reg} "${node.name}"`)
+        cg(`MOV_CTX`, `${ reg }`, `"${node.name}"`)
       }
     } else {
       s.r0 = reg
@@ -195,17 +273,17 @@ const parseToCode = (ast: any): void => {
           if (state.isGlobal) {
             funcName = node.id.name
           } else {
-            s.locals[node.id.name] = GlobalsType.VARIABLE
-            cg(`VAR ${node.id.name}`)
+            s.locals[node.id.name] = VariableType.VARIABLE
+            cg(`VAR`, `${node.id.name}`)
             funcName = newFunctionName()
           }
         } else {
           if (state.isGlobal) {
-            cg(`GLOBAL ${node.id.name}`)
-            s.globals[node.id.name] = GlobalsType.VARIABLE
+            cg(`GLOBAL`, node.id.name)
+            s.globals[node.id.name] = VariableType.VARIABLE
           } else {
-            cg(`VAR ${node.id.name}`)
-            s.locals[node.id.name] = GlobalsType.VARIABLE
+            cg(`VAR`, `${node.id.name}`)
+            s.locals[node.id.name] = VariableType.VARIABLE
           }
           reg = node.id.name
         }
@@ -214,7 +292,7 @@ const parseToCode = (ast: any): void => {
       }
       if (node.init?.type === 'Identifier') {
         if (!state.isGlobal) {
-          cg(`MOV ${reg} ${node.init.name}`)
+          cg(`MOV`, reg, node.init.name)
         }
       } else {
         s.r0 = reg
@@ -226,8 +304,8 @@ const parseToCode = (ast: any): void => {
     },
 
     FunctionDeclaration(node: et.FunctionDeclaration, s: any, c: any): any {
-      state.functions.push({ name: node.id!.name, body: node })
-      state.functionTable[node.id!.name] = node
+      s.funcName = node.id?.name
+      parseFunc(node, s)
     },
 
     CallExpression(node: et.CallExpression, s: any, c: any): any {
@@ -241,17 +319,9 @@ const parseToCode = (ast: any): void => {
         } else {
           reg = s.r0 = newRegister()
           c(arg, s)
-          // if (
-          //   arg.type === 'FunctionExpression' ||
-          //   arg.type === 'ArrowFunctionExpression'
-          // ) {
-          //   // console.log("++++++++++++++++><", arg, s.currentFunctionName)
-          //   cg(`CALLBACK ${reg} ${s.currentFunctionName}`)
-          // }
           freeRegister()
         }
-        // console.log('---->>', reg, node.callee)
-        cg(`PUSH ${reg}`)
+        cg(`PUSH`, reg)
       }
 
       if (node.callee.type === "MemberExpression") {
@@ -259,22 +329,21 @@ const parseToCode = (ast: any): void => {
         const objReg = s.r1 = newRegister()
         const keyReg = s.r2 = newRegister()
         c(node.callee, s)
-        cg(`CALL_VAR ${objReg} ${keyReg} ${node.arguments.length}`)
+        cg(`CALL_VAR`, objReg, keyReg, node.arguments.length)
         freeRegister()
         freeRegister()
       } else if (node.callee.type === "Identifier") {
         callIdentifier(node.callee.name, node.arguments.length, s)
-        // s.codes.push(`CALL ${node.callee.name} ${node.arguments.length}`)
       } else {
         const ret = s.r0 = newRegister()
         c(node.callee, s)
         freeRegister()
-        cg(`CALL_REG ${ret} ${node.arguments.length}`)
-        // throw new Error("Unkonw CallExpression type -> " + node.callee.type)
+        cg(`CALL_REG`, ret, node.arguments.length)
       }
       if (retReg) {
-        cg(`MOV ${retReg} $RET`)
+        cg(`MOV`, retReg, `$RET`)
       }
+      s.r0 = null
     },
 
     Literal: (node: et.Literal, s: any): void => {
@@ -286,7 +355,9 @@ const parseToCode = (ast: any): void => {
       } else {
         val = node.raw
       }
-      cg(`MOV ${s.r0} ${val}`)
+      if (s.r0) {
+        cg(`MOV`, s.r0, val)
+      }
     },
 
     ArrowFunctionExpression(node: et.ArrowFunctionExpression, s: any, c: any): any {
@@ -313,7 +384,6 @@ const parseToCode = (ast: any): void => {
         c(node.object, s)
         freeRegister()
       } else if (node.object.type === 'Identifier') {
-        // console.log(objReg, '---?', node.object.name)
         getValueOfNode(node.object, objReg, s, c)
       } else {
         s.r0 = objReg
@@ -328,9 +398,9 @@ const parseToCode = (ast: any): void => {
       } else if (node.property.type === 'Identifier') {
         // a.b.c.d
         if (node.computed) {
-          cg(`MOV ${keyReg} ${node.property.name}`)
+          cg(`MOV`, keyReg, node.property.name)
         } else {
-          cg(`MOV ${keyReg} "${node.property.name}"`)
+          cg(`MOV`, keyReg, `"${node.property.name}"`)
         }
       } else {
         s.r0 = keyReg
@@ -338,7 +408,7 @@ const parseToCode = (ast: any): void => {
       }
 
       if (valReg) {
-        cg(`MOV_PROP ${valReg} ${objReg} ${keyReg}`)
+        cg(`MOV_PROP`, valReg, objReg, keyReg)
       }
       s.r0 = null
       s.r1 = null
@@ -351,27 +421,8 @@ const parseToCode = (ast: any): void => {
       const right = node.right
       const [newReg, freeReg] = newRegisterController()
       const rightReg = newReg()
-      // if (right.type === 'Identifier') {
-      //   rightReg = right.name
-      // } else {
-      //   s.r0 = rightReg = newReg()
-      //   c(right, s)
-      // }
       getValueOfNode(right, rightReg, s, c)
       setValueToNode(left, rightReg, s, c)
-      // if (left.type === 'MemberExpression') {
-      //   // s.r0 = newReg()
-      //   s.r0 = null
-      //   const objReg = s.r1 = newReg()
-      //   const keyReg = s.r2 = newReg()
-      //   c(left, s)
-      //   s.codes.push(`SET_KEY ${objReg} ${keyReg} ${rightReg}`)
-      // } else if (left.type === 'Identifier') {
-      //   setIdentifierToRegister(left.name, rightReg, s)
-      //   // s.codes.push(`MOV ${left.name} ${rightReg}`)
-      // } else {
-      //   throw new Error('Unprocessed assignment')
-      // }
       freeReg()
     },
 
@@ -383,19 +434,6 @@ const parseToCode = (ast: any): void => {
 
       getValueOfNode(node.left, leftReg, s, c)
       getValueOfNode(node.right, rightReg, s, c)
-      // if (node.left.type === 'Identifier') {
-      //   leftReg = node.left.name
-      // } else {
-      //   s.r0 = leftReg
-      //   c(node.left, s)
-      // }
-
-      // if (node.right.type === 'Identifier') {
-      //   rightReg = node.right.name
-      // } else {
-      //   s.r0 = rightReg = newReg()
-      //   c(node.right, s)
-      // }
 
       const codeMap = {
         '<': 'LT',
@@ -417,9 +455,9 @@ const parseToCode = (ast: any): void => {
 
       const op = codeMap[node.operator]
       if (!op) {
-        throw new Error(`${op} is not implemented.`)
+        throw new Error(`${ op } is not implemented.`)
       }
-      cg(`${op} ${leftReg} ${rightReg}`)
+      cg(op, leftReg, rightReg)
       freeReg()
     },
 
@@ -435,18 +473,17 @@ const parseToCode = (ast: any): void => {
       s.r0 = testReg
       c(node.test, s)
 
-      cg(`JF ${testReg} ${nextLabel}`)
+      cg(`JF`, testReg, nextLabel)
       c(node.consequent, s)
-      cg(`JMP ${endLabel}`)
+      cg(`JMP`, endLabel)
 
-      cg(`LABEL ${nextLabel}:`)
+      cg(`LABEL`, `${ nextLabel }:`)
       if (node.alternate) {
         c(node.alternate, s)
       }
 
-      // console.log("THE FUCKING LABEL", endLabel)
       if (!hasEndLabel) {
-        cg(`LABEL ${endLabel}:`)
+        cg(`LABEL`, `${ endLabel }:`)
         delete s.endLabel
       }
 
@@ -462,13 +499,12 @@ const parseToCode = (ast: any): void => {
       if (node.init) {
         c(node.init, s)
       }
-      cg(`LABEL ${startLabel}:`)
+      cg(`LABEL`, `${ startLabel }:`)
       // test
       if (node.test) {
         const testReg = s.r0 = newReg()
-        // console.log("---> test reg", testReg)
         c(node.test, s)
-        cg(`JF ${testReg} ${endLabel}`)
+        cg(`JF`, `${ testReg }`, `${ endLabel }`)
       }
       // body
       s.forEndLabel = endLabel
@@ -478,10 +514,10 @@ const parseToCode = (ast: any): void => {
       if (node.update) {
         s.r0 = null
         c(node.update, s)
-        cg(`JMP ${startLabel}`)
+        cg(`JMP`, `${ startLabel }`)
       }
       // end
-      cg(`LABEL ${endLabel}:`)
+      cg(`LABEL`, `${ endLabel }:`)
       popLoopEndLabels()
       freeReg()
     },
@@ -492,7 +528,7 @@ const parseToCode = (ast: any): void => {
         throw new Error("Not end label, cannot use `break` here.")
       }
       // cg(`JMP ${endLabel} (break)`)
-      cg(`JMP ${endLabel}`)
+      cg(`JMP`, `${endLabel}`)
     },
 
     UpdateExpression(node: et.UpdateExpression, s: any, c: any): any {
@@ -501,9 +537,9 @@ const parseToCode = (ast: any): void => {
       const reg = newReg()
       getValueOfNode(node.argument, reg, s, c)
       if (op === '++') {
-        cg(`ADD ${reg} 1`)
+        cg(`ADD`, `${reg}`, `1`)
       } else if (op === '--') {
-        cg(`SUB ${reg} 1`)
+        cg(`SUB`, `${reg}`, `1`)
       }
       setValueToNode(node.argument, reg, s, c)
       freeReg()
@@ -512,7 +548,7 @@ const parseToCode = (ast: any): void => {
     ObjectExpression(node: et.ObjectExpression, s: any, c: any): any {
       const [newReg, freeReg] = newRegisterController()
       const reg = s.r0 || newReg()
-      cg(`NEW_OBJ ${reg}`)
+      cg(`NEW_OBJ`, `${reg}`)
       for (const prop of node.properties) {
         s.r0 = reg
         c(prop, s)
@@ -523,11 +559,11 @@ const parseToCode = (ast: any): void => {
     ArrayExpression(node: et.ArrayExpression, s: any, c: any): any {
       const [newReg, freeReg] = newRegisterController()
       const reg = s.r0 || newReg()
-      cg(`NEW_ARR ${reg}`)
+      cg(`NEW_ARR`, `${reg}`)
       node.elements.forEach((el: any, i: number): void => {
         const valReg = s.r0 = newRegister()
         c(el, s)
-        cg(`SET_KEY ${reg} ${i} ${valReg}`)
+        cg(`SET_KEY`, `${reg}`, `${i}`, `${valReg}`)
         freeRegister()
       })
       freeReg()
@@ -543,22 +579,17 @@ const parseToCode = (ast: any): void => {
       } else if (node.key.type === "Literal") {
         key = node.key.value
       }
-      // getValueOfNode(node.key, keyReg, s, c)
       getValueOfNode(node.value, valReg, s, c)
-      cg(`SET_KEY ${objReg} "${key}" ${valReg}`)
+      cg(`SET_KEY`, `${objReg}`, `"${key}"`, `${valReg}`)
       freeReg()
     },
 
     ReturnStatement(node: et.ReturnStatement, s: any, c: any): any {
       const reg = s.r0 = newRegister()
       c(node.argument, s)
-      cg(`MOV $RET ${reg}`)
+      cg(`MOV`, `$RET`, `${reg}`)
       freeRegister()
     },
-
-    // ExpressionStatement(node: et.ExpressionStatement, s: any, c: any): void {
-    //   console.log('=-->', node.expression)
-    // },
   })
 
   state.maxRegister = maxRegister
@@ -578,25 +609,34 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     state.isGlobal = false
     state.maxRegister = 0
     const funcAst = state.functions.shift()
-    state.locals = funcAst!.body.params.reduce((o, param): any => {
-      o[(param as et.Identifier).name] = GlobalsType.VARIABLE
+    console.log(funcAst?.name, funcAst?.scopes)
+    state.params = funcAst!.body.params.reduce((o, param): any => {
+      o[(param as et.Identifier).name] = VariableType.VARIABLE
       return o
     }, {})
-    // console.log(funcAst?.body.body, '-->')
+    state.locals = {}
     state.codes.push(getFunctionDecleration(funcAst!))
+    state.scopes = funcAst!.scopes
     const codeLen = state.codes.length
     const registersCodes: string[] = []
     parseToCode(funcAst?.body.body)
     for (let i = 0; i < state.maxRegister; i++) {
-      registersCodes.push(`VAR _r${i}_`)
+      registersCodes.push(`VAR %r${i}`)
     }
     state.codes.splice(codeLen, 0, ...registersCodes)
     state.codes.push('}')
-    // state.codes.push('}')
   }
-  state.codes = state.codes.map((s: string): string => {
-    if (s.startsWith('func') || s.startsWith('LABEL') || s.startsWith('}')) { return s + '\n' }
-    return `    ${s};\n`
+  state.codes = state.codes.map((s: string | (() => string)): string => {
+    const f = (c: string): string => `    ${c};\n`
+    if (typeof s === 'string') {
+      if (s.startsWith('func') || s.startsWith('LABEL') || s.startsWith('}')) {
+        return s + '\n'
+      }
+      return f(s)
+    } else {
+      return f(s())
+    }
   })
   return state.codes.join("")
+// tslint:disable-next-line: max-file-line-count
 }

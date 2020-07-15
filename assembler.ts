@@ -369,13 +369,14 @@ const parseFunction = (func: string): IFuncInfo => {
     .map((stat: string[]): string => stat[1])
   const codes = body.filter((stat: string[]): boolean => stat[0] !== 'VAR' && stat[0] !== 'GLOBAL')
   const symbols: any = {}
-  vars.forEach((v: string[], i: number): void => {
-    symbols[v[1]] = i + 1
-  })
   args.forEach((arg: string, i: number): void => {
     symbols[arg] = -3 - i
   })
+  vars.forEach((v: string[], i: number): void => {
+    symbols[v[1]] = i + 1
+  })
 
+  console.log(codes, '--->')
   if (funcName === 'main') {
     codes.push(['EXIT'])
   } else if (codes[codes.length - 1][0] !== 'RET') {

@@ -1,66 +1,63 @@
 func add() {
-    VAR _r0_;
-    CALLBACK _r0_ ___f___0;
-    MOV $RET _r0_;
+    VAR %r0;
+    VAR @d;
+    MOV @d 10;
+    CALLBACK %r0 ___f___0;
+    MOV $RET %r0;
 }
 func main() {
-    VAR _r0_;
-    VAR _r1_;
-    VAR _r2_;
-    VAR b;
-    CALLBACK b ___f___1;
-    VAR c;
-    MOV c b;
-    VAR d;
+    VAR %r0;
+    VAR %r1;
+    VAR k;
     CALL add 0;
-    MOV d $RET;
-    VAR i;
-    MOV i 0;
-LABEL _l0_:
-    MOV _r0_ i;
-    MOV _r1_ 10;
-    LT _r0_ _r1_;
-    JF _r0_ _l1_;
-    CALL_REG d 0;
-    MOV _r1_ $RET;
-    PUSH _r1_;
-    CALL_REG c 0;
-    MOV _r1_ $RET;
-    PUSH _r1_;
-    CALL_REG b 0;
-    MOV _r1_ $RET;
-    PUSH _r1_;
-    MOV _r1_ "GOOD";
-    PUSH _r1_;
-    MOV_CTX _r1_ "console";
-    MOV _r2_ "log";
-    CALL_VAR _r1_ _r2_ 4;
-    MOV _r1_ i;
-    ADD _r1_ 1;
-    MOV i _r1_;
-    JMP _l0_;
-LABEL _l1_:
+    MOV k $RET;
+    MOV %r0 'good';
+    PUSH %r0;
+    MOV %r1 2;
+    PUSH %r1;
+    MOV %r1 1;
+    PUSH %r1;
+    CALL_REG k 2;
+    MOV %r0 $RET;
+    PUSH %r0;
+    MOV_CTX %r0 "console";
+    MOV %r1 "log";
+    CALL_VAR %r0 %r1 2;
 }
-func ___f___0() {
-    VAR _r0_;
-    VAR _r1_;
-    MOV _r0_ "HELLO WORLD!++++++++++++++++=";
-    PUSH _r0_;
-    MOV_CTX _r0_ "console";
-    MOV _r1_ "log";
-    CALL_VAR _r0_ _r1_ 1;
-    MOV _r0_ "GOT IT!";
-    MOV $RET _r0_;
+func ___f___0(a, b) {
+    VAR %r0;
+    VAR %r1;
+    VAR %r2;
+    MOV %r0 @d;
+    ADD %r0 1;
+    MOV @d %r0;
+    PUSH @d;
+    MOV_CTX %r0 "console";
+    MOV %r1 "log";
+    CALL_VAR %r0 %r1 1;
+    MOV %r0 10;
+    PUSH %r0;
+    CALLBACK %r0 ___f___1;
+    PUSH %r0;
+    CALL_CTX "setTimeout" 2;
+    MOV %r0 a;
+    MOV %r2 b;
+    ADD %r0 %r2;
+    MOV %r1 @d;
+    ADD %r0 %r1;
+    MOV $RET %r0;
 }
 func ___f___1() {
-    VAR _r0_;
-    VAR _r1_;
-    MOV _r0_ "WHAT KKKKKKK";
-    PUSH _r0_;
-    MOV_CTX _r0_ "console";
-    MOV _r1_ "log";
-    CALL_VAR _r0_ _r1_ 1;
-    MOV _r0_ $RET;
-    MOV _r0_ "OK";
-    MOV $RET _r0_;
+    VAR %r0;
+    VAR %r1;
+    VAR c;
+    MOV c 'good';
+    MOV %r0 @d;
+    SUB %r0 1;
+    MOV @d %r0;
+    PUSH c;
+    PUSH @d;
+    MOV_CTX %r0 "console";
+    MOV %r1 "log";
+    CALL_VAR %r0 %r1 2;
 }
