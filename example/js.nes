@@ -1,8 +1,17 @@
 func add() {
     VAR %r0;
-    VAR @d;
-    MOV @d 10;
+    VAR @c0;
+    MOV @c0 10;
+    VAR @c1;
+    MOV @c1 20;
     CALLBACK %r0 ___f___0;
+    MOV $RET %r0;
+}
+func min() {
+    VAR %r0;
+    VAR @c0;
+    MOV @c0 10;
+    CALLBACK %r0 ___f___1;
     MOV $RET %r0;
 }
 func main() {
@@ -11,7 +20,15 @@ func main() {
     VAR k;
     CALL add 0;
     MOV k $RET;
+    VAR k2;
+    CALL min 0;
+    MOV k2 $RET;
     MOV %r0 'good';
+    PUSH %r0;
+    MOV %r1 1;
+    PUSH %r1;
+    CALL_REG k2 1;
+    MOV %r0 $RET;
     PUSH %r0;
     MOV %r1 2;
     PUSH %r1;
@@ -22,42 +39,64 @@ func main() {
     PUSH %r0;
     MOV_CTX %r0 "console";
     MOV %r1 "log";
-    CALL_VAR %r0 %r1 2;
+    CALL_VAR %r0 %r1 3;
 }
 func ___f___0(a, b) {
     VAR %r0;
     VAR %r1;
     VAR %r2;
-    MOV %r0 @d;
+    MOV %r0 @c0;
     ADD %r0 1;
-    MOV @d %r0;
-    PUSH @d;
+    MOV @c0 %r0;
+    MOV %r0 @c1;
+    SUB %r0 1;
+    MOV @c1 %r0;
+    PUSH @c0;
     MOV_CTX %r0 "console";
     MOV %r1 "log";
     CALL_VAR %r0 %r1 1;
     MOV %r0 10;
     PUSH %r0;
-    CALLBACK %r0 ___f___1;
+    CALLBACK %r0 ___f___2;
     PUSH %r0;
     CALL_CTX "setTimeout" 2;
     MOV %r0 a;
     MOV %r2 b;
     ADD %r0 %r2;
-    MOV %r1 @d;
+    MOV %r1 @c0;
     ADD %r0 %r1;
     MOV $RET %r0;
 }
-func ___f___1() {
+func ___f___1(c) {
+    VAR %r0;
+    VAR %r1;
+    MOV %r0 @c0;
+    SUB %r0 1;
+    MOV @c0 %r0;
+    MOV %r0 @c0;
+    MOV %r1 c;
+    ADD %r0 %r1;
+    MOV $RET %r0;
+}
+func ___f___2() {
     VAR %r0;
     VAR %r1;
     VAR c;
     MOV c 'good';
-    MOV %r0 @d;
+    MOV %r0 @c0;
     SUB %r0 1;
-    MOV @d %r0;
+    MOV @c0 %r0;
+    MOV %r0 @c1;
+    ADD %r0 1;
+    MOV @c1 %r0;
+    MOV %r0 @c0;
+    MOV %r1 @c1;
+    ADD %r0 %r1;
+    PUSH %r0;
+    PUSH @c1;
     PUSH c;
-    PUSH @d;
+    PUSH @c0;
     MOV_CTX %r0 "console";
     MOV %r1 "log";
-    CALL_VAR %r0 %r1 2;
+    CALL_VAR %r0 %r1 4;
 }

@@ -45,21 +45,33 @@
 
 const add = () => {
   let d = 10
+  let f = 20
   return (a, b) => {
     d++
+    f--
     console.log(d)
     setTimeout(() => {
       const c = 'good'
       d--
-      console.log(d, c)
+      f++
+      console.log(d, c, f, d + f)
     }, 10)
     return a + b + d 
   }
 }
 
+const min = () => {
+  let d = 10
+  return (c) => {
+    d--
+    return d + c
+  }
+}
+
 function main() {
   const k = add()
-  console.log(k(1, 2), 'good')
+  const k2 = min()
+  console.log(k(1, 2), k2(1), 'good')
   // const b = () => {
   //   console.log("WHAT KKKKKKK")
   //   return "OK"

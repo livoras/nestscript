@@ -5,9 +5,6 @@
 const acorn = require("acorn")
 const walk = require("acorn-walk")
 import * as et from "estree"
-import { notDeepEqual, strict } from 'assert'
-import { I } from 'vm'
-import { type } from 'os'
 
 const enum VariableType {
   FUNCTION = 1,
@@ -18,6 +15,8 @@ const enum VariableType {
 interface IScope {
   params: any,
   locals: any,
+  closureTable?: any,
+  closureCounter?: number // 只有最外层的函数有
 }
 
 interface IFunction {
@@ -45,6 +44,7 @@ interface IState {
   maxRegister: number,
   currentFunctionName: string,
   funcName: string,
+  currentScope?: IScope,
 
   // $obj: string,
   // $key: string,
@@ -93,7 +93,9 @@ const parseToCode = (ast: any): void => {
     s.functions.push({
       name: funcName,
       body: node,
-      scopes: [...s.scopes, { params: s.params, locals: s.locals }],
+      scopes: [...s.scopes, getCurrentScope() || {
+        locals: s.locals, params: s.params, closureCounter: 0,
+      }],
     })
     s.functionTable[funcName] = node
     if (s.r0 && !state.isGlobal) {
@@ -145,7 +147,20 @@ const parseToCode = (ast: any): void => {
   }
 
   const getCurrentScope = (): IScope => {
-    return { params: state.params, locals: state.locals }
+    return state.currentScope!
+  }
+
+  const allocateClosure = (root: IScope, scope: IScope, reg: string): void => {
+    if (!scope.closureTable) {
+      scope.closureTable = {}
+    }
+    if (!scope.closureTable[reg]) {
+      if (root.closureCounter === void 0) {
+        throw new Error("Root scope closure counter cannot be 0.")
+      } else {
+        scope.closureTable[reg] = `@c${root.closureCounter++}`
+      }
+    }
   }
 
   const touchRegister = (reg: string, currentScope: IScope, scopes: IScope[]): void => {
@@ -154,10 +169,12 @@ const parseToCode = (ast: any): void => {
     for (const scope of [...scopes].reverse()) {
       if (scope.locals[reg]) {
         scope.locals[reg] = VariableType.CLOSURE
+        allocateClosure(scopes[0], scope, reg)
         return
       }
       if (scope.params[reg]) {
         scope.params[reg] = VariableType.CLOSURE
+        allocateClosure(scopes[0], scope, reg)
         return
       }
     }
@@ -170,7 +187,7 @@ const parseToCode = (ast: any): void => {
         isClosure(scope.locals[reg]) ||
         isClosure(scope.params[reg])
       ) {
-        return `@${reg}`
+        return scope.closureTable[reg]
       }
     }
     return reg
@@ -181,7 +198,6 @@ const parseToCode = (ast: any): void => {
     // 不要同时跳转两次
     // const lastCode = state.codes[state.codes.length - 1]
     // if (isJump(c) && isJump(lastCode)) { return }
-    const c = ops.join(' ')
     const operator = ops[0]
     const operants = ops.slice(1)
     // if (ops[0] === 'MOV') {
@@ -609,14 +625,15 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     state.isGlobal = false
     state.maxRegister = 0
     const funcAst = state.functions.shift()
-    console.log(funcAst?.name, funcAst?.scopes)
     state.params = funcAst!.body.params.reduce((o, param): any => {
       o[(param as et.Identifier).name] = VariableType.VARIABLE
       return o
     }, {})
     state.locals = {}
+    state.currentScope = { params: state.params, locals: state.locals }
     state.codes.push(getFunctionDecleration(funcAst!))
     state.scopes = funcAst!.scopes
+    console.log(funcAst?.name, funcAst?.scopes)
     const codeLen = state.codes.length
     const registersCodes: string[] = []
     parseToCode(funcAst?.body.body)
