@@ -11,28 +11,63 @@ A script nested in JavaScript, dynamically runs code in environment without `eva
 2. 汇编器：将中间指令编译成可运行在 `nestscript` 虚拟机的二进制文件。
 3. 虚拟机：执行汇编器生成的二进制文件。
 
-理论上你可以将任意语言编译成 `nestscript` 指令集，但是 `nestscript` 包含了一个代码生成器，目前支持将 JavaScript 编译成 `nestscript` 指令。
+理论上你可以将任意语言编译成 `nestscript` 指令集，但是目前 `nestscript` 只包含了一个代码生成器，目前支持将 JavaScript 编译成 `nestscript` 指令。
 
 ## nestscript 指令集
 
 ```
-MOV, ADD, SUB, MUL, DIV, MOD,
-EXP, NEG, INC, DEC,
-
-LT, GT, EQ, LE, GE, NE,
-AND, OR, XOR, NOT, SHL, SHR,
-
-JMP, JE, JNE, JG, JL, JIF, JF,
-JGE, JLE, PUSH, POP, CALL, PRINT,
-RET, PAUSE, EXIT,
-
-CALL_CTX, CALL_VAR, CALL_REG, MOV_CTX, MOV_PROP,
-SET_CTX,
-NEW_OBJ, NEW_ARR, SET_KEY,
-FUNC, ALLOC,
+MOV
+ADD
+SUB
+MUL
+DIV
+MOD
+EXP
+NEG
+INC
+DEC
+LT
+GT
+EQ
+LE
+GE
+NE
+AND
+OR
+XOR
+NOT
+SHL
+SHR
+JMP
+JE
+JNE
+JG
+JL
+JIF
+JF
+JGE
+JLE
+PUSH
+POP
+CALL
+PRINT
+RET
+PAUSE
+EXIT
+CALL_CTX
+CALL_VAR
+CALL_REG
+MOV_CTX
+MOV_PROP
+SET_CTX
+NEW_OBJ
+NEW_ARR
+SET_KEY
+FUNC
+ALLOC
 ```
 
-详情请见 [nestscript 指令集手册](https://github.com/livoras/nestscript/docs/ir.md)。
+详情请见 [nestscript 指令集手册](https://github.com/livoras/nestscript/blob/master/docs/ir.md)。
 
 例如使用指令编写的，斐波那契数列：
 
