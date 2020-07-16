@@ -419,6 +419,14 @@ export class VirtualMachine {
       this.binaryExpression((a, b): any => a % b)
       break
     }
+    case I.AND: {
+      this.binaryExpression((a, b): any => a && b)
+      break
+    }
+    case I.OR: {
+      this.binaryExpression((a, b): any => a || b)
+      break
+    }
     case I.ALLOC: {
       const dst = this.nextOperant()
       this.getReg(dst)

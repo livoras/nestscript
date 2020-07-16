@@ -510,6 +510,24 @@ const parseToCode = (ast: any): void => {
       freeReg()
     },
 
+    LogicalExpression(node: et.LogicalExpression, s: any, c: any): void {
+      const retReg = s.r0
+      const endLabel = newLabelName()
+      const leftReg = s.r0 = newRegister()
+      c(node.left, s)
+      const op = node.operator
+      cg(`MOV`, `${retReg}`, `${leftReg}`)
+      if (op === '&&') {
+        cg(`JF`, `${leftReg}`, `${endLabel}`)
+      } else {
+        cg(`JIF`, `${leftReg}`, `${endLabel}`)
+      }
+      const rightReg = s.r0 = newRegister()
+      c(node.right, s)
+      cg(op === '&&' ? `AND` : `OR`, `${retReg}`, `${rightReg}`)
+      cg('LABEL', `${endLabel}:`)
+    },
+
     ForStatement(node: et.ForStatement, s: any, c: any): any {
       const [newReg, freeReg] = newRegisterController()
       const startLabel = newLabelName()

@@ -183,6 +183,7 @@ class VirtualMachine {
     }
     init() {
         const { globalSize, functionsTable, entryFunctionIndex } = this;
+        this.stack = [];
         const globalIndex = globalSize + 1;
         const mainLocalSize = functionsTable[entryFunctionIndex].localSize;
         this.fp = globalIndex;
@@ -196,7 +197,6 @@ class VirtualMachine {
     }
     reset() {
         this.init();
-        this.stack = [];
         this.heap = [];
     }
     run() {
@@ -428,6 +428,14 @@ class VirtualMachine {
             }
             case I.MOD: {
                 this.binaryExpression((a, b) => a % b);
+                break;
+            }
+            case I.AND: {
+                this.binaryExpression((a, b) => a && b);
+                break;
+            }
+            case I.OR: {
+                this.binaryExpression((a, b) => a || b);
                 break;
             }
             case I.ALLOC: {

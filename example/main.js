@@ -37,5 +37,20 @@ function main() {
     console.log(c(3, 4))
     page.setData({ name: "TOO YOUNG!~~~?" + a })
     page.setData({ motto: "NNNN" })
+    if (page.items && page.items.length > 0) {
+      page.items.push(Math.random())
+      if (page.a && page.b || page.c) {
+        console.log("DOO")
+      }
+    } else {
+      page.items = []
+      page.items.push(Math.random())
+    }
+    page.setData({ items: page.items })
+  }
+  page.handleTapBad = () => {
+    const items = page.data.items
+    items.pop()
+    page.setData({ items })
   }
 }
