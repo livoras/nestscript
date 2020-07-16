@@ -1,13 +1,40 @@
 # nestscript
 A script nested in JavaScript, dynamically runs code in environment without `eval` and `new Function`.
 
-`nestscript` 可以让你在没有 `eval` 和 `new Function` 的环境中运行代码。
+`nestscript` 可以让你在没有 `eval` 和 `new Function` 的 JavaScript 环境中运行二进制指令文件。
 
-它包含了一个简单的汇编器和编译器后端的虚拟机，可以将下面的汇编指令形式的代码编译成二进制代码，并且在虚拟机上进行执行代码。因为该虚拟机是用 JavaScript 编写的，有 JavaScript 的环境都可以执行 `nestscript` 的二进制指令。你可以把它用在 Web 前端、微信小程序等场景。
+原理上就是把 JavaScript 先编译成 `nestscript` 的 IR 指令，然后把指令编译成二进制的文件。只要在环境中引入使用 JavaScript 编写的 `nestscript` 的虚拟机，都可以执行 `nestscript` 的二进制文件。你可以把它用在 Web 前端、微信小程序等场景。
 
-`nestscript` 目前只包含编译器的后端，理论上可以将任意形式的 JS 、TS 等高级代码变编译成 `nestscript` 的 IR 指令。
+它包含三部分：
 
-斐波那契数列：
+1. 代码生成器：将 JavaScript 编译成 `nestscript` 中间指令。
+2. 汇编器：将中间指令编译成可运行在 `nestscript` 虚拟机的二进制文件。
+3. 虚拟机：执行汇编器生成的二进制文件。
+
+理论上你可以将任意语言编译成 `nestscript` 指令集，但是 `nestscript` 包含了一个代码生成器，目前支持将 JavaScript 编译成 `nestscript` 指令。
+
+## nestscript 指令集
+
+```
+MOV, ADD, SUB, MUL, DIV, MOD,
+EXP, NEG, INC, DEC,
+
+LT, GT, EQ, LE, GE, NE,
+AND, OR, XOR, NOT, SHL, SHR,
+
+JMP, JE, JNE, JG, JL, JIF, JF,
+JGE, JLE, PUSH, POP, CALL, PRINT,
+RET, PAUSE, EXIT,
+
+CALL_CTX, CALL_VAR, CALL_REG, MOV_CTX, MOV_PROP,
+SET_CTX,
+NEW_OBJ, NEW_ARR, SET_KEY,
+FUNC, ALLOC,
+```
+
+详情请见 [nestscript 指令集手册](https://github.com/livoras/nestscript/docs/ir.md)。
+
+例如使用指令编写的，斐波那契数列：
 
 ```javascript
 func fib(a) {
@@ -55,6 +82,17 @@ func main() {
   PRINT $RET;
 }
 ```
+
+## TODO
+- [] `export`，`import` 模块支持
+- [] `class` 支持
+- [] 中间代码优化
+- [] 文档：
+  - [] IR 指令手册
+  - [] 安装文档
+  - [] 使用手册
+  - [] 使用 demo
+  
 
 * * *
 
