@@ -7,9 +7,9 @@ A script nested in JavaScript, dynamically runs code in environment without `eva
 
 它包含三部分：
 
-1. 代码生成器：将 JavaScript 编译成 `nestscript` 中间指令。
-2. 汇编器：将中间指令编译成可运行在 `nestscript` 虚拟机的二进制文件。
-3. 虚拟机：执行汇编器生成的二进制文件。
+1. **代码生成器**：将 JavaScript 编译成 `nestscript` 中间指令。
+2. **汇编器**：将中间指令编译成可运行在 `nestscript` 虚拟机的二进制文件。
+3. **虚拟机**：执行汇编器生成的二进制文件。
 
 理论上你可以将任意语言编译成 `nestscript` 指令集，但是目前 `nestscript` 只包含了一个代码生成器，目前支持将 JavaScript 编译成 `nestscript` 指令。
 
