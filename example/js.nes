@@ -144,7 +144,7 @@ func ___f___3() {
     MOV %r3 "setData";
     CALL_VAR %r2 %r3 1;
     NEW_OBJ %r2;
-    MOV %r3 "NNNN";
+    MOV %r3 "No today. Tomorrow?";
     SET_KEY %r2 "motto" %r3;
     PUSH %r2;
     MOV_CTX %r2 "page";

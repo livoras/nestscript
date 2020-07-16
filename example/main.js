@@ -36,7 +36,7 @@ function main() {
     console.log("THis is good + nice", a, b(), Object)
     console.log(c(3, 4))
     page.setData({ name: "TOO YOUNG!~~~?" + a })
-    page.setData({ motto: "NNNN" })
+    page.setData({ motto: "No today. Tomorrow?" })
     if (page.items && page.items.length > 0) {
       page.items.push(Math.random())
       if (page.a && page.b || page.c) {
