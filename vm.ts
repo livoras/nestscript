@@ -126,8 +126,9 @@ export class VirtualMachine {
   public init(): void {
     const { globalSize, functionsTable, entryFunctionIndex } = this
     // RET
+    // TODO: how to deal with it?
     this.stack = []
-    this.heap = []
+    // this.heap = []
     const globalIndex = globalSize + 1
     const mainLocalSize = functionsTable[entryFunctionIndex].localSize
     this.fp = globalIndex // fp 指向 old fp 位置，兼容普通函数
@@ -150,6 +151,12 @@ export class VirtualMachine {
       'localSize', functionsTable[entryFunctionIndex].localSize,
     )
     console.log("start ---> fp", this.fp, this.sp)
+  }
+
+  public reset(): void {
+    this.init()
+    // this.stack = []
+    this.heap = []
   }
 
   // tslint:disable-next-line: no-big-function

@@ -99,7 +99,7 @@ const parseToCode = (ast: any): void => {
     })
     s.functionTable[funcName] = node
     if (s.r0 && !state.isGlobal) {
-      cg(`FUNC ${s.r0} ${funcName}`)
+      cg(`FUNC`, `${s.r0}`, `${funcName}`)
     }
     delete s.funcName
     return funcName
@@ -221,7 +221,7 @@ const parseToCode = (ast: any): void => {
   const callIdentifier = (id: string, numArgs: number, s: IState): void => {
     if (s.functionTable[id]) {
       cg('CALL', id, numArgs)
-    } else if (hasLocalOrParam(id, s)) {
+    } else if (hasVars(id, s)) {
       cg('CALL_REG', id, numArgs)
     } else {
       // const reg = newRegister()

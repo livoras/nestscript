@@ -183,8 +183,6 @@ class VirtualMachine {
     }
     init() {
         const { globalSize, functionsTable, entryFunctionIndex } = this;
-        this.stack = [];
-        this.heap = [];
         const globalIndex = globalSize + 1;
         const mainLocalSize = functionsTable[entryFunctionIndex].localSize;
         this.fp = globalIndex;
@@ -195,6 +193,11 @@ class VirtualMachine {
         this.closureTables = [this.closureTable];
         console.log('globalIndex', globalIndex, 'localSize', functionsTable[entryFunctionIndex].localSize);
         console.log("start ---> fp", this.fp, this.sp);
+    }
+    reset() {
+        this.init();
+        this.stack = [];
+        this.heap = [];
     }
     run() {
         this.ip = this.functionsTable[this.entryFunctionIndex].ip;
