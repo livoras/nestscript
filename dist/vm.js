@@ -90,10 +90,9 @@
 
 "use strict";
 
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createVMFromArrayBuffer = exports.VirtualMachine = exports.operantBytesSize = exports.I = void 0;
-var utils_1 = __webpack_require__(1);
+const utils_1 = __webpack_require__(1);
 var I;
 (function (I) {
     I[I["MOV"] = 0] = "MOV";
@@ -132,30 +131,33 @@ var I;
     I[I["CALL"] = 33] = "CALL";
     I[I["PRINT"] = 34] = "PRINT";
     I[I["RET"] = 35] = "RET";
-    I[I["AUSE"] = 36] = "AUSE";
+    I[I["PAUSE"] = 36] = "PAUSE";
     I[I["EXIT"] = 37] = "EXIT";
     I[I["CALL_CTX"] = 38] = "CALL_CTX";
     I[I["CALL_VAR"] = 39] = "CALL_VAR";
-    I[I["MOV_CTX"] = 40] = "MOV_CTX";
-    I[I["MOV_PROP"] = 41] = "MOV_PROP";
-    I[I["SET_CTX"] = 42] = "SET_CTX";
-    I[I["NEW_OBJ"] = 43] = "NEW_OBJ";
-    I[I["NEW_ARR"] = 44] = "NEW_ARR";
-    I[I["SET_KEY"] = 45] = "SET_KEY";
-    I[I["FUNC"] = 46] = "FUNC";
+    I[I["CALL_REG"] = 40] = "CALL_REG";
+    I[I["MOV_CTX"] = 41] = "MOV_CTX";
+    I[I["MOV_PROP"] = 42] = "MOV_PROP";
+    I[I["SET_CTX"] = 43] = "SET_CTX";
+    I[I["NEW_OBJ"] = 44] = "NEW_OBJ";
+    I[I["NEW_ARR"] = 45] = "NEW_ARR";
+    I[I["SET_KEY"] = 46] = "SET_KEY";
+    I[I["FUNC"] = 47] = "FUNC";
+    I[I["ALLOC"] = 48] = "ALLOC";
 })(I = exports.I || (exports.I = {}));
-exports.operantBytesSize = (_a = {},
-    _a[3] = 2,
-    _a[4] = 2,
-    _a[0] = 2,
-    _a[1] = 2,
-    _a[5] = 2,
-    _a[7] = 4,
-    _a[2] = 8,
-    _a[6] = 0,
-    _a);
-var VirtualMachine = (function () {
-    function VirtualMachine(codes, functionsTable, stringsTable, entryFunctionIndex, globalSize, ctx) {
+exports.operantBytesSize = {
+    [4]: 2,
+    [5]: 2,
+    [0]: 2,
+    [1]: 2,
+    [2]: 2,
+    [6]: 2,
+    [8]: 4,
+    [3]: 8,
+    [7]: 0,
+};
+class VirtualMachine {
+    constructor(codes, functionsTable, stringsTable, entryFunctionIndex, globalSize, ctx) {
         this.codes = codes;
         this.functionsTable = functionsTable;
         this.stringsTable = stringsTable;
@@ -166,31 +168,61 @@ var VirtualMachine = (function () {
         this.fp = 0;
         this.sp = -1;
         this.stack = [];
+        this.heap = [];
+        this.closureTable = {};
+        this.closureTables = [];
         this.isRunning = false;
+        this.makeClosureIndex = (index) => {
+            if (this.closureTable[index] === undefined) {
+                this.closureTable[index] = this.heap.length;
+                this.heap.push(undefined);
+            }
+            return this.closureTable[index];
+        };
         this.init();
     }
-    VirtualMachine.prototype.init = function () {
-        var _a = this, globalSize = _a.globalSize, functionsTable = _a.functionsTable, entryFunctionIndex = _a.entryFunctionIndex;
-        var globalIndex = globalSize + 1;
-        var mainLocalSize = functionsTable[entryFunctionIndex].localSize;
+    init() {
+        const { globalSize, functionsTable, entryFunctionIndex } = this;
+        this.stack = [];
+        this.heap = [];
+        const globalIndex = globalSize + 1;
+        const mainLocalSize = functionsTable[entryFunctionIndex].localSize;
         this.fp = globalIndex;
         this.stack[this.fp] = -1;
         this.sp = this.fp + mainLocalSize;
         this.stack.length = this.sp + 1;
+        this.closureTable = {};
+        this.closureTables = [this.closureTable];
         console.log('globalIndex', globalIndex, 'localSize', functionsTable[entryFunctionIndex].localSize);
         console.log("start ---> fp", this.fp, this.sp);
-    };
-    VirtualMachine.prototype.run = function () {
+    }
+    run() {
         this.ip = this.functionsTable[this.entryFunctionIndex].ip;
         console.log("start stack", this.stack);
         this.isRunning = true;
         while (this.isRunning) {
             this.fetchAndExecute();
         }
-    };
-    VirtualMachine.prototype.fetchAndExecute = function () {
-        var stack = this.stack;
-        var op = this.nextOperator();
+    }
+    setReg(dst, src) {
+        if (dst.type === 1) {
+            this.heap[this.makeClosureIndex(dst.index)] = src.value;
+        }
+        else {
+            this.stack[dst.index] = src.value;
+        }
+    }
+    getReg(operatant) {
+        if (operatant.type === 1) {
+            return this.heap[this.makeClosureIndex(operatant.index)];
+        }
+        else {
+            return this.stack[operatant.index];
+        }
+    }
+    fetchAndExecute() {
+        const stack = this.stack;
+        const op = this.nextOperator();
         switch (op) {
             case I.PUSH: {
                 this.push(this.nextOperant().value);
@@ -198,76 +230,81 @@ var VirtualMachine = (function () {
             }
             case I.EXIT: {
                 console.log('exit stack size -> ', stack.length);
-                this.stack = [];
+                console.log('stack -> ', this.stack);
+                console.log('heap -> ', this.heap);
+                console.log('closures -> ', this.closureTables);
                 this.isRunning = false;
+                this.closureTables = [];
                 this.init();
                 break;
             }
             case I.CALL: {
-                var funcInfo = this.nextOperant().value;
-                var numArgs = this.nextOperant().value;
+                const funcInfo = this.nextOperant().value;
+                const numArgs = this.nextOperant().value;
                 this.callFunction(funcInfo, numArgs);
                 break;
             }
             case I.RET: {
-                var fp = this.fp;
+                const fp = this.fp;
                 this.fp = stack[fp];
                 this.ip = stack[fp - 1];
                 this.sp = fp - stack[fp - 2] - 3;
                 this.stack = stack.slice(0, this.sp + 1);
+                this.closureTables.pop();
+                this.closureTable = this.closureTables[this.closureTables.length - 1];
                 break;
             }
             case I.PRINT: {
-                var val = this.nextOperant();
+                const val = this.nextOperant();
                 console.log(val.value);
                 break;
             }
             case I.MOV: {
-                var dst = this.nextOperant();
-                var src = this.nextOperant();
-                this.stack[dst.index] = src.value;
+                const dst = this.nextOperant();
+                const src = this.nextOperant();
+                this.setReg(dst, src);
                 break;
             }
             case I.JMP: {
-                var address = this.nextOperant();
+                const address = this.nextOperant();
                 this.ip = address.value;
                 break;
             }
             case I.JE: {
-                this.jumpWithCondidtion(function (a, b) { return a === b; });
+                this.jumpWithCondidtion((a, b) => a === b);
                 break;
             }
             case I.JNE: {
-                this.jumpWithCondidtion(function (a, b) { return a !== b; });
+                this.jumpWithCondidtion((a, b) => a !== b);
                 break;
             }
             case I.JG: {
-                this.jumpWithCondidtion(function (a, b) { return a > b; });
+                this.jumpWithCondidtion((a, b) => a > b);
                 break;
             }
             case I.JL: {
-                this.jumpWithCondidtion(function (a, b) { return a < b; });
+                this.jumpWithCondidtion((a, b) => a < b);
                 break;
             }
             case I.JGE: {
-                this.jumpWithCondidtion(function (a, b) { return a >= b; });
+                this.jumpWithCondidtion((a, b) => a >= b);
                 break;
             }
             case I.JLE: {
-                this.jumpWithCondidtion(function (a, b) { return a <= b; });
+                this.jumpWithCondidtion((a, b) => a <= b);
                 break;
             }
             case I.JIF: {
-                var cond = this.nextOperant();
-                var address = this.nextOperant();
+                const cond = this.nextOperant();
+                const address = this.nextOperant();
                 if (cond.value) {
                     this.ip = address.value;
                 }
                 break;
             }
             case I.JF: {
-                var cond = this.nextOperant();
-                var address = this.nextOperant();
+                const cond = this.nextOperant();
+                const address = this.nextOperant();
                 if (!cond.value) {
                     this.ip = address.value;
                 }
@@ -275,108 +312,124 @@ var VirtualMachine = (function () {
             }
             case I.CALL_CTX:
             case I.CALL_VAR: {
-                var o = void 0;
+                let o;
                 if (op === I.CALL_CTX) {
                     o = this.ctx;
                 }
                 else {
                     o = this.nextOperant().value;
                 }
-                var f = this.nextOperant().value;
-                var numArgs = this.nextOperant().value;
-                var args = [];
-                for (var i = 0; i < numArgs; i++) {
+                const f = this.nextOperant().value;
+                const numArgs = this.nextOperant().value;
+                const args = [];
+                for (let i = 0; i < numArgs; i++) {
                     args.push(stack[this.sp--]);
                 }
                 stack[0] = o[f].apply(o, args);
                 this.stack = stack.slice(0, this.sp + 1);
                 break;
             }
+            case I.CALL_REG: {
+                const o1 = this.nextOperant();
+                const f = o1.value;
+                const numArgs = this.nextOperant().value;
+                const args = [];
+                for (let i = 0; i < numArgs; i++) {
+                    args.push(stack[this.sp--]);
+                }
+                f(...args);
+                break;
+            }
             case I.MOV_CTX: {
-                var dst = this.nextOperant();
-                var propKey = this.nextOperant();
-                var src = utils_1.getByProp(this.ctx, propKey.value);
-                this.stack[dst.index] = src;
+                const dst = this.nextOperant();
+                const propKey = this.nextOperant();
+                const src = utils_1.getByProp(this.ctx, propKey.value);
+                this.setReg(dst, { value: src });
                 break;
             }
             case I.SET_CTX: {
-                var propKey = this.nextOperant();
-                var val = this.nextOperant();
+                const propKey = this.nextOperant();
+                const val = this.nextOperant();
                 this.ctx[propKey.value] = val.value;
                 break;
             }
             case I.NEW_OBJ: {
-                var dst = this.nextOperant();
-                var o = {};
-                this.stack[dst.index] = o;
+                const dst = this.nextOperant();
+                const o = {};
+                this.setReg(dst, { value: o });
                 break;
             }
             case I.NEW_ARR: {
-                var dst = this.nextOperant();
-                var o = [];
-                this.stack[dst.index] = o;
+                const dst = this.nextOperant();
+                const o = [];
+                this.setReg(dst, { value: o });
                 break;
             }
             case I.SET_KEY: {
-                var o = this.nextOperant().value;
-                var key = this.nextOperant().value;
-                var value = this.nextOperant().value;
+                const o = this.nextOperant().value;
+                const key = this.nextOperant().value;
+                const value = this.nextOperant().value;
                 o[key] = value;
                 break;
             }
             case I.FUNC: {
-                var dst = this.nextOperant();
-                var funcInfo = this.nextOperant().value;
-                var callback = this.newCallback(funcInfo);
-                stack[dst.index] = callback;
+                const dst = this.nextOperant();
+                const funcInfo = this.nextOperant().value;
+                const callback = this.newCallback(Object.assign(Object.assign({}, funcInfo), { closureTable: Object.assign({}, this.closureTable) }));
+                this.setReg(dst, { value: callback });
                 break;
             }
             case I.MOV_PROP: {
-                var dst = this.nextOperant();
-                var o = this.nextOperant().value;
-                var k = this.nextOperant().value;
-                var v = utils_1.getByProp(o, k);
-                stack[dst.index] = v;
+                const dst = this.nextOperant();
+                const o = this.nextOperant().value;
+                const k = this.nextOperant().value;
+                const v = utils_1.getByProp(o, k);
+                this.setReg(dst, { value: v });
                 break;
             }
             case I.LT: {
-                this.binaryExpression(function (a, b) { return a < b; });
+                this.binaryExpression((a, b) => a < b);
                 break;
             }
             case I.GT: {
-                this.binaryExpression(function (a, b) { return a > b; });
+                this.binaryExpression((a, b) => a > b);
                 break;
             }
             case I.EQ: {
-                this.binaryExpression(function (a, b) { return a === b; });
+                this.binaryExpression((a, b) => a === b);
                 break;
             }
             case I.LE: {
-                this.binaryExpression(function (a, b) { return a <= b; });
+                this.binaryExpression((a, b) => a <= b);
                 break;
             }
             case I.GE: {
-                this.binaryExpression(function (a, b) { return a >= b; });
+                this.binaryExpression((a, b) => a >= b);
                 break;
             }
             case I.ADD: {
-                this.binaryExpression(function (a, b) { return a + b; });
+                this.binaryExpression((a, b) => a + b);
                 break;
             }
             case I.SUB: {
-                this.binaryExpression(function (a, b) { return a - b; });
+                this.binaryExpression((a, b) => a - b);
                 break;
             }
             case I.MUL: {
-                this.binaryExpression(function (a, b) { return a * b; });
+                this.binaryExpression((a, b) => a * b);
                 break;
             }
             case I.DIV: {
-                this.binaryExpression(function (a, b) { return a / b; });
+                this.binaryExpression((a, b) => a / b);
                 break;
             }
             case I.MOD: {
-                this.binaryExpression(function (a, b) { return a % b; });
+                this.binaryExpression((a, b) => a % b);
+                break;
+            }
+            case I.ALLOC: {
+                const dst = this.nextOperant();
+                this.getReg(dst);
                 break;
             }
             default:
@@ -384,50 +437,56 @@ var VirtualMachine = (function () {
                 throw new Error("Unknow command " + op);
         }
         return op;
-    };
-    VirtualMachine.prototype.push = function (val) {
+    }
+    push(val) {
         this.stack[++this.sp] = val;
-    };
-    VirtualMachine.prototype.callFunction = function (funcInfo, numArgs) {
-        var stack = this.stack;
+    }
+    callFunction(funcInfo, numArgs) {
+        if (!funcInfo.closureTable) {
+            funcInfo.closureTable = {};
+        }
+        this.closureTable = funcInfo.closureTable;
+        this.closureTables.push(funcInfo.closureTable);
+        const stack = this.stack;
         stack[++this.sp] = numArgs;
         stack[++this.sp] = this.ip;
         stack[++this.sp] = this.fp;
         this.ip = funcInfo.ip;
         this.fp = this.sp;
         this.sp += funcInfo.localSize;
-    };
-    VirtualMachine.prototype.nextOperator = function () {
+    }
+    nextOperator() {
         return readUInt8(this.codes, this.ip, ++this.ip);
-    };
-    VirtualMachine.prototype.nextOperant = function () {
-        var codes = this.codes;
-        var valueType = readUInt8(codes, this.ip, ++this.ip);
-        var value;
+    }
+    nextOperant() {
+        const codes = this.codes;
+        const valueType = readUInt8(codes, this.ip, ++this.ip);
+        let value;
         switch (valueType) {
             case 0:
             case 1:
-            case 5:
-            case 3:
-            case 4: {
-                var j = this.ip + 2;
+            case 2:
+            case 6:
+            case 4:
+            case 5: {
+                const j = this.ip + 2;
                 value = readInt16(codes, this.ip, j);
                 this.ip = j;
                 break;
             }
-            case 7: {
-                var j = this.ip + 4;
+            case 8: {
+                const j = this.ip + 4;
                 value = readUInt32(codes, this.ip, j);
                 this.ip = j;
                 break;
             }
-            case 2: {
-                var j = this.ip + 8;
+            case 3: {
+                const j = this.ip + 8;
                 value = readFloat64(codes, this.ip, j);
                 this.ip = j;
                 break;
             }
-            case 6:
+            case 7:
                 value = 0;
                 break;
             default:
@@ -439,55 +498,52 @@ var VirtualMachine = (function () {
             raw: value,
             index: valueType === 0 ? (this.fp + value) : value,
         };
-    };
-    VirtualMachine.prototype.parseValue = function (valueType, value) {
+    }
+    parseValue(valueType, value) {
         switch (valueType) {
+            case 1:
+                return this.heap[this.closureTable[value]];
             case 0:
                 return this.stack[this.fp + value];
-            case 5:
-            case 2:
-            case 7:
-                return value;
-            case 1:
-                return this.stack[value];
-            case 4:
-                return this.stringsTable[value];
-            case 3:
-                return this.functionsTable[value];
             case 6:
+            case 3:
+            case 8:
+                return value;
+            case 2:
+                return this.stack[value];
+            case 5:
+                return this.stringsTable[value];
+            case 4:
+                return Object.assign({}, this.functionsTable[value]);
+            case 7:
                 return this.stack[0];
             default:
                 throw new Error("Unknown operant " + valueType);
         }
-    };
-    VirtualMachine.prototype.jumpWithCondidtion = function (cond) {
-        var op1 = this.nextOperant();
-        var op2 = this.nextOperant();
-        var address = this.nextOperant();
+    }
+    jumpWithCondidtion(cond) {
+        const op1 = this.nextOperant();
+        const op2 = this.nextOperant();
+        const address = this.nextOperant();
         if (cond(op1.value, op2.value)) {
             this.ip = address.value;
         }
-    };
-    VirtualMachine.prototype.binaryExpression = function (exp) {
-        var o1 = this.nextOperant();
-        var o2 = this.nextOperant();
-        var ret = exp(o1.value, o2.value);
+    }
+    binaryExpression(exp) {
+        const o1 = this.nextOperant();
+        const o2 = this.nextOperant();
+        const ret = exp(o1.value, o2.value);
         this.stack[o1.index] = ret;
-    };
-    VirtualMachine.prototype.newCallback = function (funcInfo) {
-        var _this = this;
-        return function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i] = arguments[_i];
-            }
+    }
+    newCallback(funcInfo) {
+        return (...args) => {
             args.reverse();
-            args.forEach(function (arg) { return _this.push(arg); });
-            _this.callFunction(funcInfo, args.length);
-            var op = null;
-            var callCount = 1;
+            args.forEach((arg) => this.push(arg));
+            this.callFunction(funcInfo, args.length);
+            let op = null;
+            let callCount = 1;
             while (callCount !== 0) {
-                op = _this.fetchAndExecute();
+                op = this.fetchAndExecute();
                 if (op === I.CALL) {
                     callCount++;
                 }
@@ -498,21 +554,19 @@ var VirtualMachine = (function () {
                 }
             }
         };
-    };
-    return VirtualMachine;
-}());
+    }
+}
 exports.VirtualMachine = VirtualMachine;
-var createVMFromArrayBuffer = function (buffer, ctx) {
-    if (ctx === void 0) { ctx = {}; }
-    var mainFunctionIndex = readUInt32(buffer, 0, 4);
-    var funcionTableBasicIndex = readUInt32(buffer, 4, 8);
-    var stringTableBasicIndex = readUInt32(buffer, 8, 12);
-    var globalsSize = readUInt32(buffer, 12, 16);
+const createVMFromArrayBuffer = (buffer, ctx = {}) => {
+    const mainFunctionIndex = readUInt32(buffer, 0, 4);
+    const funcionTableBasicIndex = readUInt32(buffer, 4, 8);
+    const stringTableBasicIndex = readUInt32(buffer, 8, 12);
+    const globalsSize = readUInt32(buffer, 12, 16);
     console.log('main function index', mainFunctionIndex, 'function table basic index', funcionTableBasicIndex, 'string table basic index', stringTableBasicIndex, 'globals szie ', globalsSize);
-    var stringsTable = parseStringsArray(buffer.slice(stringTableBasicIndex));
-    var codesBuf = buffer.slice(4 * 4, funcionTableBasicIndex);
-    var funcsBuf = buffer.slice(funcionTableBasicIndex, stringTableBasicIndex);
-    var funcsTable = parseFunctionTable(funcsBuf);
+    const stringsTable = parseStringsArray(buffer.slice(stringTableBasicIndex));
+    const codesBuf = buffer.slice(4 * 4, funcionTableBasicIndex);
+    const funcsBuf = buffer.slice(funcionTableBasicIndex, stringTableBasicIndex);
+    const funcsTable = parseFunctionTable(funcsBuf);
     console.log('string table', stringsTable);
     console.log('function table', funcsTable);
     console.log(mainFunctionIndex, funcsTable, 'function basic index', funcionTableBasicIndex);
@@ -521,51 +575,51 @@ var createVMFromArrayBuffer = function (buffer, ctx) {
     return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex, globalsSize, ctx);
 };
 exports.createVMFromArrayBuffer = createVMFromArrayBuffer;
-var parseFunctionTable = function (buffer) {
-    var funcs = [];
-    var i = 0;
+const parseFunctionTable = (buffer) => {
+    const funcs = [];
+    let i = 0;
     while (i < buffer.byteLength) {
-        var ipEnd = i + 4;
-        var ip = readUInt32(buffer, i, ipEnd);
-        var numArgsAndLocal = new Uint16Array(buffer.slice(ipEnd, ipEnd + 2 * 2));
-        funcs.push({ ip: ip, numArgs: numArgsAndLocal[0], localSize: numArgsAndLocal[1] });
+        const ipEnd = i + 4;
+        const ip = readUInt32(buffer, i, ipEnd);
+        const numArgsAndLocal = new Uint16Array(buffer.slice(ipEnd, ipEnd + 2 * 2));
+        funcs.push({ ip, numArgs: numArgsAndLocal[0], localSize: numArgsAndLocal[1] });
         i += 8;
     }
     return funcs;
 };
-var parseStringsArray = function (buffer) {
-    var strings = [];
-    var i = 0;
+const parseStringsArray = (buffer) => {
+    const strings = [];
+    let i = 0;
     while (i < buffer.byteLength) {
-        var lentOffset = i + 4;
-        var len = readUInt32(buffer, i, lentOffset);
-        var start = lentOffset;
-        var end = lentOffset + len * 2;
-        var str = readString(buffer, start, end);
+        const lentOffset = i + 4;
+        const len = readUInt32(buffer, i, lentOffset);
+        const start = lentOffset;
+        const end = lentOffset + len * 2;
+        const str = readString(buffer, start, end);
         strings.push(str);
         i = end;
     }
     return strings;
 };
-var readFloat64 = function (buffer, from, to) {
+const readFloat64 = (buffer, from, to) => {
     return (new Float64Array(buffer.slice(from, to)))[0];
 };
-var readUInt8 = function (buffer, from, to) {
+const readUInt8 = (buffer, from, to) => {
     return (new Uint8Array(buffer.slice(from, to)))[0];
 };
-var readInt8 = function (buffer, from, to) {
+const readInt8 = (buffer, from, to) => {
     return (new Int8Array(buffer.slice(from, to)))[0];
 };
-var readInt16 = function (buffer, from, to) {
+const readInt16 = (buffer, from, to) => {
     return (new Int16Array(buffer.slice(from, to)))[0];
 };
-var readUInt16 = function (buffer, from, to) {
+const readUInt16 = (buffer, from, to) => {
     return (new Uint16Array(buffer.slice(from, to)))[0];
 };
-var readUInt32 = function (buffer, from, to) {
+const readUInt32 = (buffer, from, to) => {
     return (new Uint32Array(buffer.slice(from, to)))[0];
 };
-var readString = function (buffer, from, to) {
+const readString = (buffer, from, to) => {
     return utils_1.arrayBufferToString(buffer.slice(from, to));
 };
 
@@ -578,27 +632,25 @@ var readString = function (buffer, from, to) {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getByProp = exports.stringToArrayBuffer = exports.arrayBufferToString = exports.concatBuffer = void 0;
-exports.concatBuffer = function (buffer1, buffer2) {
-    var tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
+exports.concatBuffer = (buffer1, buffer2) => {
+    const tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
     tmp.set(new Uint8Array(buffer1), 0);
     tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
     return tmp.buffer;
 };
-exports.arrayBufferToString = function (buffer) {
+exports.arrayBufferToString = (buffer) => {
     return String.fromCharCode.apply(null, Array.from(new Uint16Array(buffer)));
 };
-exports.stringToArrayBuffer = function (str) {
-    var stringLength = str.length;
-    var buffer = new ArrayBuffer(stringLength * 2);
-    var bufferView = new Uint16Array(buffer);
-    for (var i = 0; i < stringLength; i++) {
+exports.stringToArrayBuffer = (str) => {
+    const stringLength = str.length;
+    const buffer = new ArrayBuffer(stringLength * 2);
+    const bufferView = new Uint16Array(buffer);
+    for (let i = 0; i < stringLength; i++) {
         bufferView[i] = str.charCodeAt(i);
     }
     return buffer;
 };
-exports.getByProp = function (obj, prop) {
-    return String(prop).split('.').reduce(function (o, p) { return o[p]; }, obj);
-};
+exports.getByProp = (obj, prop) => String(prop).split('.').reduce((o, p) => o[p], obj);
 
 
 /***/ })

@@ -21,15 +21,22 @@ func main() {
     VAR %r0;
     VAR %r1;
     VAR %r2;
+    VAR %r3;
+    VAR %r4;
     VAR k;
     CALL add 0;
     MOV k $RET;
-    VAR k2;
+    VAR @c0;
+    ALLOC @c0;
     CALL min 0;
-    MOV k2 $RET;
+    MOV @c0 $RET;
+    VAR a;
+    NEW_OBJ a;
+    FUNC %r0 ___f___2;
+    SET_KEY a "onLoad" %r0;
     VAR i;
     MOV i 0;
-    LABEL _l0_:;
+LABEL _l0_:
     MOV %r0 i;
     MOV %r1 10;
     LT %r0 %r1;
@@ -38,7 +45,7 @@ func main() {
     PUSH %r1;
     MOV %r2 1;
     PUSH %r2;
-    CALL_REG k2 1;
+    CALL_REG @c0 1;
     MOV %r1 $RET;
     PUSH %r1;
     MOV %r2 2;
@@ -55,33 +62,48 @@ func main() {
     ADD %r1 1;
     MOV i %r1;
     JMP _l0_;
-    LABEL _l1_:;
+LABEL _l1_:
+    MOV %r0 '~~~';
+    PUSH %r0;
+    MOV_CTX %r0 "that";
+    PUSH %r0;
+    MOV %r1 a;
+    PUSH %r1;
+    MOV_CTX %r2 "console";
+    MOV %r3 "log";
+    CALL_VAR %r2 %r3 3;
+    MOV %r2 a;
+    PUSH %r2;
+    MOV_CTX %r3 "page";
+    MOV %r4 "sayHi";
+    CALL_VAR %r3 %r4 1;
 }
 func ___f___0(a, b) {
     VAR %r0;
     VAR %r1;
     VAR %r2;
+    VAR %r3;
     MOV %r0 @c0;
     ADD %r0 1;
     MOV @c0 %r0;
     MOV %r0 @c1;
     SUB %r0 1;
     MOV @c1 %r0;
-    PUSH @c0;
-    MOV_CTX %r0 "console";
-    MOV %r1 "log";
-    CALL_VAR %r0 %r1 1;
-    MOV %r0 10;
+    MOV %r0 @c0;
     PUSH %r0;
-    FUNC %r0 ___f___2;
-    PUSH %r0;
-    CALL_CTX "setTimeout" 2;
-    MOV %r0 a;
-    MOV %r2 b;
-    ADD %r0 %r2;
-    MOV %r1 @c0;
-    ADD %r0 %r1;
-    MOV $RET %r0;
+    MOV_CTX %r1 "console";
+    MOV %r2 "log";
+    CALL_VAR %r1 %r2 1;
+    VAR g;
+    FUNC g ___f___3;
+    CALL_REG g 0;
+    MOV g $RET;
+    MOV %r1 a;
+    MOV %r3 b;
+    ADD %r1 %r3;
+    MOV %r2 @c0;
+    ADD %r1 %r2;
+    MOV $RET %r1;
 }
 func ___f___1(c) {
     VAR %r0;
@@ -97,6 +119,21 @@ func ___f___1(c) {
 func ___f___2() {
     VAR %r0;
     VAR %r1;
+    VAR %r2;
+    MOV %r0 @c0;
+    PUSH %r0;
+    MOV %r1 'k2';
+    PUSH %r1;
+    MOV_CTX %r1 "console";
+    MOV %r2 "log";
+    CALL_VAR %r1 %r2 2;
+}
+func ___f___3() {
+    VAR %r0;
+    VAR %r1;
+    VAR %r2;
+    VAR %r3;
+    VAR %r4;
     VAR c;
     MOV c 'good';
     MOV %r0 @c0;
@@ -109,10 +146,13 @@ func ___f___2() {
     MOV %r1 @c1;
     ADD %r0 %r1;
     PUSH %r0;
-    PUSH @c1;
-    PUSH c;
-    PUSH @c0;
-    MOV_CTX %r0 "console";
-    MOV %r1 "log";
-    CALL_VAR %r0 %r1 4;
+    MOV %r0 @c1;
+    PUSH %r0;
+    MOV %r1 c;
+    PUSH %r1;
+    MOV %r2 @c0;
+    PUSH %r2;
+    MOV_CTX %r3 "console";
+    MOV %r4 "log";
+    CALL_VAR %r3 %r4 4;
 }

@@ -50,12 +50,13 @@ const add = () => {
     d++
     f--
     console.log(d)
-    setTimeout(() => {
+    const g = () => {
       const c = 'good'
       d--
       f++
       console.log(d, c, f, d + f)
-    }, 10)
+    }
+    g()
     return a + b + d 
   }
 }
@@ -71,9 +72,17 @@ const min = () => {
 function main() {
   const k = add()
   const k2 = min()
+  const a = {
+    onLoad: () => {
+      console.log('k2', k2)
+    }
+  }
   for (let i = 0; i < 10; i++) {
     console.log(k(1, 2), k2(1), 'good')
   }
+  console.log(a, that, '~~~')
+  page.sayHi(a)
+  // a.onLoad()
   // const b = () => {
   //   console.log("WHAT KKKKKKK")
   //   return "OK"

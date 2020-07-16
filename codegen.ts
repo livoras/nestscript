@@ -309,7 +309,7 @@ const parseToCode = (ast: any): void => {
           reg = node.id.name
         }
       } else {
-        throw new Error("Unprocessed node.id.type " + node.id.type)
+        throw new Error("Unprocessed node.id.type " + node.id.type + " " + node.id)
       }
       if (node.init?.type === 'Identifier') {
         if (!state.isGlobal) {
@@ -334,11 +334,10 @@ const parseToCode = (ast: any): void => {
       const args = [...node.arguments]
       args.reverse()
       for (const arg of args) {
-        let reg
+        const reg = s.r0 = newRegister()
         if (arg.type === 'Identifier') {
-          reg = arg.name
+          getValueOfNode(arg, reg, s, c)
         } else {
-          reg = s.r0 = newRegister()
           c(arg, s)
           freeRegister()
         }
@@ -649,11 +648,13 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     state.codes.push('}')
   }
   state.codes = state.codes.map((s: string | (() => string[])): string[] => {
-    const f = (c: string): string => `    ${c};\n`
-    if (typeof s === 'string') {
-      if (s.startsWith('func') || s.startsWith('LABEL') || s.startsWith('}')) {
-        return [s + '\n']
+    const f = (c: string): string => {
+      if (c.startsWith('func') || c.startsWith('LABEL') || c.startsWith('}')) {
+        return c + '\n'
       }
+      return `    ${c};\n`
+    }
+    if (typeof s === 'string') {
       return [f(s)]
     } else {
       return s().map(f)

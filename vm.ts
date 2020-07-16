@@ -108,6 +108,7 @@ export class VirtualMachine {
 
   /** 闭包映射表 */
   public closureTable: any = {}
+  public closureTables: any[] = []
 
   public isRunning: boolean = false
 
@@ -125,12 +126,16 @@ export class VirtualMachine {
   public init(): void {
     const { globalSize, functionsTable, entryFunctionIndex } = this
     // RET
+    this.stack = []
+    this.heap = []
     const globalIndex = globalSize + 1
     const mainLocalSize = functionsTable[entryFunctionIndex].localSize
     this.fp = globalIndex // fp 指向 old fp 位置，兼容普通函数
     this.stack[this.fp] =-1
     this.sp = this.fp + mainLocalSize
     this.stack.length = this.sp + 1
+    this.closureTable = {}
+    this.closureTables = [this.closureTable]
     /**
      * V2
      * V1 -> sp ->
@@ -192,8 +197,11 @@ export class VirtualMachine {
     }
     case I.EXIT: {
       console.log('exit stack size -> ', stack.length)
-      this.stack = []
+      console.log('stack -> ', this.stack)
+      console.log('heap -> ', this.heap)
+      console.log('closures -> ', this.closureTables)
       this.isRunning = false
+      this.closureTables = []
       this.init()
       break
     }
@@ -211,6 +219,8 @@ export class VirtualMachine {
       this.sp = fp - stack[fp - 2] - 3
       // 清空上一帧
       this.stack = stack.slice(0, this.sp + 1)
+      this.closureTables.pop()
+      this.closureTable = this.closureTables[this.closureTables.length - 1]
       break
     }
     case I.PRINT: {
@@ -303,7 +313,6 @@ export class VirtualMachine {
       for (let i = 0; i < numArgs; i++) {
         args.push(stack[this.sp--])
       }
-      // console.log(stack, f)
       f(...args)
       break
     }
@@ -423,6 +432,7 @@ export class VirtualMachine {
   public callFunction(funcInfo: IFuncInfo, numArgs: number): void {
     if (!funcInfo.closureTable) { funcInfo.closureTable = {} }
     this.closureTable = funcInfo.closureTable
+    this.closureTables.push(funcInfo.closureTable)
     const stack = this.stack
     // console.log('call', funcInfo, numArgs)
     //            | R3      |
