@@ -1,5 +1,4 @@
 import { arrayBufferToString, getByProp } from './utils'
-import { chownSync } from 'fs'
 /**
  *
  * MOV dest src 赋值给变量
@@ -50,11 +49,12 @@ export enum I {
  CALL_CTX, CALL_VAR, CALL_REG, MOV_CTX, MOV_PROP,
  SET_CTX, // SET_CTX "name" R1
  NEW_OBJ, NEW_ARR, SET_KEY,
- CALLBACK,
+ FUNC, ALLOC,
 }
 
 export const enum IOperatantType {
   REGISTER,
+  CLOSURE_REGISTER,
   GLOBAL,
   NUMBER,
   FUNCTION_INDEX,
@@ -76,6 +76,7 @@ export const operantBytesSize: { [x in IOperatantType]: number } = {
   [IOperatantType.STRING]: 2,
 
   [IOperatantType.REGISTER]: 2,
+  [IOperatantType.CLOSURE_REGISTER]: 2,
   [IOperatantType.GLOBAL]: 2,
   [IOperatantType.ARG_COUNT]: 2,
   [IOperatantType.ADDRESS]: 4,
@@ -83,6 +84,9 @@ export const operantBytesSize: { [x in IOperatantType]: number } = {
   [IOperatantType.RETURN_VALUE]: 0,
 }
 
+export type IClosureTable = {
+  [x in number]: number
+}
 
 export class VirtualMachine {
   /** 指令索引 */
@@ -98,6 +102,12 @@ export class VirtualMachine {
 
   /** 函数操作栈 */
   public stack: any[] = []
+
+  /** 闭包变量存储 */
+  public heap: any[] = []
+
+  /** 闭包映射表 */
+  public closureTable: any = {}
 
   public isRunning: boolean = false
 
@@ -145,6 +155,30 @@ export class VirtualMachine {
     while (this.isRunning) { this.fetchAndExecute() }
   }
 
+  public setReg(dst: IOperant, src: { value: any }): void {
+    if (dst.type === IOperatantType.CLOSURE_REGISTER) {
+      this.heap[this.makeClosureIndex(dst.index)] = src.value
+    } else {
+      this.stack[dst.index] = src.value
+    }
+  }
+
+  public getReg(operatant: IOperant): any {
+    if (operatant.type === IOperatantType.CLOSURE_REGISTER) {
+      return this.heap[this.makeClosureIndex(operatant.index)]
+    } else {
+      return this.stack[operatant.index]
+    }
+  }
+
+  public makeClosureIndex = (index: number): number => {
+    if (this.closureTable[index] === undefined) {
+      this.closureTable[index] = this.heap.length
+      this.heap.push(undefined)
+    }
+    return this.closureTable[index]
+  }
+
   // tslint:disable-next-line: no-big-function
   public fetchAndExecute(): I {
     const stack = this.stack
@@ -177,7 +211,6 @@ export class VirtualMachine {
       this.sp = fp - stack[fp - 2] - 3
       // 清空上一帧
       this.stack = stack.slice(0, this.sp + 1)
-      // console.log('RET', stack, 'sp ->', this.sp)
       break
     }
     case I.PRINT: {
@@ -189,7 +222,8 @@ export class VirtualMachine {
       const dst = this.nextOperant()
       const src = this.nextOperant()
       // console.log('mov', dst, src)
-      this.stack[dst.index] = src.value
+      // this.stack[dst.index] = src.value
+      this.setReg(dst, src)
       break
     }
     case I.JMP: {
@@ -232,7 +266,6 @@ export class VirtualMachine {
     case I.JF: {
       const cond = this.nextOperant()
       const address = this.nextOperant()
-      // console.log("+++++++++++++++", address)
       if (!cond.value) {
         this.ip = address.value
       }
@@ -263,7 +296,8 @@ export class VirtualMachine {
       break
     }
     case I.CALL_REG: {
-      const f = this.nextOperant().value
+      const o1 = this.nextOperant()
+      const f = o1.value
       const numArgs = this.nextOperant().value
       const args = []
       for (let i = 0; i < numArgs; i++) {
@@ -277,7 +311,8 @@ export class VirtualMachine {
       const dst = this.nextOperant()
       const propKey = this.nextOperant()
       const src = getByProp(this.ctx, propKey.value)
-      this.stack[dst.index] = src
+      // this.stack[dst.index] = src
+      this.setReg(dst, { value: src })
       break
     }
     case I.SET_CTX: {
@@ -289,13 +324,15 @@ export class VirtualMachine {
     case I.NEW_OBJ: {
       const dst = this.nextOperant()
       const o = {}
-      this.stack[dst.index] = o
+      // this.stack[dst.index] = o
+      this.setReg(dst, { value: o })
       break
     }
     case I.NEW_ARR: {
       const dst = this.nextOperant()
       const o: any[] = []
-      this.stack[dst.index] = o
+      // this.stack[dst.index] = o
+      this.setReg(dst, { value: o })
       break
     }
     case I.SET_KEY: {
@@ -305,11 +342,15 @@ export class VirtualMachine {
       o[key] = value
       break
     }
-    case I.CALLBACK: {
+    /** 这是定义一个函数 */
+    case I.FUNC: {
       const dst = this.nextOperant()
       const funcInfo: IFuncInfo = this.nextOperant().value
-      const callback = this.newCallback(funcInfo)
-      stack[dst.index] = callback
+      // TODO
+      const callback = this.newCallback({ ...funcInfo, closureTable: { ...this.closureTable } })
+      // stack[dst.index] = callback
+      this.setReg(dst, { value: callback })
+      // console.log("++++++", dst, this.stack)
       break
     }
     // MOV_PRO R0 R1 "arr.length";
@@ -318,7 +359,8 @@ export class VirtualMachine {
       const o = this.nextOperant().value
       const k = this.nextOperant().value
       const v = getByProp(o, k)
-      stack[dst.index] = v
+      // stack[dst.index] = v
+      this.setReg(dst, { value: v })
       break
     }
     case I.LT: {
@@ -361,6 +403,11 @@ export class VirtualMachine {
       this.binaryExpression((a, b): any => a % b)
       break
     }
+    case I.ALLOC: {
+      const dst = this.nextOperant()
+      this.getReg(dst)
+      break
+    }
     default:
       console.log(this.ip)
       throw new Error("Unknow command " + op)
@@ -374,6 +421,8 @@ export class VirtualMachine {
   }
 
   public callFunction(funcInfo: IFuncInfo, numArgs: number): void {
+    if (!funcInfo.closureTable) { funcInfo.closureTable = {} }
+    this.closureTable = funcInfo.closureTable
     const stack = this.stack
     // console.log('call', funcInfo, numArgs)
     //            | R3      |
@@ -408,6 +457,7 @@ export class VirtualMachine {
     let value: any
     switch (valueType) {
     case IOperatantType.REGISTER:
+    case IOperatantType.CLOSURE_REGISTER:
     case IOperatantType.GLOBAL:
     case IOperatantType.ARG_COUNT:
     case IOperatantType.FUNCTION_INDEX:
@@ -445,6 +495,8 @@ export class VirtualMachine {
 
   public parseValue(valueType: IOperatantType, value: any): any {
     switch (valueType) {
+    case IOperatantType.CLOSURE_REGISTER:
+      return this.heap[this.closureTable[value]]
     case IOperatantType.REGISTER:
       return this.stack[this.fp + value]
     case IOperatantType.ARG_COUNT:
@@ -456,7 +508,7 @@ export class VirtualMachine {
     case IOperatantType.STRING:
       return this.stringsTable[value]
     case IOperatantType.FUNCTION_INDEX:
-      return this.functionsTable[value]
+      return { ...this.functionsTable[value] }
     case IOperatantType.RETURN_VALUE:
       return this.stack[0]
     default:
@@ -507,6 +559,7 @@ interface IFuncInfo {
   ip: number,
   numArgs: number,
   localSize: number,
+  closureTable?: any,
 }
 
 /**

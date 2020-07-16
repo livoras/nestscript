@@ -3,7 +3,7 @@ func main () {
   VAR R0;
   VAR R1;
 
-  CALLBACK R0 sayHi;
+  FUNC R0 sayHi;
   PUSH "LOG FROM CONSOLE 1";
   PUSH "LOG FROM CONSOLE 2";
   CALL_CTX "console" "log" 2;

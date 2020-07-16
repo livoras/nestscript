@@ -71,7 +71,9 @@ const min = () => {
 function main() {
   const k = add()
   const k2 = min()
-  console.log(k(1, 2), k2(1), 'good')
+  for (let i = 0; i < 10; i++) {
+    console.log(k(1, 2), k2(1), 'good')
+  }
   // const b = () => {
   //   console.log("WHAT KKKKKKK")
   //   return "OK"
@@ -82,3 +84,5 @@ function main() {
   //   console.log("GOOD", b(), c(), d())
   // }
 }
+
+// main()

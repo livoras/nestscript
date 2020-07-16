@@ -59,6 +59,9 @@ func main() {
 * * *
 
 ## Change Log
+## 2020-07-16
+* 完成闭包在虚拟机中的实现
+
 ## 2020-07-15
 * 完成闭包变量的标记方式：内层函数“污染”外层的方式
 * 重构代码生成的方式，使用函数数组延迟代码生成，这样可以在标记完闭包变量以后再进行 codegen
@@ -93,7 +96,7 @@ func main() {
 * 开始使用 acorn 解析 ast，准备把 ast 编译成 IR 指令
 
 ## 2020-06-19
-* `CALLBACK R0 sayHi`: 构建 JS 函数封装 `sayHi` 函数并存放到 R0 寄存器，可以用作 JS 的回调参数，见 `example/callback.nes`
+* `FUNC R0 sayHi`: 构建 JS 函数封装 `sayHi` 函数并存放到 R0 寄存器，可以用作 JS 的回调参数，见 `example/callback.nes`
 * `CALL_VAR R0 "forEach" 1`: 调用寄存器里面存值的某个方法
 * `MOV_PROP R0 R1 "length"`: 将 R1 寄存器的值的 "length" 的值放到 R0 寄存器中
 

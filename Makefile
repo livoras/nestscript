@@ -8,4 +8,4 @@ watch:
 	npx nodemon -e nes --exec "make run" example
 js:
 	 ./nsc/bin/run codegen ./example/main.js ./example/js.nes
-	#make run
+	make run

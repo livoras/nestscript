@@ -37,7 +37,7 @@ interface IState {
   functionIndex: number,
   functionTable: any,
   functions: IFunction[],
-  codes: (string | (() => string))[],
+  codes: (string | (() => string[]))[],
   r0: string | null,
   r1: string | null,
   r2: string | null,
@@ -99,7 +99,7 @@ const parseToCode = (ast: any): void => {
     })
     s.functionTable[funcName] = node
     if (s.r0 && !state.isGlobal) {
-      cg(`CALLBACK ${s.r0} ${funcName}`)
+      cg(`FUNC ${s.r0} ${funcName}`)
     }
     delete s.funcName
     return funcName
@@ -206,9 +206,14 @@ const parseToCode = (ast: any): void => {
     const currentScope = getCurrentScope()
     const scopes = state.scopes
     operants.forEach((o: string): void => touchRegister(o, currentScope, scopes))
-    return state.codes.push((): string => {
+    return state.codes.push((): string[] => {
       const processedOps = operants.map((o): string => getRegisterName(o, currentScope, scopes, operator === 'VAR'))
-      return [operator, ...processedOps].join(' ')
+      const c = [operator, ...processedOps].join(' ')
+      const ret = [c]
+      if (operator === 'VAR' && processedOps[0].match(/^@c/)) {
+        ret.push(`ALLOC ${processedOps[0]}`)
+      }
+      return ret
     })
     // }
   }
@@ -643,17 +648,17 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     state.codes.splice(codeLen, 0, ...registersCodes)
     state.codes.push('}')
   }
-  state.codes = state.codes.map((s: string | (() => string)): string => {
+  state.codes = state.codes.map((s: string | (() => string[])): string[] => {
     const f = (c: string): string => `    ${c};\n`
     if (typeof s === 'string') {
       if (s.startsWith('func') || s.startsWith('LABEL') || s.startsWith('}')) {
-        return s + '\n'
+        return [s + '\n']
       }
-      return f(s)
+      return [f(s)]
     } else {
-      return f(s())
+      return s().map(f)
     }
-  })
+  }).reduce((cc: string[], c: string[]): string[] => [...cc, ...c], [])
   return state.codes.join("")
 // tslint:disable-next-line: max-file-line-count
 }

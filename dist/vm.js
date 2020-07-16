@@ -142,7 +142,7 @@ var I;
     I[I["NEW_OBJ"] = 43] = "NEW_OBJ";
     I[I["NEW_ARR"] = 44] = "NEW_ARR";
     I[I["SET_KEY"] = 45] = "SET_KEY";
-    I[I["CALLBACK"] = 46] = "CALLBACK";
+    I[I["FUNC"] = 46] = "FUNC";
 })(I = exports.I || (exports.I = {}));
 exports.operantBytesSize = (_a = {},
     _a[3] = 2,
@@ -324,7 +324,7 @@ var VirtualMachine = (function () {
                 o[key] = value;
                 break;
             }
-            case I.CALLBACK: {
+            case I.FUNC: {
                 var dst = this.nextOperant();
                 var funcInfo = this.nextOperant().value;
                 var callback = this.newCallback(funcInfo);

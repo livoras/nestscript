@@ -140,10 +140,18 @@ export const parseCodeToProgram = (program: string): Buffer => {
             return
           }
 
-          if (['CALLBACK'].includes(op) && i === 2) {
+          if (['FUNC'].includes(op) && i === 2) {
             code[i] = {
               type: IOperatantType.FUNCTION_INDEX,
               value: funcsTable[code[i]].index,
+            }
+            return
+          }
+
+          if (o.startsWith('@c')) {
+            code[i] = {
+              type: IOperatantType.CLOSURE_REGISTER,
+              value: Number(o.replace('@c', '')),
             }
             return
           }
@@ -252,6 +260,7 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
         appendBuffer(operantTypeBuf.buffer)
         switch (o.type) {
         case IOperatantType.REGISTER:
+        case IOperatantType.CLOSURE_REGISTER:
         case IOperatantType.GLOBAL:
         case IOperatantType.ARG_COUNT:
         case IOperatantType.FUNCTION_INDEX:
@@ -372,8 +381,15 @@ const parseFunction = (func: string): IFuncInfo => {
   args.forEach((arg: string, i: number): void => {
     symbols[arg] = -3 - i
   })
+  let j = 0
   vars.forEach((v: string[], i: number): void => {
-    symbols[v[1]] = i + 1
+    const reg = v[1]
+    if (reg.startsWith('@c')) {
+      symbols[reg] = -1
+    } else {
+      symbols[reg] = j + 1
+      j++
+    }
   })
 
   console.log(codes, '--->')
