@@ -16,55 +16,20 @@ A script nested in JavaScript, dynamically runs code in environment without `eva
 ## nestscript 指令集
 
 ```
-MOV
-ADD
-SUB
-MUL
-DIV
-MOD
-EXP
-NEG
-INC
-DEC
-LT
-GT
-EQ
-LE
-GE
-NE
-AND
-OR
-XOR
-NOT
-SHL
-SHR
-JMP
-JE
-JNE
-JG
-JL
-JIF
-JF
-JGE
-JLE
-PUSH
-POP
-CALL
-PRINT
-RET
-PAUSE
-EXIT
-CALL_CTX
-CALL_VAR
-CALL_REG
-MOV_CTX
-MOV_PROP
-SET_CTX
-NEW_OBJ
-NEW_ARR
-SET_KEY
-FUNC
-ALLOC
+MOV, ADD, SUB, MUL, DIV, MOD,
+EXP, NEG, INC, DEC,
+
+LT, GT, EQ, LE, GE, NE,
+AND, OR, XOR, NOT, SHL, SHR,
+
+JMP, JE, JNE, JG, JL, JIF, JF,
+JGE, JLE, PUSH, POP, CALL, PRINT,
+RET, PAUSE, EXIT,
+
+CALL_CTX, CALL_VAR, CALL_REG, MOV_CTX, MOV_PROP,
+SET_CTX,
+NEW_OBJ, NEW_ARR, SET_KEY,
+FUNC, ALLOC,
 ```
 
 详情请见 [nestscript 指令集手册](https://github.com/livoras/nestscript/blob/master/docs/ir.md)。
