@@ -1,7 +1,9 @@
 <p align="center">
-  <img height="300" src="https://github.com/livoras/nestscript/blob/master/docs/logo.png?raw=true">
+  <img height="120" src="https://github.com/livoras/nestscript/blob/master/docs/logo.png?raw=true">
 </p>
+
 # nestscript
+
 A script nested in JavaScript, dynamically runs code in environment without `eval` and `new Function`.
 
 `nestscript` 可以让你在没有 `eval` 和 `new Function` 的 JavaScript 环境中运行二进制指令文件。
