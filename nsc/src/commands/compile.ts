@@ -2,7 +2,7 @@ import { Command, flags } from '@oclif/command'
 import path = require("path")
 import fs = require("fs")
 import { generateAssemblyFromJs } from "nestscript"
-import { parseCodeToProgram } from '../../../assembler'
+import { parseCodeToProgram } from '../../../src/assembler'
 
 export default class Compile extends Command {
   static description = 'describe the command here'

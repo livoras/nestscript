@@ -1,7 +1,7 @@
 import { Command, flags } from '@oclif/command'
 import path = require("path")
 import fs = require("fs")
-import { generateAssemblyFromJs } from '../../../codegen'
+import { generateAssemblyFromJs } from '../../../src/codegen'
 
 export default class Codegen extends Command {
   static description = 'compile js to nestscript assembly.'
