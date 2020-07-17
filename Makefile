@@ -9,4 +9,4 @@ watch:
 js:
 	 ./nsc/bin/run codegen ./example/main.js ./example/js.nes
 	 ./nsc/bin/run compile ./example/js.nes ./example/main
-	# make run
+	make run

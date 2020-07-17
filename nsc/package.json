@@ -17,7 +17,6 @@
     "@types/node": "^10.17.26",
     "globby": "^10.0.2",
     "ts-node": "^8.10.2",
-    "nestscript": "^0.0.1",
     "typescript": "^3.9.5"
   },
   "engines": {

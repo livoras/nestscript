@@ -1,46 +1,10 @@
 import { arrayBufferToString, getByProp } from './utils'
-/**
- *
- * MOV dest src 赋值给变量
- *
- * ADD d s
- * SUB d s
- * DIV d s
- * MOD d s
- * EXP d power
- * NEG
- * INC
- * DEC
- *
- *
- * AND d s
- * OR ..
- * XOR ..
- * NOT d
- * SHL d count
- * SHR d count
- *
- * JMP label
- * JE op1 op1 label
- * JNE op1 op1 label
- * JG op1 op2 label
- * JL op1 op2 label
- * JGE op1 op2 label
- * JLE op1 op2 label
- * PUSH src
- * POP dest
- * CALL function numArgs
- * RET
- *
- * PAUSE ms
- * EXIT code
- */
 export enum I {
  MOV, ADD, SUB, MUL, DIV, MOD,
- EXP, NEG, INC, DEC,
+ EXP, INC, DEC,
 
  LT, GT, EQ, LE, GE, NE,
- AND, OR, XOR, NOT, SHL, SHR,
+ AND, OR, XOR,  SHL, SHR,
 
  JMP, JE, JNE, JG, JL, JIF, JF,
  JGE, JLE, PUSH, POP, CALL, PRINT,
@@ -50,6 +14,14 @@ export enum I {
  SET_CTX, // SET_CTX "name" R1
  NEW_OBJ, NEW_ARR, SET_KEY,
  FUNC, ALLOC,
+
+ /* UnaryExpression */
+ PLUS, // PLUS %r0 +
+ MINUS, // MINUS %r0 -
+ NOT, // NOT %r0 ~
+ VOID, // VOID %r0 void
+ DEL, // DEL %r0 %r1 delete
+ NEG, // NEG %r0 !
 }
 
 export const enum IOperatantType {
@@ -432,6 +404,32 @@ export class VirtualMachine {
       this.getReg(dst)
       break
     }
+    case I.PLUS: {
+      this.uniaryExpression((val: any): any => +val)
+      break
+    }
+    case I.MINUS: {
+      this.uniaryExpression((val: any): any => -val)
+      break
+    }
+    case I.VOID: {
+      // tslint:disable-next-line: no-unused-expression
+      this.uniaryExpression((val: any): any => void val)
+      break
+    }
+    case I.NOT: {
+      // tslint:disable-next-line: no-bitwise
+      this.uniaryExpression((val: any): any => ~val)
+    }
+    case I.NEG: {
+      // tslint:disable-next-line: no-bitwise
+      this.uniaryExpression((val: any): any => !val)
+    }
+    case I.DEL: {
+      const o1 = this.nextOperant().value
+      const o2 = this.nextOperant().value
+      delete o1[o2]
+    }
     default:
       console.log(this.ip)
       throw new Error("Unknow command " + op)
@@ -551,11 +549,17 @@ export class VirtualMachine {
     }
   }
 
+  public uniaryExpression(exp: (a: any) => any): void {
+    const o = this.nextOperant()
+    const ret = exp(o.value)
+    this.setReg(o, { value: ret })
+  }
+
   public binaryExpression(exp: (a: any, b: any) => any): void {
     const o1 = this.nextOperant()
     const o2 = this.nextOperant()
     const ret = exp(o1.value, o2.value)
-    this.stack[o1.index] = ret
+    this.setReg(o1, { value: ret })
   }
 
   public newCallback(funcInfo: IFuncInfo): () => any {
@@ -601,10 +605,12 @@ const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMac
   const stringTableBasicIndex = readUInt32(buffer, 8, 12)
   const globalsSize = readUInt32(buffer, 12, 16)
   console.log(
-    'main function index', mainFunctionIndex,
-    'function table basic index', funcionTableBasicIndex,
-    'string table basic index', stringTableBasicIndex,
-    'globals szie ', globalsSize,
+    ' =========================== Start Running =======================\n',
+    'main function index', mainFunctionIndex, '\n',
+    'function table basic index', funcionTableBasicIndex, '\n',
+    'string table basic index', stringTableBasicIndex, '\n',
+    'globals szie ', globalsSize, '\n',
+    '=================================================================\n',
   )
 
   const stringsTable: string[] = parseStringsArray(buffer.slice(stringTableBasicIndex))

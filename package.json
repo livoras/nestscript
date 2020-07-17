@@ -2,14 +2,15 @@
   "name": "nestscript",
   "version": "1.0.0",
   "description": "A script nested in JavaScript, dynamically run code in environment without `eval` and `new Function`.",
-  "main": "index.js",
+  "main": "src/index.js",
   "bin": {
     "nsc": "./nsc/bin/run"
   },
   "scripts": {
     "start": "npx nodemon --watch example/main.js --exec 'make js'",
     "cov": "nyc -r lcov -e .ts -x \"*.test.ts\" npm run test",
-    "test": "mocha -r ts-node/register test/**/*.spec.ts"
+    "test": "mocha -r ts-node/register test/**/*.spec.ts",
+    "watch": "nodemon --watch src --watch test -e ts --exec 'npm test'"
   },
   "repository": {
     "type": "git",

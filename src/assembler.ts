@@ -209,7 +209,7 @@ export const parseCodeToProgram = (program: string): Buffer => {
         })
       }
     })
-    console.log('CODES => ', funcInfo.codes)
+    // console.log('CODES => ', funcInfo.codes)
   })
 
   const stream = parseToStream(funcsInfo, stringTable, globalSize)
@@ -250,7 +250,6 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
       const setBuf = new Uint8Array(1)
       setBuf[0] = cmd
       appendBuffer(setBuf.buffer)
-      console.log("===>", cmd)
 
       code.forEach((o: IOperant, j: number): void => {
         if (j === 0) { return }
@@ -392,7 +391,7 @@ const parseFunction = (func: string): IFuncInfo => {
     }
   })
 
-  console.log(codes, '--->')
+  // console.log(codes, '--->')
   if (funcName === 'main') {
     codes.push(['EXIT'])
   } else if (codes[codes.length - 1][0] !== 'RET') {

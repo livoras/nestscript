@@ -58,24 +58,27 @@ class Codegen {
 }
 
 const codegen = new Codegen()
-const state: IState = {
-  tmpVariableName: '',
-  isGlobal: true,
-  globals: {},
-  locals: {},
-  params: {},
-  scopes: [],
-  labelIndex: 0,
-  functionIndex: 0,
-  functions: [],
-  functionTable: {},
-  funcName: '',
-  codes: [],
-  r0: '', // 寄存器的名字
-  r1: '', // 寄存器的名字
-  r2: '', //
-  maxRegister: 0,
-  currentFunctionName: '',
+let state: IState
+const createNewState = (): IState => {
+  return {
+    tmpVariableName: '',
+    isGlobal: true,
+    globals: {},
+    locals: {},
+    params: {},
+    scopes: [],
+    labelIndex: 0,
+    functionIndex: 0,
+    functions: [],
+    functionTable: {},
+    funcName: '',
+    codes: [],
+    r0: '', // 寄存器的名字
+    r1: '', // 寄存器的名字
+    r2: '', //
+    maxRegister: 0,
+    currentFunctionName: '',
+  }
 }
 // tslint:disable-next-line: no-big-function
 const parseToCode = (ast: any): void => {
@@ -481,6 +484,35 @@ const parseToCode = (ast: any): void => {
       freeReg()
     },
 
+    UnaryExpression(node: et.UnaryExpression, s: any, c: any): void {
+      const op = node.operator
+      const codesMap = {
+        '+': 'PLUS',
+        '-': 'MINUS',
+        '~': 'NOT',
+        '!': 'NEG',
+        'void': 'VOID',
+      }
+      const [newReg, freeReg] = newRegisterController()
+      const cmd = codesMap[node.operator]
+
+      if (op !== 'delete') {
+        const reg = s.r0
+        getValueOfNode(node.argument, reg, s, c)
+        cg(`${cmd} ${reg}`)
+      } else {
+        s.r0 = null
+        const objReg = s.r1 = newReg()
+        const keyReg = s.r2 = newReg()
+        c(node.argument, s)
+        cg(`${cmd} ${objReg} ${keyReg}`)
+        s.r1 = null
+        s.r2 = null
+      }
+
+      freeReg()
+    },
+
     IfStatement(node: et.IfStatement, s: any, c: any): void {
       const [newReg, freeReg] = newRegisterController()
 
@@ -641,6 +673,7 @@ const getFunctionDecleration = (func: IFunction): string => {
 
 export const generateAssemblyFromJs = (jsCode: string): string => {
   const ret = codegen.parse(jsCode)
+  state = createNewState()
   parseToCode(ret)
 
   while (state.functions.length > 0) {
@@ -655,7 +688,7 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     state.currentScope = { params: state.params, locals: state.locals }
     state.codes.push(getFunctionDecleration(funcAst!))
     state.scopes = funcAst!.scopes
-    console.log(funcAst?.name, funcAst?.scopes)
+    // console.log(funcAst?.name, funcAst?.scopes)
     const codeLen = state.codes.length
     const registersCodes: string[] = []
     parseToCode(funcAst?.body.body)
