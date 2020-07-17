@@ -35,7 +35,7 @@ function main() {
   page.handleTapGood = () => {
     console.log("THis is good + nice", a, b(), Object)
     console.log(c(3, 4))
-    page.setData({ name: "TOO YOUNG!~~~?" + a })
+    page.setData({ name: "GOODNIDk ruanyang" + a })
     page.setData({ motto: "No today. Tomorrow?" })
     if (page.items && page.items.length > 0) {
       page.items.push(Math.random())
@@ -44,13 +44,18 @@ function main() {
       }
     } else {
       page.items = []
-      page.items.push(Math.random())
+      page.items.push("RUNYANG")
     }
     page.setData({ items: page.items })
   }
   page.handleTapBad = () => {
     const items = page.data.items
-    items.pop()
+    const i = items.pop()
+    if (i < 0.5) {
+      page.setData({ name: '< 0.5' })
+    } else {
+      page.setData({ name: '> 0.5' })
+    }
     page.setData({ items })
   }
 }

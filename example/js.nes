@@ -135,7 +135,7 @@ func ___f___3() {
     MOV %r3 "log";
     CALL_VAR %r2 %r3 1;
     NEW_OBJ %r2;
-    MOV %r3 "TOO YOUNG!~~~?";
+    MOV %r3 "GOODNIDk ruanyang";
     MOV %r4 @c1;
     ADD %r3 %r4;
     SET_KEY %r2 "name" %r3;
@@ -206,10 +206,7 @@ LABEL _l0_:
     MOV_CTX %r10 "page";
     MOV %r11 "items";
     SET_KEY %r10 %r11 %r9;
-    MOV_CTX %r10 "Math";
-    MOV %r11 "random";
-    CALL_VAR %r10 %r11 0;
-    MOV %r9 $RET;
+    MOV %r9 "RUNYANG";
     PUSH %r9;
     MOV_CTX %r11 "page";
     MOV %r10 "items";
@@ -238,9 +235,32 @@ func ___f___4() {
     MOV_PROP %r0 %r2 %r3;
     MOV %r1 "items";
     MOV_PROP items %r0 %r1;
+    VAR i;
     MOV %r0 items;
     MOV %r1 "pop";
     CALL_VAR %r0 %r1 0;
+    MOV i $RET;
+    MOV %r0 i;
+    MOV %r1 0.5;
+    LT %r0 %r1;
+    JF %r0 _l6_;
+    NEW_OBJ %r1;
+    MOV %r2 '< 0.5';
+    SET_KEY %r1 "name" %r2;
+    PUSH %r1;
+    MOV_CTX %r1 "page";
+    MOV %r2 "setData";
+    CALL_VAR %r1 %r2 1;
+    JMP _l7_;
+LABEL _l6_:
+    NEW_OBJ %r1;
+    MOV %r2 '> 0.5';
+    SET_KEY %r1 "name" %r2;
+    PUSH %r1;
+    MOV_CTX %r1 "page";
+    MOV %r2 "setData";
+    CALL_VAR %r1 %r2 1;
+LABEL _l7_:
     NEW_OBJ %r0;
     MOV %r1 items;
     SET_KEY %r0 "items" %r1;

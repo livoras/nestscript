@@ -1,3 +1,6 @@
+<p align="center">
+  <img width="460" height="300" src="https://github.com/livoras/nestscript/blob/master/docs/logo.svg">
+</p>
 # nestscript
 A script nested in JavaScript, dynamically runs code in environment without `eval` and `new Function`.
 
