@@ -1,5 +1,7 @@
 <p align="center">
   <img height="120" src="https://github.com/livoras/nestscript/blob/master/docs/logo.png?raw=true">
+  <br>
+  ![Node.js CI](https://github.com/livoras/nestscript/workflows/Node.js%20CI/badge.svg)
 </p>
 
 # nestscript
