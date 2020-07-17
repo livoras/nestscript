@@ -105,6 +105,10 @@ func main() {
 * * *
 
 ## Change Log
+## 2020-07-17
+* 新增测试 & CI
+* uinary expression 的实现：+, -, ~, !, void, delete
+
 ## 2020-07-16
 * 逻辑表达式 "&&" 和 "||" 的 codegen 和虚拟机实现
 * 完成闭包在虚拟机中的实现
