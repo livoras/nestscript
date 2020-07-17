@@ -1,5 +1,5 @@
 <p align="center">
-  <img height="300" src="https://github.com/livoras/nestscript/blob/master/docs/logo.png">
+  <img height="300" src="https://github.com/livoras/nestscript/blob/master/docs/logo.png?raw=true">
 </p>
 # nestscript
 A script nested in JavaScript, dynamically runs code in environment without `eval` and `new Function`.
