@@ -510,7 +510,6 @@ export class VirtualMachine {
     case IOperatantType.BOOLEAN: {
       const j = this.ip + 1
       value = readInt8(codes, this.ip, j) === 1
-      console.log("?????????????????????", value)
       this.ip = j
       break
     }

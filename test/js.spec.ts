@@ -51,6 +51,14 @@ describe("uinary operators", (): void => {
       expect(!!a).equal(false)
     `)
   })
+  it('delete object property', (): void => {
+    tm(`
+    const a = { a: 'good', b: 'night' }
+    expect(a.a).equal('good')
+    delete a.a
+    expect(a.a).equal(void 555)
+    `)
+  })
 })
 
 describe("binary operators", (): void => {

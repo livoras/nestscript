@@ -506,7 +506,7 @@ const parseToCode = (ast: any): void => {
         const objReg = s.r1 = newReg()
         const keyReg = s.r2 = newReg()
         c(node.argument, s)
-        cg(`${cmd} ${objReg} ${keyReg}`)
+        cg(`DEL ${objReg} ${keyReg}`)
         s.r1 = null
         s.r2 = null
       }
