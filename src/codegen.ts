@@ -473,9 +473,15 @@ const parseToCode = (ast: any): void => {
         '*': 'MUL',
         '/': 'DIV',
         '%': 'MOD',
+        '&': 'AND',
+        '|': 'OR',
+        '^': 'XOR',
         '<<': 'SHL',
         '>>': 'SHR',
       }
+      // if (node.operator === '') {
+
+      // }
 
       const op = codeMap[node.operator]
       if (!op) {
@@ -544,10 +550,11 @@ const parseToCode = (ast: any): void => {
     },
 
     LogicalExpression(node: et.LogicalExpression, s: any, c: any): void {
+      const [newReg, freeReg] = newRegisterController()
       const retReg = s.r0
       const endLabel = newLabelName()
-      const leftReg = s.r0 = newRegister()
-      c(node.left, s)
+      const leftReg = s.r0 = newReg()
+      getValueOfNode(node.left, leftReg, s, c)
       const op = node.operator
       cg(`MOV`, `${retReg}`, `${leftReg}`)
       if (op === '&&') {
@@ -555,10 +562,11 @@ const parseToCode = (ast: any): void => {
       } else {
         cg(`JIF`, `${leftReg}`, `${endLabel}`)
       }
-      const rightReg = s.r0 = newRegister()
-      c(node.right, s)
-      cg(op === '&&' ? `AND` : `OR`, `${retReg}`, `${rightReg}`)
+      const rightReg = s.r0 = newReg()
+      getValueOfNode(node.right, rightReg, s, c)
+      cg(op === '&&' ? `LG_AND` : `LG_OR`, `${retReg}`, `${rightReg}`)
       cg('LABEL', `${endLabel}:`)
+      freeReg()
     },
 
     ForStatement(node: et.ForStatement, s: any, c: any): any {

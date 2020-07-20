@@ -63,6 +63,7 @@
 // }
 
 const main = () => {
-  const a = 7
-  expect(~a).equal(-8)
+  const a = true
+  const b = false
+  console.log(a && b, a || b)
 }

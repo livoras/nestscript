@@ -4,7 +4,8 @@ export enum I {
  EXP, INC, DEC,
 
  LT, GT, EQ, LE, GE, NE,
- AND, OR, XOR,  SHL, SHR,
+ LG_AND, LG_OR,
+ AND, OR, XOR, SHL, SHR,
 
  JMP, JE, JNE, JG, JL, JIF, JF,
  JGE, JLE, PUSH, POP, CALL, PRINT,
@@ -394,10 +395,35 @@ export class VirtualMachine {
       break
     }
     case I.AND: {
-      this.binaryExpression((a, b): any => a && b)
+      // tslint:disable-next-line: no-bitwise
+      this.binaryExpression((a, b): any => a & b)
       break
     }
     case I.OR: {
+      // tslint:disable-next-line: no-bitwise
+      this.binaryExpression((a, b): any => a | b)
+      break
+    }
+    case I.XOR: {
+      // tslint:disable-next-line: no-bitwise
+      this.binaryExpression((a, b): any => a ^ b)
+      break
+    }
+    case I.SHL: {
+      // tslint:disable-next-line: no-bitwise
+      this.binaryExpression((a, b): any => a << b)
+      break
+    }
+    case I.SHR: {
+      // tslint:disable-next-line: no-bitwise
+      this.binaryExpression((a, b): any => a >> b)
+      break
+    }
+    case I.LG_AND: {
+      this.binaryExpression((a, b): any => a && b)
+      break
+    }
+    case I.LG_OR: {
       this.binaryExpression((a, b): any => a || b)
       break
     }

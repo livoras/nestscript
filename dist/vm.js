@@ -111,8 +111,8 @@ var I;
     I[I["LE"] = 13] = "LE";
     I[I["GE"] = 14] = "GE";
     I[I["NE"] = 15] = "NE";
-    I[I["AND"] = 16] = "AND";
-    I[I["OR"] = 17] = "OR";
+    I[I["LG_AND"] = 16] = "LG_AND";
+    I[I["LG_OR"] = 17] = "LG_OR";
     I[I["XOR"] = 18] = "XOR";
     I[I["NOT"] = 19] = "NOT";
     I[I["SHL"] = 20] = "SHL";
@@ -430,11 +430,11 @@ class VirtualMachine {
                 this.binaryExpression((a, b) => a % b);
                 break;
             }
-            case I.AND: {
+            case I.LG_AND: {
                 this.binaryExpression((a, b) => a && b);
                 break;
             }
-            case I.OR: {
+            case I.LG_OR: {
                 this.binaryExpression((a, b) => a || b);
                 break;
             }

@@ -57,6 +57,7 @@ describe("uinary operators", (): void => {
     expect(a.a).equal('good')
     delete a.a
     expect(a.a).equal(void 555)
+    expect(a.b).equal('night')
     `)
   })
 })
@@ -67,6 +68,8 @@ describe("binary operators", (): void => {
       const a = 1
       const b = 2
       expect(a + b).equal(3)
+      expect(a).equal(1)
+      expect(b).equal(2)
     `)
   })
 
@@ -75,6 +78,8 @@ describe("binary operators", (): void => {
       const a = 1
       const b = 2
       expect(a - b).equal(-1)
+      expect(a).equal(1)
+      expect(b).equal(2)
     `)
   })
 
@@ -87,4 +92,82 @@ describe("binary operators", (): void => {
       expect(b).equal(5)
     `)
   })
+
+  it("a / b", (): void => {
+    tm(`
+    const a = 25
+    const b = 5
+    expect(a / b).equal(5)
+    expect(a).equal(25)
+    expect(b).equal(5)
+    `)
+  })
+
+  it("<, >, <=, >=", (): void => {
+    tm(`
+    const a = 25
+    const b = 5
+    expect(a > b).equal(true)
+    expect(b < a).equal(true)
+    expect(a < b).equal(false)
+    expect(b > a).equal(false)
+    expect(1 >= 5).equal(false)
+    expect(1 >= 1).equal(true)
+    expect(1 >= 0).equal(true)
+    expect(1 <= 0).equal(false)
+    expect(5 <= 5).equal(true)
+    expect(a).equal(25)
+    expect(b).equal(5)
+    `)
+  })
+
+  it('a % b', (): void => {
+    tm(`
+    const a = 25
+    const b = 5
+    expect(a % b).equal(0)
+    expect(b % a).equal(5)
+    expect(a).equal(25)
+    expect(b).equal(5)
+    `)
+  })
+
+  it("<< && >>", (): void => {
+    tm(`
+    const a = 1
+    expect(a << 1).equal(2)
+    expect(a << 2).equal(4)
+    expect(a << 3).equal(8)
+
+    const b = 16
+    expect(b >> 1).equal(8)
+    expect(b >> 2).equal(4)
+    expect(b >> 3).equal(2)
+    `)
+  })
+
+  it('&, | , ^', (): void => {
+    tm(`
+    const a = 1
+    const b = 2
+    expect(a | b | 4).equal(7)
+    expect(a | b).equal(3)
+    expect(a & b).equal(0)
+    expect(a).equal(1)
+    expect(b).equal(2)
+    expect(0b001 & 0b010).equal(0b000)
+    expect(0b001 | 0b010).equal(0b011)
+    expect(0b001 ^ 0b110).equal(0b111)
+    `)
+  })
+
+  it('||, &&', (): void => {
+    tm(`
+    const a = true
+    const b = false
+    expect(a && b).equal(false)
+    expect(a || b).equal(true)
+    `)
+  })
+
 })
