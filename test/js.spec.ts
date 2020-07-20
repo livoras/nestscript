@@ -183,4 +183,17 @@ describe("binary operators", (): void => {
     `)
   })
 
+  // TODO
+  // it('instanceof', (): void => {
+  //   tm(`
+  //   const a
+  //   `)
+  // })
+
+})
+
+describe('conditional expression and if else expression', (): void => {
+  it('a ? 1: 0', (): void => {
+
+  })
 })

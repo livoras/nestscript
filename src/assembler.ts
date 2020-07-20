@@ -177,7 +177,6 @@ export const parseCodeToProgram = (program: string): Buffer => {
           }
 
           if (o === 'true' || o === 'false') {
-            console.log("TRUE OR FALSE +++++", o)
             code[i] = {
               type: IOperatantType.BOOLEAN,
               value: o === 'true' ? 1: 0,
