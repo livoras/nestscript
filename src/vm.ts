@@ -3,7 +3,7 @@ export enum I {
  MOV, ADD, SUB, MUL, DIV, MOD,
  EXP, INC, DEC,
 
- LT, GT, EQ, LE, GE, NE,
+ LT, GT, EQ, LE, GE, NE, WEQ, WNE,
  LG_AND, LG_OR,
  AND, OR, XOR, SHL, SHR,
 
@@ -364,6 +364,20 @@ export class VirtualMachine {
     }
     case I.EQ: {
       this.binaryExpression((a, b): any => a === b)
+      break
+    }
+    case I.NE: {
+      this.binaryExpression((a, b): any => a !== b)
+      break
+    }
+    case I.WEQ: {
+      // tslint:disable-next-line: triple-equals
+      this.binaryExpression((a, b): any => a == b)
+      break
+    }
+    case I.WNE: {
+      // tslint:disable-next-line: triple-equals
+      this.binaryExpression((a, b): any => a != b)
       break
     }
     case I.LE: {

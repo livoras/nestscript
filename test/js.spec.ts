@@ -170,4 +170,17 @@ describe("binary operators", (): void => {
     `)
   })
 
+  it('===', (): void => {
+    tm(`
+    const a = 1
+    const b = '1'
+    expect(a === 1).equal(true)
+    expect(a !== 1).equal(false)
+    expect(a === '1').equal(false)
+    expect(a !== '1').equal(true)
+    expect(a).equal(1)
+    expect(b).equal('1')
+    `)
+  })
+
 })
