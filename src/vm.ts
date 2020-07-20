@@ -34,6 +34,7 @@ export const enum IOperatantType {
   ARG_COUNT,
   RETURN_VALUE,
   ADDRESS,
+  BOOLEAN,
 }
 
 export interface IOperant {
@@ -54,6 +55,7 @@ export const operantBytesSize: { [x in IOperatantType]: number } = {
   [IOperatantType.ADDRESS]: 4,
   [IOperatantType.NUMBER]: 8,
   [IOperatantType.RETURN_VALUE]: 0,
+  [IOperatantType.BOOLEAN]: 1,
 }
 
 export type IClosureTable = {
@@ -505,6 +507,13 @@ export class VirtualMachine {
       this.ip = j
       break
     }
+    case IOperatantType.BOOLEAN: {
+      const j = this.ip + 1
+      value = readInt8(codes, this.ip, j) === 1
+      console.log("?????????????????????", value)
+      this.ip = j
+      break
+    }
     case IOperatantType.RETURN_VALUE:
       value = 0
       break
@@ -537,6 +546,8 @@ export class VirtualMachine {
       return { ...this.functionsTable[value] }
     case IOperatantType.RETURN_VALUE:
       return this.stack[0]
+    case IOperatantType.BOOLEAN:
+      return value
     default:
       throw new Error("Unknown operant " + valueType)
     }

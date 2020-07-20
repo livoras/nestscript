@@ -41,6 +41,16 @@ describe("uinary operators", (): void => {
       expect(a).equal(7)
     `)
   })
+  it('!a and true & false boolean value', (): void => {
+    tm(`
+      const b = true
+      const a = !b
+      expect(b).equal(true)
+      expect(a).equal(false)
+      expect(!!b).equal(true)
+      expect(!!a).equal(false)
+    `)
+  })
 })
 
 describe("binary operators", (): void => {

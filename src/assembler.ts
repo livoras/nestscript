@@ -176,6 +176,15 @@ export const parseCodeToProgram = (program: string): Buffer => {
             return
           }
 
+          if (o === 'true' || o === 'false') {
+            console.log("TRUE OR FALSE +++++", o)
+            code[i] = {
+              type: IOperatantType.BOOLEAN,
+              value: o === 'true' ? 1: 0,
+            }
+            return
+          }
+
           /** 返回类型 */
           if (o === '$RET') {
             code[i] = {
@@ -276,6 +285,12 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
         }
         case IOperatantType.NUMBER: {
           const v = new Float64Array(operantBuf)
+          v[0] = o.value
+          appendBuffer(operantBuf)
+          break
+        }
+        case IOperatantType.BOOLEAN: {
+          const v = new Int8Array(operantBuf)
           v[0] = o.value
           appendBuffer(operantBuf)
           break

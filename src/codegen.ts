@@ -373,9 +373,9 @@ const parseToCode = (ast: any): void => {
     Literal: (node: et.Literal, s: any): void => {
       let val
       if (node.value === true) {
-        val = 1
+        val = true
       } else if (node.value === false) {
-        val = 0
+        val = false
       } else {
         val = node.raw
       }
