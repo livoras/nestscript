@@ -129,6 +129,7 @@ const parseToCode = (ast: any): void => {
       count++
       return newRegister()
     }, (): void => {
+      state.r0 = null
       for (let i = 0; i < count; i++) {
         freeRegister()
       }

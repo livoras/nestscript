@@ -6,53 +6,67 @@ const t = (codes: string, cb?: () => void): void => {
   vm.run()
 }
 
+const tm = (codes: string): void => {
+  return t(`
+    const main = () => {
+      ${codes}
+    }
+  `)
+}
+
 describe("uinary operators", (): void => {
   it('+a', (): void => {
-    t(`
-    const main = () => {
+    tm(`
       const a = '-1000'
       expect(+a).equal(-1000)
-    }
     `)
   })
   it('-a', (): void => {
-    t(`
-    const main = () => {
+    tm(`
       const a = 1
       expect(-a).equal(-1)
-    }
+      expect(a).equal(1)
+    `)
+  })
+  it('void 0', ():void => {
+    tm(`
+      const a = void 5
+      expect(a).equal(undefined)
+    `)
+  })
+  it('~a', (): void => {
+    tm(`
+      const a = 7
+      expect(~a).equal(-8)
+      expect(a).equal(7)
     `)
   })
 })
 
 describe("binary operators", (): void => {
   it("a + b", (): void => {
-    t(`
-      const main = () => {
-        const a = 1
-        const b = 2
-        expect(a + b).equal(3)
-      }
+    tm(`
+      const a = 1
+      const b = 2
+      expect(a + b).equal(3)
     `)
   })
 
   it("a - b", (): void => {
-    t(`
-      const main = () => {
-        const a = 1
-        const b = 2
-        expect(a - b).equal(-1)
-      }
+    tm(`
+      const a = 1
+      const b = 2
+      expect(a - b).equal(-1)
     `)
   })
 
   it("a * b", (): void => {
-    t(`
-      const main = () => {
-        const a = 5
-        const b = 5
-        expect(a * b).equal(25)
-      }
+    tm(`
+      const a = 5
+      const b = 5
+      expect(a * b).equal(25)
+      expect(a).equal(5)
+      expect(b).equal(5)
     `)
   })
 })

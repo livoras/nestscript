@@ -1,16 +1,17 @@
 func main() {
     VAR %r0;
     VAR %r1;
+    VAR %r2;
     VAR a;
-    MOV a 1;
-    VAR b;
-    MOV b 2;
-    MOV %r0 a;
-    MOV %r1 b;
-    SUB %r0 %r1;
+    MOV a 7;
+    MOV %r0 8;
+    MINUS %r0;
     PUSH %r0;
-    MOV_CTX %r0 "console";
-    MOV %r1 "log";
+    MOV %r2 a;
+    NOT %r2;
+    PUSH %r2;
+    CALL_CTX "expect" 1;
+    MOV %r0 $RET;
+    MOV %r1 "equal";
     CALL_VAR %r0 %r1 1;
-    MOV b $RET;
 }

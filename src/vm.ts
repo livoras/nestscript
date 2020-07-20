@@ -176,8 +176,8 @@ export class VirtualMachine {
     }
     case I.EXIT: {
       console.log('exit stack size -> ', stack.length)
-      console.log('stack -> ', this.stack)
-      console.log('heap -> ', this.heap)
+      // console.log('stack -> ', this.stack)
+      // console.log('heap -> ', this.heap)
       console.log('closures -> ', this.closureTables)
       this.isRunning = false
       this.closureTables = []
@@ -420,15 +420,18 @@ export class VirtualMachine {
     case I.NOT: {
       // tslint:disable-next-line: no-bitwise
       this.uniaryExpression((val: any): any => ~val)
+      break
     }
     case I.NEG: {
       // tslint:disable-next-line: no-bitwise
       this.uniaryExpression((val: any): any => !val)
+      break
     }
     case I.DEL: {
       const o1 = this.nextOperant().value
       const o2 = this.nextOperant().value
       delete o1[o2]
+      break
     }
     default:
       console.log(this.ip)
