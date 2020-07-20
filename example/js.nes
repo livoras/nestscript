@@ -1,26 +1,9 @@
 func main() {
     VAR %r0;
-    VAR %r1;
-    VAR %r2;
     VAR a;
-    MOV a true;
+    MOV a 5;
     VAR b;
-    MOV b false;
-    MOV %r1 a;
-    MOV %r0 %r1;
-    JIF %r1 _l0_;
-    MOV %r2 b;
-    LG_OR %r0 %r2;
-LABEL _l0_:
-    PUSH %r0;
-    MOV %r1 a;
-    MOV %r0 %r1;
-    JF %r1 _l1_;
-    MOV %r2 b;
-    LG_AND %r0 %r2;
-LABEL _l1_:
-    PUSH %r0;
-    MOV_CTX %r0 "console";
-    MOV %r1 "log";
-    CALL_VAR %r0 %r1 2;
+    MOV b 1;
+    MOV %r0 b;
+    MOV a %r0;
 }

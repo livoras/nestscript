@@ -51,6 +51,27 @@ interface IState {
   // $val: string,
 }
 
+const codeMap = {
+  '<': 'LT',
+  '>': 'GT',
+  '===': 'EQ',
+  '!==': 'NE',
+  '==': 'WEQ',
+  '!=': 'WNE',
+  '<=': 'LE',
+  '>=': 'GE',
+  '+': 'ADD',
+  '-': 'SUB',
+  '*': 'MUL',
+  '/': 'DIV',
+  '%': 'MOD',
+  '&': 'AND',
+  '|': 'OR',
+  '^': 'XOR',
+  '<<': 'SHL',
+  '>>': 'SHR',
+}
+
 class Codegen {
   public parse(code: string): et.Program {
     return acorn.parse(code)
@@ -444,8 +465,18 @@ const parseToCode = (ast: any): void => {
       const left = node.left
       const right = node.right
       const [newReg, freeReg] = newRegisterController()
-      const rightReg = newReg()
+      let rightReg = newReg()
       getValueOfNode(right, rightReg, s, c)
+      if (node.operator !== '=') {
+        const o = node.operator.replace(/\=$/, '')
+        console.log(o)
+        const cmd = codeMap[o]
+        if (!cmd) { throw new Error(`Operation ${o} is not implemented.`)}
+        const leftReg = newReg()
+        getValueOfNode(left, leftReg, s, c)
+        cg(`${cmd} ${leftReg} ${rightReg}`)
+        rightReg = leftReg
+      }
       setValueToNode(left, rightReg, s, c)
       freeReg()
     },
@@ -459,26 +490,7 @@ const parseToCode = (ast: any): void => {
       getValueOfNode(node.left, leftReg, s, c)
       getValueOfNode(node.right, rightReg, s, c)
 
-      const codeMap = {
-        '<': 'LT',
-        '>': 'GT',
-        '===': 'EQ',
-        '!==': 'NE',
-        '==': 'WEQ',
-        '!=': 'WNE',
-        '<=': 'LE',
-        '>=': 'GE',
-        '+': 'ADD',
-        '-': 'SUB',
-        '*': 'MUL',
-        '/': 'DIV',
-        '%': 'MOD',
-        '&': 'AND',
-        '|': 'OR',
-        '^': 'XOR',
-        '<<': 'SHL',
-        '>>': 'SHR',
-      }
+
       // if (node.operator === '') {
 
       // }

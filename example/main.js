@@ -63,7 +63,7 @@
 // }
 
 const main = () => {
-  const a = true
-  const b = false
-  console.log(a && b, a || b)
+  let a = 5
+  let b = 1
+  a += b
 }

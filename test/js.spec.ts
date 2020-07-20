@@ -132,6 +132,32 @@ describe("binary operators", (): void => {
     `)
   })
 
+  it('+=, -=, /=, *=, &=, |=', (): void => {
+    tm(`
+    let a = 5
+    let b = 1
+    a += b
+    expect(a).equal(6)
+    expect(b).equal(1)
+    a -= b
+    expect(a).equal(5)
+    expect(b).equal(1)
+    const c = 2
+    a *= c
+    expect(a).equal(10)
+    expect(c).equal(2)
+    a /= c
+    expect(a).equal(5)
+    expect(c).equal(2)
+    let d = 0b001
+    let e = 0b010
+    d |= e
+    expect(d).equal(0b011)
+    d &= e
+    expect(d).equal(0b010)
+    `)
+  })
+
   it("<< && >>", (): void => {
     tm(`
     const a = 1
