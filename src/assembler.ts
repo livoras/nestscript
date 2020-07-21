@@ -240,7 +240,7 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
   funcsInfo.forEach((funcInfo: IFuncInfo): void => {
     funcInfo.ip = buffer.byteLength
 
-    if (funcInfo.name === 'main') {
+    if (funcInfo.name === '@@main') {
       mainFunctionIndex = funcInfo.index!
     }
 
@@ -378,7 +378,7 @@ const parseStringTableToBuffer = (stringTable: string[]): {
 }
 
 const parseFunction = (func: string): IFuncInfo => {
-  const caps = func.match(/func\s+(\w[\w\d_]+)\s*?\(([\s\S]*)\)\s*?\{([\s\S]+?)\n\}/)
+  const caps = func.match(/func\s+([@\w\d_]+)\s*?\(([\s\S]*)\)\s*?\{([\s\S]+?)\n\}/)
   const funcName = caps![1]
   const args = caps![2]
     .split(/\s*,\s*/g)
@@ -406,7 +406,7 @@ const parseFunction = (func: string): IFuncInfo => {
   })
 
   // console.log(codes, '--->')
-  if (funcName === 'main') {
+  if (funcName === '@@main') {
     codes.push(['EXIT'])
   } else if (codes[codes.length - 1][0] !== 'RET') {
     codes.push(['RET'])

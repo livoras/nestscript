@@ -62,8 +62,17 @@
 //   }
 // }
 
-const main = () => {
+const a = 1
+console.log("DAMN")
+for (let i = 0; i < 10; i++) {
+  console.log('a', a)
+}
+
+const damn = () => {
   let a = 5
   let b = 1
   a += b
+  console.log("~~~", a)
 }
+
+damn()

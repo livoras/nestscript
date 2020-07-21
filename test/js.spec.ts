@@ -8,9 +8,7 @@ const t = (codes: string, cb?: () => void): void => {
 
 const tm = (codes: string): void => {
   return t(`
-    const main = () => {
-      ${codes}
-    }
+    ${codes}
   `)
 }
 

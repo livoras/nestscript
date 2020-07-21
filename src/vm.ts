@@ -281,7 +281,7 @@ export class VirtualMachine {
       for (let i = 0; i < numArgs; i++) {
         args.push(stack[this.sp--])
       }
-      // console.log('-->', f)
+      // console.log('-->', o, f)
       stack[0] = o[f].apply(o, args)
       // console.log(this.stack)
       this.stack = stack.slice(0, this.sp + 1)

@@ -86,6 +86,12 @@ const createNewState = (): IState => {
     isGlobal: true,
     globals: {},
     locals: {},
+    currentScope: {
+      params: {},
+      locals: {},
+      closureTable: {},
+      closureCounter: 0,
+    },
     params: {},
     scopes: [],
     labelIndex: 0,
@@ -694,8 +700,21 @@ const getFunctionDecleration = (func: IFunction): string => {
 
 export const generateAssemblyFromJs = (jsCode: string): string => {
   const ret = codegen.parse(jsCode)
+
+  const processFunctionAst = (funcBody: any): void => {
+    const codeLen = state.codes.length
+    const registersCodes: string[] = []
+    parseToCode(funcBody)
+    for (let i = 0; i < state.maxRegister; i++) {
+      registersCodes.push(`VAR %r${i}`)
+    }
+    state.codes.splice(codeLen, 0, ...registersCodes)
+    state.codes.push('}')
+  }
+
   state = createNewState()
-  parseToCode(ret)
+  state.codes.push('func @@main() {')
+  processFunctionAst(ret)
 
   while (state.functions.length > 0) {
     state.isGlobal = false
@@ -710,15 +729,9 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     state.codes.push(getFunctionDecleration(funcAst!))
     state.scopes = funcAst!.scopes
     // console.log(funcAst?.name, funcAst?.scopes)
-    const codeLen = state.codes.length
-    const registersCodes: string[] = []
-    parseToCode(funcAst?.body.body)
-    for (let i = 0; i < state.maxRegister; i++) {
-      registersCodes.push(`VAR %r${i}`)
-    }
-    state.codes.splice(codeLen, 0, ...registersCodes)
-    state.codes.push('}')
+    processFunctionAst(funcAst?.body.body)
   }
+
   state.codes = state.codes.map((s: string | (() => string[])): string[] => {
     const f = (c: string): string => {
       if (c.startsWith('func') || c.startsWith('LABEL') || c.startsWith('}')) {

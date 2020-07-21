@@ -1,9 +1,53 @@
-func main() {
+func @@main() {
     VAR %r0;
+    VAR %r1;
+    VAR %r2;
+    VAR %r3;
+    GLOBAL a;
+    MOV a 1;
+    MOV %r0 "DAMN";
+    PUSH %r0;
+    MOV_CTX %r0 "console";
+    MOV %r1 "log";
+    CALL_VAR %r0 %r1 1;
+    GLOBAL i;
+    MOV i 0;
+LABEL _l0_:
+    MOV %r0 i;
+    MOV %r1 10;
+    LT %r0 %r1;
+    JF %r0 _l1_;
+    MOV %r1 a;
+    PUSH %r1;
+    MOV %r2 'a';
+    PUSH %r2;
+    MOV_CTX %r2 "console";
+    MOV %r3 "log";
+    CALL_VAR %r2 %r3 2;
+    MOV %r2 i;
+    ADD %r2 1;
+    MOV i %r2;
+    JMP _l0_;
+LABEL _l1_:
+    CALL damn 0;
+}
+func damn() {
+    VAR %r0;
+    VAR %r1;
+    VAR %r2;
     VAR a;
     MOV a 5;
     VAR b;
     MOV b 1;
     MOV %r0 b;
-    MOV a %r0;
+    MOV %r1 a;
+    ADD %r1 %r0;
+    MOV a %r1;
+    MOV %r0 a;
+    PUSH %r0;
+    MOV %r1 "~~~";
+    PUSH %r1;
+    MOV_CTX %r1 "console";
+    MOV %r2 "log";
+    CALL_VAR %r1 %r2 2;
 }
