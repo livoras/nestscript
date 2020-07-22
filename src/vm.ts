@@ -358,11 +358,13 @@ export class VirtualMachine {
     /** 这是定义一个函数 */
     case I.FUNC: {
       const dst = this.nextOperant()
-      const funcInfo: IFuncInfo = this.nextOperant().value
+      const funcOperant = this.nextOperant()
+      const funcInfoIndex: number = funcOperant.raw
+      const funcInfo = this.functionsTable[funcInfoIndex]
       // TODO
-      const callback = raw.newCallback(this, { ...funcInfo, closureTable: { ...this.closureTable } })
+      funcInfo.closureTable = { ...this.closureTable }
       // stack[dst.index] = callback
-      this.setReg(dst, { value: callback })
+      this.setReg(dst, { value: funcOperant.value })
       // console.log("++++++", dst, this.stack)
       break
     }
@@ -600,7 +602,7 @@ export class VirtualMachine {
     case IOperatantType.STRING:
       return this.stringsTable[value]
     case IOperatantType.FUNCTION_INDEX:
-      return { ...this.functionsTable[value] }
+      return this.getFunctionFromFunctionInfo(this.functionsTable[value])
     case IOperatantType.RETURN_VALUE:
       return this.stack[0]
     case IOperatantType.BOOLEAN:
