@@ -290,10 +290,12 @@ const parseToCode = (ast: any): void => {
 
   const getValueOfNode = (node: any, reg: string, s: IState, c: any): any => {
     if (node.type === 'Identifier') {
-      if (hasVars(node.name, s)) {
-        cg(`MOV`, `${ reg }`, `${ node.name }`)
-      } else {
-        cg(`MOV_CTX`, `${ reg }`, `"${node.name}"`)
+      if (reg) {
+        if (hasVars(node.name, s)) {
+          cg(`MOV`, `${ reg }`, `${ node.name }`)
+        } else {
+          cg(`MOV_CTX`, `${ reg }`, `"${node.name}"`)
+        }
       }
     } else {
       s.r0 = reg
@@ -306,6 +308,9 @@ const parseToCode = (ast: any): void => {
   const popLoopEndLabels = (): any => loopEndLabels.pop()
   const getCurrentLoopEndLabel = (): string => loopEndLabels[loopEndLabels.length - 1]
 
+  /**
+   * 表达式结果处理原则：所有没有向下一层传递 s.r0 的都要处理 s.r0
+   */
   walk.recursive(ast, state, {
     VariableDeclaration: (node: et.VariableDeclaration, s: any, c: any): void => {
       // console.log("VARIABLE...", node)
@@ -366,12 +371,12 @@ const parseToCode = (ast: any): void => {
       args.reverse()
       for (const arg of args) {
         const reg = s.r0 = newRegister()
-        if (arg.type === 'Identifier') {
-          getValueOfNode(arg, reg, s, c)
-        } else {
-          c(arg, s)
-          freeRegister()
-        }
+        // if (arg.type === 'Identifier') {
+        getValueOfNode(arg, reg, s, c)
+        // } else {
+        //   c(arg, s)
+        //   freeRegister()
+        // }
         cg(`PUSH`, reg)
       }
 
@@ -468,6 +473,7 @@ const parseToCode = (ast: any): void => {
     },
 
     AssignmentExpression(node: et.AssignmentExpression, s: any, c: any): any {
+      const retReg = s.r0
       const left = node.left
       const right = node.right
       const [newReg, freeReg] = newRegisterController()
@@ -475,7 +481,6 @@ const parseToCode = (ast: any): void => {
       getValueOfNode(right, rightReg, s, c)
       if (node.operator !== '=') {
         const o = node.operator.replace(/\=$/, '')
-        console.log(o)
         const cmd = codeMap[o]
         if (!cmd) { throw new Error(`Operation ${o} is not implemented.`)}
         const leftReg = newReg()
@@ -484,6 +489,9 @@ const parseToCode = (ast: any): void => {
         rightReg = leftReg
       }
       setValueToNode(left, rightReg, s, c)
+      if (retReg) {
+        cg(`MOV ${retReg} ${rightReg}`)
+      }
       freeReg()
     },
 
@@ -495,7 +503,6 @@ const parseToCode = (ast: any): void => {
 
       getValueOfNode(node.left, leftReg, s, c)
       getValueOfNode(node.right, rightReg, s, c)
-
 
       // if (node.operator === '') {
 
@@ -540,6 +547,7 @@ const parseToCode = (ast: any): void => {
 
     IfStatement(node: et.IfStatement, s: any, c: any): void {
       const [newReg, freeReg] = newRegisterController()
+      const retReg = s.r0
 
       const testReg = newReg()
       const nextLabel = newLabelName()
@@ -551,12 +559,12 @@ const parseToCode = (ast: any): void => {
       c(node.test, s)
 
       cg(`JF`, testReg, nextLabel)
-      c(node.consequent, s)
+      getValueOfNode(node.consequent, retReg, s, c)
       cg(`JMP`, endLabel)
 
       cg(`LABEL`, `${ nextLabel }:`)
       if (node.alternate) {
-        c(node.alternate, s)
+        getValueOfNode(node.alternate, retReg, s, c)
       }
 
       if (!hasEndLabel) {
@@ -565,6 +573,10 @@ const parseToCode = (ast: any): void => {
       }
 
       freeReg()
+    },
+
+    ConditionalExpression(node: et.ConditionalExpression, s: any, c: any): void {
+      this.IfStatement(node, s, c)
     },
 
     LogicalExpression(node: et.LogicalExpression, s: any, c: any): void {

@@ -61,18 +61,8 @@
 //     page.setData({ items })
 //   }
 // }
-
-const a = 1
-console.log("DAMN")
-for (let i = 0; i < 10; i++) {
-  console.log('a', a)
-}
-
-const damn = () => {
-  let a = 5
-  let b = 1
-  a += b
-  console.log("~~~", a)
-}
-
-damn()
+const a = 100
+const b = 10
+const c = 5
+const d = a > 50 ? b : c
+console.log(d)

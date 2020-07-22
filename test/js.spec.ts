@@ -61,6 +61,16 @@ describe("uinary operators", (): void => {
 })
 
 describe("binary operators", (): void => {
+  it("a = b = 1", (): void => {
+    tm(`
+    let a = 1
+    expect(a).equal(1)
+    const b = a = 3
+    expect(a).equal(b)
+    expect(b).equal(3)
+    `)
+  })
+
   it("a + b", (): void => {
     tm(`
       const a = 1
@@ -218,6 +228,19 @@ describe("binary operators", (): void => {
 
 describe('conditional expression and if else expression', (): void => {
   it('a ? 1: 0', (): void => {
+    tm(`
+    const a = 100
+    const b = 10
+    const c = 5
+    const d = a > 50
+      ? b < 10
+        ? 1
+        : 2
+      : c > 3
+        ? 4
+        : 5
+    expect(d).equal(2)
+    `)
 
   })
 })
