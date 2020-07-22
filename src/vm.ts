@@ -42,6 +42,38 @@ export const enum IOperatantType {
   BOOLEAN,
 }
 
+class FunctionInfo {
+  public vm?: VirtualMachine
+  constructor(
+    public ip: number,
+    public numArgs: number,
+    public localSize: number,
+    public closureTable?: any,
+    public jsFunction?: CallableFunction,
+  ) {
+  }
+
+  public setVirtualMachine(vm: VirtualMachine): void {
+    this.vm = vm
+  }
+
+  public callFunction(numArgs: number): void {
+    const jsFunc = this.getFunctionFromFunctionInfo()
+    jsFunc(new raw.NumArgs(numArgs))
+  }
+
+  public getFunctionFromFunctionInfo(): CallableFunction {
+    if (!this.vm) { throw new Error("VirtualMachine is not set!")}
+    if (!this.closureTable) { this.closureTable = {} }
+    let jsFunc = this.jsFunction
+    if (!jsFunc) {
+      jsFunc = this.jsFunction = raw.parseVmFunctionToJsFunction(this, this.vm)
+    }
+    return jsFunc as CallableFunction
+  }
+
+}
+
 type CallableFunction = (...args: any[]) => any
 
 raw.setInstructionsCode(I)
@@ -71,6 +103,7 @@ export type IClosureTable = {
   [x in number]: number
 }
 
+// tslint:disable-next-line: max-classes-per-file
 export class VirtualMachine {
   /** 指令索引 */
   public ip: number = 0
@@ -101,7 +134,7 @@ export class VirtualMachine {
 
   constructor (
     public codes: ArrayBuffer,
-    public functionsTable: IFuncInfo[],
+    public functionsTable: FunctionInfo[],
     public stringsTable: string[],
     public entryFunctionIndex: number,
     public globalSize: number,
@@ -129,6 +162,8 @@ export class VirtualMachine {
     this.currentThis = this.ctx
     this.allThis = [this.currentThis]
     this.currentThis = this.ctx
+    //
+    this.functionsTable.forEach((funcInfo): void => { funcInfo.vm = this })
 
     /**
      * V2
@@ -205,12 +240,12 @@ export class VirtualMachine {
       this.init()
       break
     }
-    case I.CALL: {
-      const funcInfo: IFuncInfo = this.nextOperant().value
-      const numArgs = this.nextOperant().value
-      this.callFunction(funcInfo, numArgs, this.currentThis)
-      break
-    }
+    // case I.CALL: {
+    //   const funcInfo: FunctionInfo = this.nextOperant().value
+    //   const numArgs = this.nextOperant().value
+    //   if (funcInfo instanceof )
+    //   break
+    // }
     case I.RET: {
       const fp = this.fp
       this.fp = stack[fp]
@@ -316,7 +351,6 @@ export class VirtualMachine {
       for (let i = 0; i < numArgs; i++) {
         args.push(stack[this.sp--])
       }
-      console.log('--->', o1)
       f(...args)
       break
     }
@@ -518,21 +552,6 @@ export class VirtualMachine {
     this.stack[++this.sp] = val
   }
 
-  public callFunction(funcInfo: IFuncInfo, numArgs: number, currentThis: any): void {
-    currentThis = currentThis || this.ctx
-    const jsFunc = this.getFunctionFromFunctionInfo(funcInfo)
-    jsFunc(numArgs, currentThis)
-  }
-
-  public getFunctionFromFunctionInfo(funcInfo: IFuncInfo): CallableFunction {
-    if (!funcInfo.closureTable) { funcInfo.closureTable = {} }
-    let jsFunc = funcInfo.jsFunction
-    if (!jsFunc) {
-      jsFunc = funcInfo.jsFunction = raw.parseVmFunctionToJsFunction(funcInfo, this)
-    }
-    return jsFunc as CallableFunction
-  }
-
   public nextOperator(): I {
     // console.log("ip -> ", this.ip)
     return readUInt8(this.codes, this.ip, ++this.ip)
@@ -602,7 +621,7 @@ export class VirtualMachine {
     case IOperatantType.STRING:
       return this.stringsTable[value]
     case IOperatantType.FUNCTION_INDEX:
-      return this.getFunctionFromFunctionInfo(this.functionsTable[value])
+      return this.functionsTable[value]
     case IOperatantType.RETURN_VALUE:
       return this.stack[0]
     case IOperatantType.BOOLEAN:
@@ -636,13 +655,13 @@ export class VirtualMachine {
   }
 }
 
-interface IFuncInfo {
-  ip: number,
-  numArgs: number,
-  localSize: number,
-  closureTable?: any,
-  jsFunction?: CallableFunction,
-}
+// interface FunctionInfo {
+//   ip: number,
+//   numArgs: number,
+//   localSize: number,
+//   closureTable?: any,
+//   jsFunction?: CallableFunction,
+// }
 
 /**
  * Header:
@@ -669,7 +688,7 @@ const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMac
   const stringsTable: string[] = parseStringsArray(buffer.slice(stringTableBasicIndex))
   const codesBuf = buffer.slice(4 * 4, funcionTableBasicIndex)
   const funcsBuf = buffer.slice(funcionTableBasicIndex, stringTableBasicIndex)
-  const funcsTable: IFuncInfo[] = parseFunctionTable(funcsBuf)
+  const funcsTable: FunctionInfo[] = parseFunctionTable(funcsBuf)
   console.log('string table', stringsTable)
   console.log('function table', funcsTable)
   console.log(mainFunctionIndex, funcsTable, 'function basic index', funcionTableBasicIndex)
@@ -679,14 +698,20 @@ const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMac
   return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex, globalsSize, ctx)
 }
 
-const parseFunctionTable = (buffer: ArrayBuffer): IFuncInfo[] => {
-  const funcs: IFuncInfo[] = []
+const parseFunctionTable = (buffer: ArrayBuffer): FunctionInfo[] => {
+  const funcs: FunctionInfo[] = []
   let i = 0
   while (i < buffer.byteLength) {
     const ipEnd = i + 4
     const ip = readUInt32(buffer, i, ipEnd)
     const numArgsAndLocal = new Uint16Array(buffer.slice(ipEnd, ipEnd + 2 * 2))
-    funcs.push({ ip, numArgs: numArgsAndLocal[0], localSize: numArgsAndLocal[1] })
+    funcs.push(
+      new FunctionInfo(
+        ip,
+        numArgsAndLocal[0],
+        numArgsAndLocal[1],
+      ),
+    )
     i += 8
   }
   return funcs
