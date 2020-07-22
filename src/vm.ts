@@ -23,6 +23,8 @@ export enum I {
  VOID, // VOID %r0 void
  DEL, // DEL %r0 %r1 delete
  NEG, // NEG %r0 !
+
+ INST_OF, // instanceof
 }
 
 export const enum IOperatantType {
@@ -439,6 +441,13 @@ export class VirtualMachine {
     }
     case I.LG_OR: {
       this.binaryExpression((a, b): any => a || b)
+      break
+    }
+    case I.INST_OF: {
+      this.binaryExpression((a, b): any => {
+        console.log(a, b)
+        return a instanceof b
+      })
       break
     }
     case I.ALLOC: {

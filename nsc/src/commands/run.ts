@@ -28,7 +28,11 @@ export default class Run extends Command {
       return
     }
     const exe = this.getAbsPath(args.file)
-    const vm = createVMFromArrayBuffer((new Uint8Array(fs.readFileSync(exe)).buffer), { console, setTimeout })
+    const vm = createVMFromArrayBuffer((new Uint8Array(fs.readFileSync(exe)).buffer), {
+      ...global,
+      console,
+      Date,
+    })
     vm.run()
   }
 

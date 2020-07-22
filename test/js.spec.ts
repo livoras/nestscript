@@ -2,7 +2,8 @@ import { createVMFromJavaScript } from '../src/js'
 import { expect } from 'chai'
 
 const t = (codes: string, cb?: () => void): void => {
-  const vm = createVMFromJavaScript(codes, { expect, cb })
+  const ctx = { expect, cb, ...global, Date }
+  const vm = createVMFromJavaScript(codes, ctx)
   vm.run()
 }
 
@@ -242,5 +243,14 @@ describe('conditional expression and if else expression', (): void => {
     expect(d).equal(2)
     `)
 
+  })
+})
+
+describe('classes', (): void => {
+  it(`new and instanceof`, (): void => {
+    tm(`
+    const a = new Date()
+    expect(a instanceof Date).equal(true)
+    `)
   })
 })

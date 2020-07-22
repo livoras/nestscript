@@ -61,8 +61,5 @@
 //     page.setData({ items })
 //   }
 // }
-const a = 100
-const b = 10
-const c = 5
-const d = a > 50 ? b : c
-console.log(d)
+const a = new Date()
+console.log(a instanceof Date)

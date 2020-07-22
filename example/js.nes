@@ -3,22 +3,9 @@ func @@main() {
     VAR %r1;
     VAR %r2;
     GLOBAL a;
-    MOV a 100;
-    GLOBAL b;
-    MOV b 10;
-    GLOBAL c;
-    MOV c 5;
-    GLOBAL d;
     MOV %r0 a;
-    MOV %r1 50;
-    GT %r0 %r1;
-    JF %r0 _l0_;
-    MOV d b;
-    JMP _l1_;
-LABEL _l0_:
-    MOV d c;
-LABEL _l1_:
-    MOV %r0 d;
+    MOV_CTX %r1 "Date";
+    INST_OF %r0 %r1;
     PUSH %r0;
     MOV_CTX %r1 "console";
     MOV %r2 "log";

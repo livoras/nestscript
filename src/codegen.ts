@@ -70,6 +70,7 @@ const codeMap = {
   '^': 'XOR',
   '<<': 'SHL',
   '>>': 'SHR',
+  'instanceof': 'INST_OF',
 }
 
 class Codegen {
@@ -698,6 +699,11 @@ const parseToCode = (ast: any): void => {
       c(node.argument, s)
       cg(`MOV`, `$RET`, `${reg}`)
       freeRegister()
+    },
+
+    NewExpression(node: et.NewExpression, s: any, c: any): any {
+      // node.callee
+      // TODO
     },
   })
 
