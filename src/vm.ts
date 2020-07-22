@@ -1,4 +1,6 @@
 import { arrayBufferToString, getByProp } from './utils'
+const raw = require('./raw')
+
 export enum I {
  MOV, ADD, SUB, MUL, DIV, MOD,
  EXP, INC, DEC,
@@ -39,6 +41,10 @@ export const enum IOperatantType {
   ADDRESS,
   BOOLEAN,
 }
+
+type CallableFunction = (...args: any[]) => any
+
+raw.setInstructionsCode(I)
 
 export interface IOperant {
   type: IOperatantType,
@@ -87,6 +93,10 @@ export class VirtualMachine {
   public closureTable: any = {}
   public closureTables: any[] = []
 
+  /** this 链 */
+  public currentThis: any
+  public allThis: any[] = []
+
   public isRunning: boolean = false
 
   constructor (
@@ -112,8 +122,14 @@ export class VirtualMachine {
     this.stack[this.fp] =-1
     this.sp = this.fp + mainLocalSize
     this.stack.length = this.sp + 1
+    //
     this.closureTable = {}
     this.closureTables = [this.closureTable]
+    //
+    this.currentThis = this.ctx
+    this.allThis = [this.currentThis]
+    this.currentThis = this.ctx
+
     /**
      * V2
      * V1 -> sp ->
@@ -192,7 +208,7 @@ export class VirtualMachine {
     case I.CALL: {
       const funcInfo: IFuncInfo = this.nextOperant().value
       const numArgs = this.nextOperant().value
-      this.callFunction(funcInfo, numArgs)
+      this.callFunction(funcInfo, numArgs, this.currentThis)
       break
     }
     case I.RET: {
@@ -205,6 +221,9 @@ export class VirtualMachine {
       this.stack = stack.slice(0, this.sp + 1)
       this.closureTables.pop()
       this.closureTable = this.closureTables[this.closureTables.length - 1]
+      //
+      this.allThis.pop()
+      this.currentThis = this.allThis[this.allThis.length - 1]
       break
     }
     case I.PRINT: {
@@ -297,6 +316,7 @@ export class VirtualMachine {
       for (let i = 0; i < numArgs; i++) {
         args.push(stack[this.sp--])
       }
+      console.log('--->', o1)
       f(...args)
       break
     }
@@ -340,7 +360,7 @@ export class VirtualMachine {
       const dst = this.nextOperant()
       const funcInfo: IFuncInfo = this.nextOperant().value
       // TODO
-      const callback = this.newCallback({ ...funcInfo, closureTable: { ...this.closureTable } })
+      const callback = raw.newCallback(this, { ...funcInfo, closureTable: { ...this.closureTable } })
       // stack[dst.index] = callback
       this.setReg(dst, { value: callback })
       // console.log("++++++", dst, this.stack)
@@ -496,30 +516,19 @@ export class VirtualMachine {
     this.stack[++this.sp] = val
   }
 
-  public callFunction(funcInfo: IFuncInfo, numArgs: number): void {
+  public callFunction(funcInfo: IFuncInfo, numArgs: number, currentThis: any): void {
+    currentThis = currentThis || this.ctx
+    const jsFunc = this.getFunctionFromFunctionInfo(funcInfo)
+    jsFunc(numArgs, currentThis)
+  }
+
+  public getFunctionFromFunctionInfo(funcInfo: IFuncInfo): CallableFunction {
     if (!funcInfo.closureTable) { funcInfo.closureTable = {} }
-    this.closureTable = funcInfo.closureTable
-    this.closureTables.push(funcInfo.closureTable)
-    const stack = this.stack
-    // console.log('call', funcInfo, numArgs)
-    //            | R3      |
-    //            | R2      |
-    //            | R1      |
-    //            | R0      |
-    //      sp -> | fp      | # for restoring old fp
-    //            | ip      | # for restoring old ip
-    //            | numArgs | # for restoring old sp: old sp = current sp - numArgs - 3
-    //            | arg1    |
-    //            | arg2    |
-    //            | arg3    |
-    //  old sp -> | ....    |
-    stack[++this.sp] = numArgs
-    stack[++this.sp] = this.ip
-    stack[++this.sp] = this.fp
-    // set to new ip and fp
-    this.ip = funcInfo.ip
-    this.fp = this.sp
-    this.sp += funcInfo.localSize
+    let jsFunc = funcInfo.jsFunction
+    if (!jsFunc) {
+      jsFunc = funcInfo.jsFunction = raw.parseVmFunctionToJsFunction(funcInfo, this)
+    }
+    return jsFunc as CallableFunction
   }
 
   public nextOperator(): I {
@@ -623,27 +632,6 @@ export class VirtualMachine {
     const ret = exp(o1.value, o2.value)
     this.setReg(o1, { value: ret })
   }
-
-  public newCallback(funcInfo: IFuncInfo): () => any {
-    return (...args: any[]): any => {
-      args.reverse()
-      args.forEach((arg: any): void => this.push(arg))
-      this.callFunction(funcInfo, args.length)
-      let op: any = null
-      let callCount = 1
-      /** 回调函数的实现 */
-      while (callCount !== 0) {
-        op = this.fetchAndExecute()
-        if(op === I.CALL) {
-          callCount++
-        } else if (op === I.RET) {
-          callCount--
-        } else {
-          // do nothing..
-        }
-      }
-    }
-  }
 }
 
 interface IFuncInfo {
@@ -651,6 +639,7 @@ interface IFuncInfo {
   numArgs: number,
   localSize: number,
   closureTable?: any,
+  jsFunction?: CallableFunction,
 }
 
 /**

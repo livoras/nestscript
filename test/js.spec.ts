@@ -246,11 +246,22 @@ describe('conditional expression and if else expression', (): void => {
   })
 })
 
-describe('classes', (): void => {
-  it(`new and instanceof`, (): void => {
+describe('class', (): void => {
+  xit(`new and instanceof`, (): void => {
     tm(`
     const a = new Date()
     expect(a instanceof Date).equal(true)
+    `)
+  })
+})
+
+describe('function', (): void => {
+  it('call function', (): void => {
+    tm(`
+    const a = (b, c) => b + c
+    const d = a
+    expect(a(1, 2)).equal(3)
+    expect(d(2, 3)).equal(5)
     `)
   })
 })

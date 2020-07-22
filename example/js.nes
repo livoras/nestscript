@@ -1,13 +1,42 @@
 func @@main() {
     VAR %r0;
     VAR %r1;
-    VAR %r2;
+    GLOBAL b;
+    MOV b '1';
     GLOBAL a;
-    MOV %r0 a;
-    MOV_CTX %r1 "Date";
-    INST_OF %r0 %r1;
+    FUNC a @@f0;
+    GLOBAL c;
+    MOV c a;
+    MOV %r0 c;
+    MOV b %r0;
+    MOV %r1 4;
+    PUSH %r1;
+    MOV %r1 3;
+    PUSH %r1;
+    CALL_REG c 2;
+    MOV %r0 $RET;
     PUSH %r0;
-    MOV_CTX %r1 "console";
-    MOV %r2 "log";
-    CALL_VAR %r1 %r2 1;
+    MOV %r1 2;
+    PUSH %r1;
+    MOV %r1 3;
+    PUSH %r1;
+    CALL_REG b 2;
+    MOV %r0 $RET;
+    PUSH %r0;
+    MOV %r1 2;
+    PUSH %r1;
+    MOV %r1 1;
+    PUSH %r1;
+    CALL_REG a 2;
+    MOV %r0 $RET;
+    PUSH %r0;
+    MOV_CTX %r0 "console";
+    MOV %r1 "log";
+    CALL_VAR %r0 %r1 3;
+}
+func @@f0(k, j) {
+    VAR %r0;
+    MOV $RET k;
+    MOV %r0 j;
+    ADD $RET %r0;
 }

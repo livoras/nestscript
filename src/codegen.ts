@@ -111,7 +111,7 @@ const createNewState = (): IState => {
 // tslint:disable-next-line: no-big-function
 const parseToCode = (ast: any): void => {
   const newFunctionName = (): string => {
-    state.currentFunctionName = `___f___${state.functionIndex++}`
+    state.currentFunctionName = `@@f${state.functionIndex++}`
     return state.currentFunctionName
   }
 
@@ -119,7 +119,7 @@ const parseToCode = (ast: any): void => {
     node: et.FunctionExpression | et.ArrowFunctionExpression | et.FunctionDeclaration,
     s: IState,
   ): string => {
-    const funcName = s.funcName || newFunctionName()
+    const funcName = newFunctionName()
     s.globals[funcName] = VariableType.FUNCTION
     s.functions.push({
       name: funcName,
@@ -129,7 +129,7 @@ const parseToCode = (ast: any): void => {
       }],
     })
     s.functionTable[funcName] = node
-    if (s.r0 && !state.isGlobal) {
+    if (s.r0) {
       cg(`FUNC`, `${s.r0}`, `${funcName}`)
     }
     delete s.funcName
@@ -323,38 +323,37 @@ const parseToCode = (ast: any): void => {
       // console.log(node)
       const [newReg, freeReg] = newRegisterController()
       let reg
-      let funcName = ''
-      const isInitFunction = node.init?.type === 'FunctionExpression' || node.init?.type === 'ArrowFunctionExpression'
+      // let funcName = ''
       if (node.id.type === 'Identifier') {
-        if (isInitFunction) {
-          reg = node.id.name // newReg()
-          if (state.isGlobal) {
-            funcName = node.id.name
-          } else {
-            s.locals[node.id.name] = VariableType.VARIABLE
-            cg(`VAR`, `${node.id.name}`)
-            funcName = newFunctionName()
-          }
+        // if (isInitFunction) {
+        //   reg = node.id.name // newReg()
+        //   if (state.isGlobal) {
+        //     funcName = node.id.name
+        //   } else {
+        //     s.locals[node.id.name] = VariableType.VARIABLE
+        //     cg(`VAR`, `${node.id.name}`)
+        //     funcName = newFunctionName()
+        //   }
+        // } else {
+        if (state.isGlobal) {
+          cg(`GLOBAL`, node.id.name)
+          s.globals[node.id.name] = VariableType.VARIABLE
         } else {
-          if (state.isGlobal) {
-            cg(`GLOBAL`, node.id.name)
-            s.globals[node.id.name] = VariableType.VARIABLE
-          } else {
-            cg(`VAR`, `${node.id.name}`)
-            s.locals[node.id.name] = VariableType.VARIABLE
-          }
-          reg = node.id.name
+          cg(`VAR`, `${node.id.name}`)
+          s.locals[node.id.name] = VariableType.VARIABLE
         }
+        reg = node.id.name
+        // }
       } else {
         throw new Error("Unprocessed node.id.type " + node.id.type + " " + node.id)
       }
       if (node.init?.type === 'Identifier') {
-        if (!state.isGlobal) {
-          cg(`MOV`, reg, node.init.name)
-        }
+        // if (!state.isGlobal) {
+        cg(`MOV`, reg, node.init.name)
+        // }
       } else {
         s.r0 = reg
-        s.funcName = funcName
+        // s.funcName = funcName
         c(node.init, s)
       }
       freeReg()
@@ -362,7 +361,7 @@ const parseToCode = (ast: any): void => {
     },
 
     FunctionDeclaration(node: et.FunctionDeclaration, s: any, c: any): any {
-      s.funcName = node.id?.name
+      s.r0 = node.id?.name
       parseFunc(node, s)
     },
 
@@ -378,6 +377,7 @@ const parseToCode = (ast: any): void => {
         //   c(arg, s)
         //   freeRegister()
         // }
+        freeRegister()
         cg(`PUSH`, reg)
       }
 
@@ -719,9 +719,13 @@ const getFunctionDecleration = (func: IFunction): string => {
 export const generateAssemblyFromJs = (jsCode: string): string => {
   const ret = codegen.parse(jsCode)
 
-  const processFunctionAst = (funcBody: any): void => {
+  const processFunctionAst = (funcBody: et.Node): void => {
     const codeLen = state.codes.length
     const registersCodes: string[] = []
+    /** () => a + b，无显式 return 的返回表达式 */
+    if (funcBody.type !== 'BlockStatement') {
+      state.r0 = '$RET'
+    }
     parseToCode(funcBody)
     for (let i = 0; i < state.maxRegister; i++) {
       registersCodes.push(`VAR %r${i}`)
@@ -747,7 +751,7 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     state.codes.push(getFunctionDecleration(funcAst!))
     state.scopes = funcAst!.scopes
     // console.log(funcAst?.name, funcAst?.scopes)
-    processFunctionAst(funcAst?.body.body)
+    processFunctionAst(funcAst?.body.body!)
   }
 
   state.codes = state.codes.map((s: string | (() => string[])): string[] => {

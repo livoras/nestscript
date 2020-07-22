@@ -61,5 +61,11 @@
 //     page.setData({ items })
 //   }
 // }
-const a = new Date()
-console.log(a instanceof Date)
+// const a = new Date()
+// console.log(a instanceof Date)
+
+let b = '1'
+const a = (k, j) => k + j
+const c = a
+b = c
+console.log(a(1, 2), b(3, 2), c(3, 4))
