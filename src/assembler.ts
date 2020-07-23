@@ -379,7 +379,6 @@ const parseStringTableToBuffer = (stringTable: string[]): {
 
 const parseFunction = (func: string): IFuncInfo => {
   const caps = func.match(/func\s+([@\w\d_]+)\s*?\(([\s\S]*)\)\s*?\{([\s\S]*?)\n\}/)
-  console.log(func)
   const funcName = caps![1]
   const args = caps![2]
     .split(/\s*,\s*/g)
@@ -405,7 +404,6 @@ const parseFunction = (func: string): IFuncInfo => {
       j++
     }
   })
-  console.log(codes)
 
   // console.log(codes, '--->')
   if (funcName === '@@main') {
