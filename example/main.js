@@ -1,8 +1,18 @@
-wrapper.say = function() {
-  const a = this.say2()
-  return a + 1
+function People() {
+  console.log("THIS IS NOT A GOOD DAY~~~~~~~~~~~")
+  this.a = 1
+  this.b = 2
+  // fuck()
 }
-wrapper.say2 = function() {
-  return 2
+People.prototype.add = function () {
+  return this.a + this.b
 }
-expect(wrapper.run()).equal(3)
+console.log(People.prototype, 'what?')
+// People.prototype.add = function() {
+//   return this.a + this.b
+// }
+const people = new People()
+console.log('====>', people, people.add(), people instanceof People)
+// expect(people.a).equal(1)
+// expect(people.b).equal(2)
+// expect(people.add()).equal(3)

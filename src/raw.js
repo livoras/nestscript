@@ -65,7 +65,7 @@ exports.parseVmFunctionToJsFunction = function parseVmFunctionToJsFunction (func
       while (callCount > 0) {
         const [op, isCallVMFunction] = vm.fetchAndExecute()
         if (isCallVMFunction) {
-          callCount ++
+          callCount++
         } else if (op === I.RET) {
           callCount--
         }

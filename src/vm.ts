@@ -219,6 +219,7 @@ export class VirtualMachine {
   public fetchAndExecute(): [I, boolean] {
     const stack = this.stack
     const op = this.nextOperator()
+    // 用来判断是否嵌套调用 vm 函数
     let isCallVMFunction = false
     // console.log(op)
     // tslint:disable-next-line: max-switch-cases
@@ -319,45 +320,23 @@ export class VirtualMachine {
     case I.CALL_CTX:
     case I.CALL_VAR: {
       let o
-
       if (op === I.CALL_CTX) {
         o = this.ctx
       } else {
-        // const k = this.nextOperant().value
-        // o = getByProp(this.ctx, k)
         o = this.nextOperant().value
       }
-
       const funcName = this.nextOperant().value
       const numArgs = this.nextOperant().value
-      const f = o[funcName]
-      if (f instanceof raw.Callable) {
-        o[funcName](new raw.NumArgs(numArgs))
-        isCallVMFunction = true
-      } else {
-        const args = []
-        for (let i = 0; i < numArgs; i++) {
-          args.push(stack[this.sp--])
-        }
-        stack[0] = o[funcName](...args)
-        this.stack.splice(this.sp + 1)
-      }
+      const isNewExpression = this.nextOperant().value
+      isCallVMFunction = this.callFunction(void 0, o, funcName, numArgs, isNewExpression)
       break
     }
     case I.CALL_REG: {
-      const o1 = this.nextOperant()
-      const f = o1.value
+      const o = this.nextOperant()
+      const f = o.value
       const numArgs = this.nextOperant().value
-      if (f instanceof raw.Callable) {
-        isCallVMFunction = true
-        f(new raw.NumArgs(numArgs))
-      } else {
-        const args = []
-        for (let i = 0; i < numArgs; i++) {
-          args.push(stack[this.sp--])
-        }
-        f(...args)
-      }
+      const isNewExpression = this.nextOperant().value
+      isCallVMFunction = this.callFunction(f, void 0, '', numArgs, isNewExpression)
       break
     }
     case I.MOV_CTX: {
@@ -392,6 +371,9 @@ export class VirtualMachine {
       const o = this.nextOperant().value
       const key = this.nextOperant().value
       const value = this.nextOperant().value
+      // if (key === 'a') {
+      //   console.log('SETKEYYYYYYYYYYYYYYYYYYYYYY', o, key, value)
+      // }
       o[key] = value
       break
     }
@@ -661,6 +643,44 @@ export class VirtualMachine {
     const o2 = this.nextOperant()
     const ret = exp(o1.value, o2.value)
     this.setReg(o1, { value: ret })
+  }
+
+  // tslint:disable-next-line: cognitive-complexity
+  public callFunction(
+    func: CallableFunction | undefined,
+    o: any,
+    funcName: string,
+    numArgs: number,
+    isNewExpression: boolean,
+  ): boolean {
+    const stack = this.stack
+    const f = func || o[funcName]
+    let isCallVMFunction = false
+    if ((f instanceof raw.Callable) && !isNewExpression) {
+      const arg = new raw.NumArgs(numArgs)
+      if (o) {
+        o[funcName](arg)
+      } else {
+        f(arg)
+      }
+      isCallVMFunction = true
+    } else {
+      const args = []
+      for (let i = 0; i < numArgs; i++) {
+        args.push(stack[this.sp--])
+      }
+      if (o) {
+        stack[0] = isNewExpression
+          ? new o[funcName](...args)
+          : o[funcName](...args)
+      } else {
+        stack[0] = isNewExpression
+          ? new f(...args)
+          : f(...args)
+      }
+      this.stack.splice(this.sp + 1)
+    }
+    return isCallVMFunction
   }
 }
 

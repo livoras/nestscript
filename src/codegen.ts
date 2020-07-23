@@ -250,14 +250,14 @@ const parseToCode = (ast: any): void => {
     // }
   }
 
-  const callIdentifier = (id: string, numArgs: number, s: IState): void => {
+  const callIdentifier = (id: string, numArgs: number, s: IState, isExpression: boolean): void => {
     if (s.functionTable[id]) {
-      cg('CALL', id, numArgs)
+      cg('CALL', id, numArgs, isExpression)
     } else if (hasVars(id, s)) {
-      cg('CALL_REG', id, numArgs)
+      cg('CALL_REG', id, numArgs, isExpression)
     } else {
       // const reg = newRegister()
-      cg('CALL_CTX', `"${id}"`, numArgs)
+      cg('CALL_CTX', `"${id}"`, numArgs, isExpression)
       // freeRegister()
     }
   }
@@ -304,6 +304,16 @@ const parseToCode = (ast: any): void => {
     }
   }
 
+  const declareVariable = (s: IState, name: string): void => {
+    if (state.isGlobal) {
+      cg(`GLOBAL`, name)
+      s.globals[name] = VariableType.VARIABLE
+    } else {
+      cg(`VAR`, `${name}`)
+      s.locals[name] = VariableType.VARIABLE
+    }
+  }
+
   const loopEndLabels: string[] = []
   const pushLoopEndLabels = (label: string): any => loopEndLabels.push(label)
   const popLoopEndLabels = (): any => loopEndLabels.pop()
@@ -335,13 +345,7 @@ const parseToCode = (ast: any): void => {
         //     funcName = newFunctionName()
         //   }
         // } else {
-        if (state.isGlobal) {
-          cg(`GLOBAL`, node.id.name)
-          s.globals[node.id.name] = VariableType.VARIABLE
-        } else {
-          cg(`VAR`, `${node.id.name}`)
-          s.locals[node.id.name] = VariableType.VARIABLE
-        }
+        declareVariable(s, node.id.name)
         reg = node.id.name
         // }
       } else {
@@ -362,11 +366,15 @@ const parseToCode = (ast: any): void => {
 
     FunctionDeclaration(node: et.FunctionDeclaration, s: any, c: any): any {
       s.r0 = node.id?.name
+      declareVariable(s, s.r0)
       parseFunc(node, s)
+      s.r0 = null
     },
 
     CallExpression(node: et.CallExpression, s: any, c: any): any {
       const retReg = s.r0
+      const isNewExpression = !!s.isNewExpression
+      delete s.isNewExpression
       const args = [...node.arguments]
       args.reverse()
       for (const arg of args) {
@@ -386,16 +394,16 @@ const parseToCode = (ast: any): void => {
         const objReg = s.r1 = newRegister()
         const keyReg = s.r2 = newRegister()
         c(node.callee, s)
-        cg(`CALL_VAR`, objReg, keyReg, node.arguments.length)
+        cg(`CALL_VAR`, objReg, keyReg, node.arguments.length, isNewExpression)
         freeRegister()
         freeRegister()
       } else if (node.callee.type === "Identifier") {
-        callIdentifier(node.callee.name, node.arguments.length, s)
+        callIdentifier(node.callee.name, node.arguments.length, s, isNewExpression)
       } else {
         const ret = s.r0 = newRegister()
         c(node.callee, s)
         freeRegister()
-        cg(`CALL_REG`, ret, node.arguments.length)
+        cg(`CALL_REG`, ret, node.arguments.length, isNewExpression)
       }
       if (retReg) {
         cg(`MOV`, retReg, `$RET`)
@@ -709,7 +717,8 @@ const parseToCode = (ast: any): void => {
     },
 
     NewExpression(node: et.NewExpression, s: any, c: any): any {
-      // TODO
+      s.isNewExpression = true
+      this.CallExpression(node, s, c)
     },
   })
 

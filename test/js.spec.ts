@@ -247,7 +247,7 @@ describe('conditional expression and if else expression', (): void => {
 })
 
 describe('class', (): void => {
-  xit(`new and instanceof`, (): void => {
+  it(`new and instanceof`, (): void => {
     tm(`
     const a = new Date()
     expect(a instanceof Date).equal(true)
@@ -337,6 +337,9 @@ describe('function', (): void => {
       run (): number {
         return this.say()
       },
+      add (a: number, b: number): number {
+        return a + b
+      },
     } }
     tm(`
     wrapper.say = function() {
@@ -346,8 +349,27 @@ describe('function', (): void => {
     wrapper.say2 = function() {
       return 2
     }
+    const add = wrapper.add
     expect(wrapper.run()).equal(3)
+    expect(add(3, 5)).equal(8)
     `, ctx)
     expect(ctx.wrapper.run()).equal(3)
+  })
+
+  it(`new vm function as class`, (): void => {
+    tm(`
+    function People() {
+      this.a = 1
+      this.b = 2
+    }
+    People.prototype.add = function() {
+      return this.a + this.b
+    }
+    const people = new People()
+    // console.log('====>', people, People, people instanceof People)
+    expect(people.a).equal(1)
+    expect(people.b).equal(2)
+    expect(people.add()).equal(3)
+    `)
   })
 })
