@@ -1,17 +1,17 @@
 import { createVMFromJavaScript } from '../src/js'
 import { expect } from 'chai'
 
-const t = (codes: string, cb?: () => void): void => {
-  const ctx = { expect, cb, ...global, Date }
-  const vm = createVMFromJavaScript(codes, ctx)
+const tm = (codes: string, ctx: any = {}): void => {
+  const c = { expect, Date, console, ...ctx }
+  const vm = createVMFromJavaScript(codes, c)
   vm.run()
 }
 
-const tm = (codes: string): void => {
-  return t(`
-    ${codes}
-  `)
-}
+// const tm = (codes: string, ctx): void => {
+//   return t(`
+//     ${codes}
+//   `)
+// }
 
 describe("uinary operators", (): void => {
   it('+a', (): void => {
@@ -256,12 +256,36 @@ describe('class', (): void => {
 })
 
 describe('function', (): void => {
-  it('call function', (): void => {
+  it('call function of virtual machine', (): void => {
     tm(`
     const a = (b, c) => b + c
     const d = a
     expect(a(1, 2)).equal(3)
     expect(d(2, 3)).equal(5)
     `)
+  })
+
+  it('call function of raw js', (): void => {
+    tm(`
+    const a = console.log
+    expect(outFunc(1, 2)).equal(-1)
+    `, { outFunc: (a: number, b: number): number => a - b })
+  })
+
+  it('call function of vitualmachine from raw js', (): void => {
+    tm(`
+    wrapper.sub = (a, b) => a - b
+    expect(wrapper.getResult(100, 50)).equal(50)
+    expect(wrapper.sub(39, 20)).equal(19)
+    `, {
+      wrapper: {
+        getResult(a: number, b: number): number {
+          return this.sub(a, b)
+        },
+        sub(a: number, b: number): number {
+          throw new Error('This method should be rewritten by vm')
+        },
+      },
+    })
   })
 })

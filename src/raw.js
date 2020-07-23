@@ -1,19 +1,16 @@
-let I
-
-exports.setInstructionsCode = (_I) => {
-  I = _I
-}
-
-class NumArgs {
-  constructor(numArgs) {
-    this.numArgs = numArgs
+// https://hackernoon.com/creating-callable-objects-in-javascript-d21l3te1
+class Callable extends Function {
+  constructor(funcInfo, vm) {
+    super('return arguments.callee.call.apply(arguments.callee, arguments)')
+    this.vm = vm
+    this.funcInfo = funcInfo
+    // We can't use the rest operator because of the strict mode rules.
+    // But we can use the spread operator instead of apply:
+    // super('return arguments.callee._call(...arguments)')
   }
-}
-
-exports.NumArgs = NumArgs
-
-exports.parseVmFunctionToJsFunction = function parseVmFunctionToJsFunction (funcInfo, vm) {
-  return function(...args) {
+  
+  call(...args) {
+    const { vm, funcInfo } = this
     const n = args[0]
     const isCalledFromJs = !(n instanceof NumArgs)
     let numArgs = 0
@@ -61,25 +58,21 @@ exports.parseVmFunctionToJsFunction = function parseVmFunctionToJsFunction (func
   }
 }
 
-/** 控制权转移回调 */
-exports.newCallback = function newCallback(vm, funcInfo) {
-  // tslint:disable-next-line: only-arrow-functions
-  return function(...args) {
-    args.reverse()
-    args.forEach((arg) => vm.push(arg))
-    vm.callFunction(funcInfo, args.length, this)
-    let op = null
-    let callCount = 1
-    /** 回调函数的实现 */
-    while (callCount !== 0) {
-      op = vm.fetchAndExecute()
-      if(op === I.CALL) {
-        callCount++
-      } else if (op === I.RET) {
-        callCount--
-      } else {
-        // do nothing..
-      }
-    }
+exports.Callable = Callable
+
+let I
+exports.setInstructionsCode = (_I) => {
+  I = _I
+}
+
+class NumArgs {
+  constructor(numArgs) {
+    this.numArgs = numArgs
   }
+}
+
+exports.NumArgs = NumArgs
+
+exports.parseVmFunctionToJsFunction = function parseVmFunctionToJsFunction (funcInfo, vm) {
+  return new Callable(funcInfo, vm)
 }

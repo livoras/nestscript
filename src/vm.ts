@@ -57,12 +57,7 @@ class FunctionInfo {
     this.vm = vm
   }
 
-  public callFunction(numArgs: number): void {
-    const jsFunc = this.getFunctionFromFunctionInfo()
-    jsFunc(new raw.NumArgs(numArgs))
-  }
-
-  public getFunctionFromFunctionInfo(): CallableFunction {
+  public getJsFunction(): CallableFunction {
     if (!this.vm) { throw new Error("VirtualMachine is not set!")}
     if (!this.closureTable) { this.closureTable = {} }
     let jsFunc = this.jsFunction
@@ -331,27 +326,34 @@ export class VirtualMachine {
         o = this.nextOperant().value
       }
 
-      const f = this.nextOperant().value
+      const funcName = this.nextOperant().value
       const numArgs = this.nextOperant().value
-      const args = []
-      for (let i = 0; i < numArgs; i++) {
-        args.push(stack[this.sp--])
+      const f = o[funcName]
+      if (f instanceof raw.Callable) {
+        f(new raw.NumArgs(numArgs))
+      } else {
+        const args = []
+        for (let i = 0; i < numArgs; i++) {
+          args.push(stack[this.sp--])
+        }
+        stack[0] = f.apply(o, args)
+        this.stack = stack.slice(0, this.sp + 1)
       }
-      // console.log('-->', o, f)
-      stack[0] = o[f].apply(o, args)
-      // console.log(this.stack)
-      this.stack = stack.slice(0, this.sp + 1)
       break
     }
     case I.CALL_REG: {
       const o1 = this.nextOperant()
       const f = o1.value
       const numArgs = this.nextOperant().value
-      const args = []
-      for (let i = 0; i < numArgs; i++) {
-        args.push(stack[this.sp--])
+      if (f instanceof raw.Callable) {
+        f(new raw.NumArgs(numArgs))
+      } else {
+        const args = []
+        for (let i = 0; i < numArgs; i++) {
+          args.push(stack[this.sp--])
+        }
+        f(...args)
       }
-      f(...args)
       break
     }
     case I.MOV_CTX: {
@@ -501,7 +503,6 @@ export class VirtualMachine {
     }
     case I.INST_OF: {
       this.binaryExpression((a, b): any => {
-        console.log(a, b)
         return a instanceof b
       })
       break
@@ -621,7 +622,7 @@ export class VirtualMachine {
     case IOperatantType.STRING:
       return this.stringsTable[value]
     case IOperatantType.FUNCTION_INDEX:
-      return this.functionsTable[value]
+      return this.functionsTable[value].getJsFunction()
     case IOperatantType.RETURN_VALUE:
       return this.stack[0]
     case IOperatantType.BOOLEAN:
@@ -691,7 +692,7 @@ const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMac
   const funcsTable: FunctionInfo[] = parseFunctionTable(funcsBuf)
   console.log('string table', stringsTable)
   console.log('function table', funcsTable)
-  console.log(mainFunctionIndex, funcsTable, 'function basic index', funcionTableBasicIndex)
+  console.log(mainFunctionIndex, 'function basic index', funcionTableBasicIndex)
   console.log('codes length -->', codesBuf.byteLength, stringTableBasicIndex)
   console.log('main start index', funcsTable[mainFunctionIndex].ip, stringTableBasicIndex)
 
