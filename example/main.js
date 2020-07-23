@@ -64,9 +64,16 @@
 // const a = new Date()
 // console.log(a instanceof Date)
 
-wrapper.sub = function (a, b) {
-  console.log(this, 'this is the result')
-  return a - b + this.a
+const wrapper = {
+  a: 100,
+  c: 1,
+  getResult(a, b) {
+    return this.sub(a, b)
+  },
+  sub(a, b) {
+    throw new Error('This method should be rewritten by vm')
+  },
 }
-expect(wrapper.getResult(100, 50)).equal(150)
-expect(wrapper.sub(39, 20)).equal(19)
+wrapper.sub = (a, b) => a - b + this.a + this.c
+expect(wrapper.sub(39, 20)).equal(120)
+expect(wrapper.getResult(100, 50)).equal(151)

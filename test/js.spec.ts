@@ -310,4 +310,22 @@ describe('function', (): void => {
       },
     })
   })
+
+  it('call function of vm from vm with proper this', (): void => {
+    tm(`
+    const wrapper = {
+      a: 100,
+      c: 1,
+      getResult(a, b) {
+        return this.sub(a, b)
+      },
+      sub(a, b) {
+        throw new Error('This method should be rewritten by vm')
+      },
+    }
+    wrapper.sub = (a, b) => a - b + this.a + this.c
+    expect(wrapper.sub(39, 20)).equal(120)
+    expect(wrapper.getResult(100, 50)).equal(151)
+    `)
+  })
 })
