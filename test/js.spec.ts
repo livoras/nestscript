@@ -272,13 +272,35 @@ describe('function', (): void => {
     `, { outFunc: (a: number, b: number): number => a - b })
   })
 
-  it('call function of vitualmachine from raw js', (): void => {
+  it('call function of virual machine from raw js', (): void => {
     tm(`
     wrapper.sub = (a, b) => a - b
     expect(wrapper.getResult(100, 50)).equal(50)
     expect(wrapper.sub(39, 20)).equal(19)
     `, {
       wrapper: {
+        getResult(a: number, b: number): number {
+          return this.sub(a, b)
+        },
+        sub(a: number, b: number): number {
+          throw new Error('This method should be rewritten by vm')
+        },
+      },
+    })
+  })
+
+  it('call function of virual machine from raw js with proper this', (): void => {
+    tm(`
+    wrapper.sub = function (a, b) {
+      console.log(this, a - b + this.a, 'this is the result')
+      return a - b + this.a + this.c
+    }
+    expect(wrapper.sub(39, 20)).equal(120)
+    expect(wrapper.getResult(100, 50)).equal(151)
+    `, {
+      wrapper: {
+        a: 100,
+        c: 1,
         getResult(a: number, b: number): number {
           return this.sub(a, b)
         },

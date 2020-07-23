@@ -27,6 +27,7 @@ export enum I {
  NEG, // NEG %r0 !
 
  INST_OF, // instanceof
+ MOV_THIS, // moving this to resgister
 }
 
 export const enum IOperatantType {
@@ -142,7 +143,7 @@ export class VirtualMachine {
     const { globalSize, functionsTable, entryFunctionIndex } = this
     // RET
     // TODO: how to deal with it?
-    this.stack = []
+    this.stack.splice(0)
     // this.heap = []
     const globalIndex = globalSize + 1
     const mainLocalSize = functionsTable[entryFunctionIndex].localSize
@@ -248,7 +249,7 @@ export class VirtualMachine {
       // 减去参数数量，减去三个 fp ip numArgs
       this.sp = fp - stack[fp - 2] - 3
       // 清空上一帧
-      this.stack = stack.slice(0, this.sp + 1)
+      this.stack.splice(this.sp + 1)
       this.closureTables.pop()
       this.closureTable = this.closureTables[this.closureTables.length - 1]
       //
@@ -330,14 +331,14 @@ export class VirtualMachine {
       const numArgs = this.nextOperant().value
       const f = o[funcName]
       if (f instanceof raw.Callable) {
-        f(new raw.NumArgs(numArgs))
+        f.call(o, new raw.NumArgs(numArgs))
       } else {
         const args = []
         for (let i = 0; i < numArgs; i++) {
           args.push(stack[this.sp--])
         }
         stack[0] = f.apply(o, args)
-        this.stack = stack.slice(0, this.sp + 1)
+        this.stack.splice(this.sp + 1)
       }
       break
     }
@@ -539,6 +540,10 @@ export class VirtualMachine {
       const o1 = this.nextOperant().value
       const o2 = this.nextOperant().value
       delete o1[o2]
+      break
+    }
+    case I.MOV_THIS: {
+      this.setReg(this.nextOperant(), { value: this.currentThis })
       break
     }
     default:

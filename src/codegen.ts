@@ -701,9 +701,11 @@ const parseToCode = (ast: any): void => {
       freeRegister()
     },
 
-    NewExpression(node: et.NewExpression, s: any, c: any): any {
-      // node.callee
-      // TODO
+    ThisExpression(node: et.ThisExpression, s: any, c: any): any {
+      if (!s.r0) {
+        throw new Error('Access `this` without register r0')
+      }
+      cg(`MOV_THIS ${s.r0}`)
     },
   })
 

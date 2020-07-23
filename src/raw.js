@@ -1,16 +1,27 @@
 // https://hackernoon.com/creating-callable-objects-in-javascript-d21l3te1
 class Callable extends Function {
-  constructor(funcInfo, vm) {
-    super('return arguments.callee.call.apply(arguments.callee, arguments)')
-    this.vm = vm
-    this.funcInfo = funcInfo
-    // We can't use the rest operator because of the strict mode rules.
-    // But we can use the spread operator instead of apply:
-    // super('return arguments.callee._call(...arguments)')
+  constructor() {
+    super()
   }
-  
-  call(...args) {
-    const { vm, funcInfo } = this
+}
+
+exports.Callable = Callable
+
+let I
+exports.setInstructionsCode = (_I) => {
+  I = _I
+}
+
+class NumArgs {
+  constructor(numArgs) {
+    this.numArgs = numArgs
+  }
+}
+
+exports.NumArgs = NumArgs
+
+exports.parseVmFunctionToJsFunction = function parseVmFunctionToJsFunction (funcInfo, vm) {
+  const func = function (...args) {
     const n = args[0]
     const isCalledFromJs = !(n instanceof NumArgs)
     let numArgs = 0
@@ -56,23 +67,6 @@ class Callable extends Function {
       return stack[0]
     }
   }
-}
-
-exports.Callable = Callable
-
-let I
-exports.setInstructionsCode = (_I) => {
-  I = _I
-}
-
-class NumArgs {
-  constructor(numArgs) {
-    this.numArgs = numArgs
-  }
-}
-
-exports.NumArgs = NumArgs
-
-exports.parseVmFunctionToJsFunction = function parseVmFunctionToJsFunction (funcInfo, vm) {
-  return new Callable(funcInfo, vm)
+  Object.setPrototypeOf(func, Callable.prototype)
+  return func
 }
