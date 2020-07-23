@@ -707,6 +707,10 @@ const parseToCode = (ast: any): void => {
       }
       cg(`MOV_THIS ${s.r0}`)
     },
+
+    NewExpression(node: et.NewExpression, s: any, c: any): any {
+      // TODO
+    },
   })
 
   state.maxRegister = maxRegister

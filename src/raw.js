@@ -60,9 +60,15 @@ exports.parseVmFunctionToJsFunction = function parseVmFunctionToJsFunction (func
     vm.fp = vm.sp
     vm.sp += funcInfo.localSize
     if (isCalledFromJs) {
-      let op = vm.fetchAndExecute()
-      while (op !== I.RET && op !== I.EXIT) {
-        op = vm.fetchAndExecute()
+      /** 嵌套 vm 函数调 vm 函数，需要知道嵌套多少层，等到当前层完结再返回 */
+      let callCount = 1
+      while (callCount > 0) {
+        const [op, isCallVMFunction] = vm.fetchAndExecute()
+        if (isCallVMFunction) {
+          callCount ++
+        } else if (op === I.RET) {
+          callCount--
+        }
       }
       return stack[0]
     }

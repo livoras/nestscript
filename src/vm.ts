@@ -215,10 +215,11 @@ export class VirtualMachine {
     return this.closureTable[index]
   }
 
-  // tslint:disable-next-line: no-big-function
-  public fetchAndExecute(): I {
+  // tslint:disable-next-line: no-big-function cognitive-complexity
+  public fetchAndExecute(): [I, boolean] {
     const stack = this.stack
     const op = this.nextOperator()
+    let isCallVMFunction = false
     // console.log(op)
     // tslint:disable-next-line: max-switch-cases
     switch (op) {
@@ -331,13 +332,14 @@ export class VirtualMachine {
       const numArgs = this.nextOperant().value
       const f = o[funcName]
       if (f instanceof raw.Callable) {
-        f.call(o, new raw.NumArgs(numArgs))
+        o[funcName](new raw.NumArgs(numArgs))
+        isCallVMFunction = true
       } else {
         const args = []
         for (let i = 0; i < numArgs; i++) {
           args.push(stack[this.sp--])
         }
-        stack[0] = f.apply(o, args)
+        stack[0] = o[funcName](...args)
         this.stack.splice(this.sp + 1)
       }
       break
@@ -347,6 +349,7 @@ export class VirtualMachine {
       const f = o1.value
       const numArgs = this.nextOperant().value
       if (f instanceof raw.Callable) {
+        isCallVMFunction = true
         f(new raw.NumArgs(numArgs))
       } else {
         const args = []
@@ -551,7 +554,7 @@ export class VirtualMachine {
       throw new Error("Unknow command " + op)
     }
 
-    return op
+    return [op, isCallVMFunction]
   }
 
   public push(val: any): void {

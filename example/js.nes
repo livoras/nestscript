@@ -4,44 +4,20 @@ func @@main() {
     VAR %r2;
     VAR %r3;
     VAR %r4;
-    GLOBAL wrapper;
-    NEW_OBJ wrapper;
-    MOV %r0 100;
-    SET_KEY wrapper "a" %r0;
-    MOV %r0 1;
-    SET_KEY wrapper "c" %r0;
     FUNC %r0 @@f0;
-    SET_KEY wrapper "getResult" %r0;
-    FUNC %r0 @@f1;
-    SET_KEY wrapper "sub" %r0;
-    FUNC %r0 @@f2;
-    MOV %r1 wrapper;
-    MOV %r2 "sub";
+    MOV_CTX %r1 "wrapper";
+    MOV %r2 "say";
     SET_KEY %r1 %r2 %r0;
-    MOV %r0 120;
+    MOV $RET %r0;
+    FUNC %r0 @@f1;
+    MOV_CTX %r1 "wrapper";
+    MOV %r2 "say2";
+    SET_KEY %r1 %r2 %r0;
+    MOV %r0 3;
     PUSH %r0;
-    MOV %r3 20;
-    PUSH %r3;
-    MOV %r3 39;
-    PUSH %r3;
-    MOV %r3 wrapper;
-    MOV %r4 "sub";
-    CALL_VAR %r3 %r4 2;
-    MOV %r2 $RET;
-    PUSH %r2;
-    CALL_CTX "expect" 1;
-    MOV %r0 $RET;
-    MOV %r1 "equal";
-    CALL_VAR %r0 %r1 1;
-    MOV %r0 151;
-    PUSH %r0;
-    MOV %r3 50;
-    PUSH %r3;
-    MOV %r3 100;
-    PUSH %r3;
-    MOV %r3 wrapper;
-    MOV %r4 "getResult";
-    CALL_VAR %r3 %r4 2;
+    MOV_CTX %r3 "wrapper";
+    MOV %r4 "run";
+    CALL_VAR %r3 %r4 0;
     MOV %r2 $RET;
     PUSH %r2;
     CALL_CTX "expect" 1;
@@ -49,36 +25,21 @@ func @@main() {
     MOV %r1 "equal";
     CALL_VAR %r0 %r1 1;
 }
-func @@f0(a, b) {
+func @@f0() {
     VAR %r0;
     VAR %r1;
-    VAR %r2;
-    MOV %r1 b;
-    PUSH %r1;
-    MOV %r1 a;
-    PUSH %r1;
-    MOV_THIS %r1;
-    MOV %r2 "sub";
-    CALL_VAR %r1 %r2 2;
-    MOV %r0 $RET;
+    VAR a;
+    MOV_THIS %r0;
+    MOV %r1 "say2";
+    CALL_VAR %r0 %r1 0;
+    MOV a $RET;
+    MOV %r0 a;
+    MOV %r1 1;
+    ADD %r0 %r1;
     MOV $RET %r0;
 }
-func @@f1(a, b) {
-}
-func @@f2(a, b) {
+func @@f1() {
     VAR %r0;
-    VAR %r1;
-    VAR %r2;
-    VAR %r3;
-    MOV $RET a;
-    MOV %r2 b;
-    SUB $RET %r2;
-    MOV_THIS %r2;
-    MOV %r3 "a";
-    MOV_PROP %r1 %r2 %r3;
-    ADD $RET %r1;
-    MOV_THIS %r1;
-    MOV %r2 "c";
-    MOV_PROP %r0 %r1 %r2;
-    ADD $RET %r0;
+    MOV %r0 2;
+    MOV $RET %r0;
 }

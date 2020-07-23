@@ -328,4 +328,26 @@ describe('function', (): void => {
     expect(wrapper.getResult(100, 50)).equal(151)
     `)
   })
+
+  it(`call function of vm nested with function of vm`, (): void => {
+    const ctx = { wrapper: {
+      say (): number {
+        throw new Error('should be rewritten.')
+      },
+      run (): number {
+        return this.say()
+      },
+    } }
+    tm(`
+    wrapper.say = function() {
+      const a = this.say2()
+      return a + 1
+    }
+    wrapper.say2 = function() {
+      return 2
+    }
+    expect(wrapper.run()).equal(3)
+    `, ctx)
+    expect(ctx.wrapper.run()).equal(3)
+  })
 })
