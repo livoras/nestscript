@@ -53,3 +53,61 @@ export const getByProp = (obj: any, prop: string): any =>
 //   console.log("LOG SOMETHING...3", "LOG SOMETHING...2")
 // }
 // console.timeEnd("check")
+
+export const parseStringsArray = (buffer: ArrayBuffer): string[] => {
+  const strings: string[] = []
+  let i = 0
+  while(i < buffer.byteLength) {
+    const lentOffset = i + 4
+    const len = readUInt32(buffer, i, lentOffset)
+    const start = lentOffset
+    const end = lentOffset + len * 2
+    const str = readString(buffer, start, end)
+    strings.push(str)
+    i = end
+  }
+  return strings
+}
+
+export const readFloat64 = (buffer: ArrayBuffer, from: number, to: number): number => {
+  return (new Float64Array(buffer.slice(from, to)))[0]
+}
+
+export const readUInt8 = (buffer: ArrayBuffer, from: number, to: number): number => {
+  return (new Uint8Array(buffer.slice(from, to)))[0]
+}
+
+export const readInt8 = (buffer: ArrayBuffer, from: number, to: number): number => {
+  return (new Int8Array(buffer.slice(from, to)))[0]
+}
+
+export const readInt16 = (buffer: ArrayBuffer, from: number, to: number): number => {
+  return (new Int16Array(buffer.slice(from, to)))[0]
+}
+
+export const readUInt16 = (buffer: ArrayBuffer, from: number, to: number): number => {
+  return (new Uint16Array(buffer.slice(from, to)))[0]
+}
+
+export const readUInt32 = (buffer: ArrayBuffer, from: number, to: number): number => {
+  return (new Uint32Array(buffer.slice(from, to)))[0]
+}
+
+export const readString = (buffer: ArrayBuffer, from: number, to: number): string => {
+  return arrayBufferToString(buffer.slice(from, to))
+}
+
+// export const numberToArrayBuffer = (num: number): ArrayBuffer => {
+//   let isPositive = true
+//   if (num <= 0) {
+//     num = -num
+//     isPositive = false
+//   }
+//   const hex = num.toString(16)
+//   // const buf = new Uint8Array(Math.ceil(hex.length / 2))
+//   const buf = new Float64Array(1)
+//   if (!isPositive) {
+//     buf[0] = -1
+//   }
+//   return buf.buffer
+// }

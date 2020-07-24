@@ -1,4 +1,4 @@
-import { arrayBufferToString, getByProp } from './utils'
+import { parseStringsArray, arrayBufferToString, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8 } from './utils'
 const raw = require('./raw')
 
 export enum I {
@@ -744,49 +744,6 @@ const parseFunctionTable = (buffer: ArrayBuffer): FunctionInfo[] => {
     i += 8
   }
   return funcs
-}
-
-const parseStringsArray = (buffer: ArrayBuffer): string[] => {
-  const strings: string[] = []
-  let i = 0
-  while(i < buffer.byteLength) {
-    const lentOffset = i + 4
-    const len = readUInt32(buffer, i, lentOffset)
-    const start = lentOffset
-    const end = lentOffset + len * 2
-    const str = readString(buffer, start, end)
-    strings.push(str)
-    i = end
-  }
-  return strings
-}
-
-const readFloat64 = (buffer: ArrayBuffer, from: number, to: number): number => {
-  return (new Float64Array(buffer.slice(from, to)))[0]
-}
-
-const readUInt8 = (buffer: ArrayBuffer, from: number, to: number): number => {
-  return (new Uint8Array(buffer.slice(from, to)))[0]
-}
-
-const readInt8 = (buffer: ArrayBuffer, from: number, to: number): number => {
-  return (new Int8Array(buffer.slice(from, to)))[0]
-}
-
-const readInt16 = (buffer: ArrayBuffer, from: number, to: number): number => {
-  return (new Int16Array(buffer.slice(from, to)))[0]
-}
-
-const readUInt16 = (buffer: ArrayBuffer, from: number, to: number): number => {
-  return (new Uint16Array(buffer.slice(from, to)))[0]
-}
-
-const readUInt32 = (buffer: ArrayBuffer, from: number, to: number): number => {
-  return (new Uint32Array(buffer.slice(from, to)))[0]
-}
-
-const readString = (buffer: ArrayBuffer, from: number, to: number): string => {
-  return arrayBufferToString(buffer.slice(from, to))
 }
 
 export { createVMFromArrayBuffer }
