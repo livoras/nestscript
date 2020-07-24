@@ -13,6 +13,32 @@ const tm = (codes: string, ctx: any = {}): void => {
 //   `)
 // }
 
+describe('variable scope', (): void => {
+  it('outer variable should not be overwritter', (): void => {
+    tm(`
+    const a = 1
+    const b = () => {
+      let a = 2
+      expect(a).equal(2)
+    }
+    b()
+    expect(a).equal(1)
+    `)
+  })
+
+  it('outer variable can be accessed', (): void => {
+    tm(`
+    let a = 1
+    const b = () => {
+      a = 2
+    }
+    expect(a).equal(1)
+    b()
+    expect(a).equal(2)
+    `)
+  })
+})
+
 describe("uinary operators", (): void => {
   it('+a', (): void => {
     tm(`
@@ -358,18 +384,18 @@ describe('function', (): void => {
 
   it(`new vm function as class`, (): void => {
     tm(`
-    function People() {
-      this.a = 1
-      this.b = 2
+    function People(a, b) {
+      this.a = a
+      this.b = b
     }
     People.prototype.add = function() {
       return this.a + this.b
     }
-    const people = new People()
-    // console.log('====>', people, People, people instanceof People)
+    const people = new People(1, 2)
     expect(people.a).equal(1)
     expect(people.b).equal(2)
     expect(people.add()).equal(3)
+    expect(people instanceof People).equal(true)
     `)
   })
 })
