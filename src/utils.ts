@@ -108,17 +108,19 @@ const OPERANT_BYTE_LEN_MASK = ~OPERANT_TYPE_MASK
 const num64Buf = new Float64Array(1)
 const num8For64Buf = new Uint8Array(num64Buf.buffer)
 
-export const createOperantBuffer = (ot: IOperatantType, value: number): ArrayBuffer => {
+export const createOperantBuffer = (ot: IOperatantType, value: number, forceLength?: number): ArrayBuffer => {
   num64Buf[0] = value
   let i = 0
   while (num8For64Buf[i] === 0) {
     i++
   }
-  const numBytes = 8 - i
+  const numBytes = forceLength || 8 - i
   const head = ot | numBytes
   const buffer = new Uint8Array(numBytes + 1)
   buffer[0] = head
-  buffer.set(num8For64Buf.slice(i), 1)
+  if (buffer.length > 0) {
+    buffer.set(num8For64Buf.slice(i), 1)
+  }
   return buffer.buffer
 }
 
@@ -130,4 +132,15 @@ export const getOperatantByBuffer = (arrayBuffer: ArrayBuffer, i: number = 0): [
   const byteLength = head & OPERANT_BYTE_LEN_MASK
   num8For64Buf.set(buffer.slice(i, i + byteLength), 8 - byteLength)
   return [ot, num64Buf[0], byteLength]
+}
+
+export const getByteLengthFromNumber = (num: number): number => {
+  const n64Buf = new Float64Array(1)
+  const n8For64Buf = new Uint8Array(n64Buf.buffer)
+  n64Buf[0] = num
+  let i = 0
+  while (n8For64Buf[i] === 0) {
+    i++
+  }
+  return Math.max(8 - i, 1)
 }
