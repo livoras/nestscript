@@ -1,3 +1,4 @@
+  // tslint:disable: no-bitwise
 import { parseStringsArray, arrayBufferToString, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8 } from './utils'
 const raw = require('./raw')
 
@@ -31,16 +32,17 @@ export enum I {
 }
 
 export const enum IOperatantType {
-  REGISTER,
-  CLOSURE_REGISTER,
-  GLOBAL,
-  NUMBER,
-  FUNCTION_INDEX,
-  STRING,
-  ARG_COUNT,
-  RETURN_VALUE,
-  ADDRESS,
-  BOOLEAN,
+  REGISTER = 0 << 4,
+  CLOSURE_REGISTER = 1 << 4,
+  GLOBAL = 2 << 4,
+  NUMBER = 3 << 4,
+  // tslint:disable-next-line: no-identical-expressions
+  FUNCTION_INDEX = 4 << 4,
+  STRING = 5 << 4,
+  ARG_COUNT = 6 << 4,
+  RETURN_VALUE = 7 << 4,
+  ADDRESS = 8 << 4,
+  BOOLEAN = 9 << 4,
 }
 
 class FunctionInfo {
@@ -81,19 +83,19 @@ export interface IOperant {
   index?: any,
 }
 
-export const operantBytesSize: { [x in IOperatantType]: number } = {
-  [IOperatantType.FUNCTION_INDEX]: 2,
-  [IOperatantType.STRING]: 2,
+// export const operantBytesSize: { [x in IOperatantType]: number } = {
+//   [IOperatantType.FUNCTION_INDEX]: 2,
+//   [IOperatantType.STRING]: 2,
 
-  [IOperatantType.REGISTER]: 2,
-  [IOperatantType.CLOSURE_REGISTER]: 2,
-  [IOperatantType.GLOBAL]: 2,
-  [IOperatantType.ARG_COUNT]: 2,
-  [IOperatantType.ADDRESS]: 4,
-  [IOperatantType.NUMBER]: 8,
-  [IOperatantType.RETURN_VALUE]: 0,
-  [IOperatantType.BOOLEAN]: 1,
-}
+//   [IOperatantType.REGISTER]: 2,
+//   [IOperatantType.CLOSURE_REGISTER]: 2,
+//   [IOperatantType.GLOBAL]: 2,
+//   [IOperatantType.ARG_COUNT]: 2,
+//   [IOperatantType.ADDRESS]: 4,
+//   [IOperatantType.NUMBER]: 8,
+//   [IOperatantType.RETURN_VALUE]: 0,
+//   [IOperatantType.BOOLEAN]: 1,
+// }
 
 export type IClosureTable = {
   [x in number]: number

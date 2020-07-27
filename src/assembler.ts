@@ -1,5 +1,5 @@
-import { I, IOperatantType, IOperant, operantBytesSize } from './vm'
-import { concatBuffer, stringToArrayBuffer, arrayBufferToString } from './utils'
+import { I, IOperatantType, IOperant } from './vm'
+import { concatBuffer, stringToArrayBuffer, arrayBufferToString, createOperantBuffer } from './utils'
 import fs = require('fs')
 import { parseCode } from './parser'
 
@@ -261,10 +261,11 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
 
       code.forEach((o: IOperant, j: number): void => {
         if (j === 0) { return }
-        const operantBuf = new ArrayBuffer(operantBytesSize[o.type])
-        const operantTypeBuf = new Uint8Array(1)
-        operantTypeBuf[0] = o.type
-        appendBuffer(operantTypeBuf.buffer)
+        // const operantBuf = new ArrayBuffer(operantBytesSize[o.type])
+        // const operantTypeBuf = new Uint8Array(1)
+        // operantTypeBuf[0] = o.type
+        const operantBuf = createOperantBuffer(o.type, o.value)
+        appendBuffer(operantBuf)
         switch (o.type) {
         case IOperatantType.REGISTER:
         case IOperatantType.CLOSURE_REGISTER:

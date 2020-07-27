@@ -1,9 +1,13 @@
+// tslint:disable: no-bitwise
 // const b = new ArrayBuffer(16)
 // const a = new Float64Array(b)
 // a[0] = -0.001
 // a[1] = -0.002
 // const c = new Float64Array(b)
 // console.log(a, b, c[0])
+
+import { IOperatantType } from './vm'
+import { constants } from 'buffer'
 
 // const d = new Float64Array(b.slice(8))
 // a[1] = 0.03
@@ -97,17 +101,33 @@ export const readString = (buffer: ArrayBuffer, from: number, to: number): strin
   return arrayBufferToString(buffer.slice(from, to))
 }
 
-// export const numberToArrayBuffer = (num: number): ArrayBuffer => {
-//   let isPositive = true
-//   if (num <= 0) {
-//     num = -num
-//     isPositive = false
-//   }
-//   const hex = num.toString(16)
-//   // const buf = new Uint8Array(Math.ceil(hex.length / 2))
-//   const buf = new Float64Array(1)
-//   if (!isPositive) {
-//     buf[0] = -1
-//   }
-//   return buf.buffer
-// }
+
+const OPERANT_TYPE_MASK = 0b11110000
+const OPERANT_BYTE_LEN_MASK = ~OPERANT_TYPE_MASK
+
+const num64Buf = new Float64Array(1)
+const num8For64Buf = new Uint8Array(num64Buf.buffer)
+
+export const createOperantBuffer = (ot: IOperatantType, value: number): ArrayBuffer => {
+  num64Buf[0] = value
+  let i = 0
+  while (num8For64Buf[i] === 0) {
+    i++
+  }
+  const numBytes = 8 - i
+  const head = ot | numBytes
+  const buffer = new Uint8Array(numBytes + 1)
+  buffer[0] = head
+  buffer.set(num8For64Buf.slice(i), 1)
+  return buffer.buffer
+}
+
+export const getOperatantByBuffer = (arrayBuffer: ArrayBuffer, i: number = 0): [IOperatantType, number, number] => {
+  const buffer = new Uint8Array(arrayBuffer)
+  const head = buffer[i]
+  i++
+  const ot = head & OPERANT_TYPE_MASK
+  const byteLength = head & OPERANT_BYTE_LEN_MASK
+  num8For64Buf.set(buffer.slice(i, i + byteLength), 8 - byteLength)
+  return [ot, num64Buf[0], byteLength]
+}

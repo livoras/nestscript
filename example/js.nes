@@ -11,7 +11,7 @@ func @@main() {
     MOV_PROP %r1 %r3 %r2;
     MOV %r2 "add";
     SET_KEY %r1 %r2 %r0;
-    MOV %r0 'what?';
+    MOV %r0 "what?";
     PUSH %r0;
     MOV %r1 People;
     MOV %r2 "prototype";
@@ -34,7 +34,7 @@ func @@main() {
     PUSH %r0;
     MOV %r0 people;
     PUSH %r0;
-    MOV %r0 '====>';
+    MOV %r0 "====>";
     PUSH %r0;
     MOV_CTX %r0 "console";
     MOV %r1 "log";
