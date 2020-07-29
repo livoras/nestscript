@@ -58,6 +58,9 @@ LABEL _l0_:
     MOV i %r1;
     JMP _l0_;
 LABEL _l1_:
+    MOV_CTX %r0 "kk";
+    MOV %r1 "a";
+    CALL_VAR %r0 %r1 0 false;
 }
 func @@f0() {
     VAR %r0;

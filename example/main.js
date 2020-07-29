@@ -2,6 +2,7 @@ function People(){console.log("THIS IS NOT A GOOD DAY~~~~~~~~~~~");this.a=1;this
 for (let i = 0; i < 10; i++) {
   console.log('i --> ', i)
 }
+kk.a()
 // let i = 0
 // if (i > 1) {
 //   i++

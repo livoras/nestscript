@@ -1,6 +1,7 @@
 import { I, IOperatantType } from './vm'
 import { getByteLengthFromInt32, concatBuffer, stringToArrayBuffer, createOperantBuffer, getOperatantByBuffer, getOperantName } from './utils'
 import { parseCode } from './parser'
+import { optimizeCode } from './optimizer'
 
 /**
  *
@@ -90,7 +91,7 @@ export const parseCodeToProgram = (program: string): Buffer => {
   const globalSymbols = {}
   const stringTable: string[] = []
   const stringIndex: any = {}
-  const funcs = program
+  const funcs = optimizeCode(program)
     .trim()
     .match(/func[\s\S]+?\}/g) || []
 
