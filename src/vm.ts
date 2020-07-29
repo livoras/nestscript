@@ -1,5 +1,5 @@
   // tslint:disable: no-bitwise
-import { parseStringsArray, arrayBufferToString, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8 } from './utils'
+import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from './utils'
 const raw = require('./raw')
 
 export enum I {
@@ -82,20 +82,6 @@ export interface IOperant {
   raw?: any,
   index?: any,
 }
-
-// export const operantBytesSize: { [x in IOperatantType]: number } = {
-//   [IOperatantType.FUNCTION_INDEX]: 2,
-//   [IOperatantType.STRING]: 2,
-
-//   [IOperatantType.REGISTER]: 2,
-//   [IOperatantType.CLOSURE_REGISTER]: 2,
-//   [IOperatantType.GLOBAL]: 2,
-//   [IOperatantType.ARG_COUNT]: 2,
-//   [IOperatantType.ADDRESS]: 4,
-//   [IOperatantType.NUMBER]: 8,
-//   [IOperatantType.RETURN_VALUE]: 0,
-//   [IOperatantType.BOOLEAN]: 1,
-// }
 
 export type IClosureTable = {
   [x in number]: number
@@ -358,14 +344,12 @@ export class VirtualMachine {
     case I.NEW_OBJ: {
       const dst = this.nextOperant()
       const o = {}
-      // this.stack[dst.index] = o
       this.setReg(dst, { value: o })
       break
     }
     case I.NEW_ARR: {
       const dst = this.nextOperant()
       const o: any[] = []
-      // this.stack[dst.index] = o
       this.setReg(dst, { value: o })
       break
     }
@@ -373,9 +357,6 @@ export class VirtualMachine {
       const o = this.nextOperant().value
       const key = this.nextOperant().value
       const value = this.nextOperant().value
-      // if (key === 'a') {
-      //   console.log('SETKEYYYYYYYYYYYYYYYYYYYYYY', o, key, value)
-      // }
       o[key] = value
       break
     }
@@ -552,50 +533,13 @@ export class VirtualMachine {
 
   public nextOperant(): IOperant {
     const codes = this.codes
-    const valueType = readUInt8(codes, this.ip, ++this.ip)
-    // console.log(valueType)
-    let value: any
-    switch (valueType) {
-    case IOperatantType.REGISTER:
-    case IOperatantType.CLOSURE_REGISTER:
-    case IOperatantType.GLOBAL:
-    case IOperatantType.ARG_COUNT:
-    case IOperatantType.FUNCTION_INDEX:
-    case IOperatantType.STRING: {
-      const j = this.ip + 2
-      value = readInt16(codes, this.ip, j)
-      this.ip = j
-      break
-    }
-    case IOperatantType.ADDRESS: {
-      const j = this.ip + 4
-      value = readUInt32(codes, this.ip, j)
-      this.ip = j
-      break
-    }
-    case IOperatantType.NUMBER: {
-      const j = this.ip + 8
-      value = readFloat64(codes, this.ip, j)
-      this.ip = j
-      break
-    }
-    case IOperatantType.BOOLEAN: {
-      const j = this.ip + 1
-      value = readInt8(codes, this.ip, j) === 1
-      this.ip = j
-      break
-    }
-    case IOperatantType.RETURN_VALUE:
-      value = 0
-      break
-    default:
-      throw new Error("Unknown operant " + valueType)
-    }
+    const [operantType, value, byteLength] = getOperatantByBuffer(codes, this.ip++)
+    this.ip = this.ip + byteLength
     return {
-      type: valueType,
-      value: this.parseValue(valueType, value),
+      type: operantType,
+      value: this.parseValue(operantType, value),
       raw: value,
-      index: valueType === IOperatantType.REGISTER ? (this.fp + value) : value,
+      index: operantType === IOperatantType.REGISTER ? (this.fp + value) : value,
     }
   }
 
@@ -618,7 +562,7 @@ export class VirtualMachine {
     case IOperatantType.RETURN_VALUE:
       return this.stack[0]
     case IOperatantType.BOOLEAN:
-      return value
+      return !!value
     default:
       throw new Error("Unknown operant " + valueType)
     }
@@ -628,7 +572,6 @@ export class VirtualMachine {
     const op1 = this.nextOperant()
     const op2 = this.nextOperant()
     const address = this.nextOperant()
-    // console.log("JUMP --->l", address)
     if (cond(op1.value, op2.value)) {
       this.ip = address.value
     }
@@ -685,14 +628,6 @@ export class VirtualMachine {
     return isCallVMFunction
   }
 }
-
-// interface FunctionInfo {
-//   ip: number,
-//   numArgs: number,
-//   localSize: number,
-//   closureTable?: any,
-//   jsFunction?: CallableFunction,
-// }
 
 /**
  * Header:

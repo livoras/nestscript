@@ -1,8 +1,6 @@
-import { I, IOperatantType, IOperant } from './vm'
-import { getByteLengthFromNumber, concatBuffer, stringToArrayBuffer, arrayBufferToString, createOperantBuffer } from './utils'
-import fs = require('fs')
+import { I, IOperatantType } from './vm'
+import { getByteLengthFromInt32, concatBuffer, stringToArrayBuffer, createOperantBuffer, getOperatantByBuffer, getOperantName } from './utils'
 import { parseCode } from './parser'
-import { Interface } from 'readline'
 
 /**
  *
@@ -134,6 +132,7 @@ export const parseCodeToProgram = (program: string): Buffer => {
             (['JE', 'JNE', 'JG', 'JL', 'JGE', 'JLE'].includes(op) && i === 3) ||
             (['JF', 'JIF'].includes(op) && i === 2)
           ) {
+            // console.log('----->', op, funcInfo.labels, code[i])
             code[i] = {
               type: IOperatantType.ADDRESS,
               value: funcInfo.labels[code[i]],
@@ -218,7 +217,6 @@ export const parseCodeToProgram = (program: string): Buffer => {
         })
       }
     })
-    // console.log('CODES => ', funcInfo.codes)
   })
 
   const stream = parseToStream(funcsInfo, stringTable, globalSize)
@@ -246,12 +244,13 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
     }
 
     let isAddressCodeByteChanged = true
-    const DEFAULT_ADDRESS_LEN = 1
+    const DEFAULT_ADDRESS_LEN = 0
     let codeAddress: number[] = []
     let addressCandidates: { codeIndex: number, bufferIndex: number, addressByteLen: number }[] = []
     let currentFuncBuffer: ArrayBuffer = new ArrayBuffer(0)
     const addressCodeByteMap: any = {}
     while(isAddressCodeByteChanged) {
+      // console.log("////??/")
       isAddressCodeByteChanged = false
       currentFuncBuffer = funcInfo.bytecodes = new ArrayBuffer(0)
       codeAddress = []
@@ -262,8 +261,8 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
       }
 
       funcInfo.codes.forEach((code: any, i): void => {
-        const codeOffset = currentFuncBuffer.byteLength
-        const addressByteLength: number = getByteLengthFromNumber(codeOffset)
+        const codeOffset = currentFunctionAddress + currentFuncBuffer.byteLength
+        const addressByteLength: number = getByteLengthFromInt32(codeOffset)
         codeAddress.push(codeOffset)
 
         /* if byte length change should generate again */
@@ -288,7 +287,7 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
             appendBuffer(buf)
             addressCandidates.push({
               codeIndex: o.value,
-              bufferIndex: buf.byteLength - byteLength,
+              bufferIndex: currentFuncBuffer.byteLength - byteLength,
               addressByteLen: byteLength,
             })
           }
@@ -296,85 +295,20 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
       })
     }
 
-    addressCandidates.forEach(({ codeIndex, bufferIndex, addressByteLen }): void => {
+    addressCandidates.forEach(({ codeIndex, bufferIndex, addressByteLen }, i): void => {
       const address = codeAddress[codeIndex]
-      const buf = new Uint8Array(Float64Array.from([address]))
+      const buf = new Uint8Array(Int32Array.from([address]).buffer)
+      console.log(i, '=====================================')
+      console.log('codeIndex -> ', codeIndex)
+      console.log('address -> ', address)
+      console.log('bufferIndex -> ', bufferIndex)
+      console.log('addressBytenLen -> ', addressByteLen)
       const functionBuffer = new Uint8Array(currentFuncBuffer)
-      console.log('--->', codeIndex, bufferIndex, addressByteLen)
-      functionBuffer.set(buf.slice(8 - addressByteLen), bufferIndex)
+      functionBuffer.set(buf.slice(0, addressByteLen), bufferIndex)
     })
 
     buffer = concatBuffer(buffer, currentFuncBuffer)
-
-    // const codeAdresses: number[] = [] // index -> offset
-    // const labelBufferIndex: { codeIndex: number, bufferIndex: number }[] = []
-    // funcInfo.codes.forEach((code: any[], i: number): void => {
-    //   codeAdresses.push(currentFuncBuffer.byteLength)
-
-    //   const cmd = code[0]
-    //   const setBuf = new Uint8Array(1)
-    //   setBuf[0] = cmd
-    //   appendBuffer(setBuf.buffer)
-
-    //   code.forEach((o: IOperant, j: number): void => {
-    //     if (j === 0) { return }
-    //     // const operantBuf = new ArrayBuffer(operantBytesSize[o.type])
-    //     // const operantTypeBuf = new Uint8Array(1)
-    //     // operantTypeBuf[0] = o.type
-    //     const operantBuf = createOperantBuffer(o.type, o.value)
-    //     appendBuffer(operantBuf)
-    //     switch (o.type) {
-    //     case IOperatantType.REGISTER:
-    //     case IOperatantType.CLOSURE_REGISTER:
-    //     case IOperatantType.GLOBAL:
-    //     case IOperatantType.ARG_COUNT:
-    //     case IOperatantType.FUNCTION_INDEX:
-    //     case IOperatantType.STRING: {
-    //       const v = new Uint16Array(operantBuf)
-    //       v[0] = o.value
-    //       appendBuffer(operantBuf)
-    //       break
-    //     }
-    //     case IOperatantType.ADDRESS: {
-    //       labelBufferIndex.push({ codeIndex: o.value, bufferIndex: buffer.byteLength })
-    //       appendBuffer(operantBuf)
-    //       break
-    //     }
-    //     case IOperatantType.NUMBER: {
-    //       const v = new Float64Array(operantBuf)
-    //       v[0] = o.value
-    //       appendBuffer(operantBuf)
-    //       break
-    //     }
-    //     case IOperatantType.BOOLEAN: {
-    //       const v = new Int8Array(operantBuf)
-    //       v[0] = o.value
-    //       appendBuffer(operantBuf)
-    //       break
-    //     }
-    //     case IOperatantType.RETURN_VALUE:
-    //       break
-    //     default:
-    //       throw new Error("Unknown operant " + o.type)
-    //     }
-    //   })
-    // })
-
-    // Replace label
-    // labelBufferIndex.forEach((label): void => {
-    //   const buf = new Uint32Array(1)
-    //   const address = codeAdresses[label.codeIndex]
-    //   buf[0] = address
-    //   const buf2 = new Uint8Array(buf.buffer)
-    //   const funBuf = new Uint8Array(buffer)
-    //   buf2.forEach((b: number, i: number): void => {
-    //     funBuf.set([b], label.bufferIndex + i)
-    //   })
-    //   // console.log('----REPLACE ~~~~~~', buf)
-    // })
-    // console.log('LABAL s', codeAdresses, labelBufferIndex)
   })
-  // console.log('codes length ->', buffer.byteLength)
 
   /**
    * Header:
@@ -393,7 +327,6 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
   headerView[2] = stringTableBasicIndex
   headerView[3] = globalsSize
   buffer = concatBuffer(headerView.buffer, buffer)
-  // console.log('---> main', mainFunctionIndex, funcionTableBasicIndex, buffer.byteLength)
 
   /** Function Table */
   funcsInfo.forEach((funcInfo: IFuncInfo, i: number): void => {
@@ -404,14 +337,10 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
     numArgsAndLocal[1] = funcInfo.localSize
     const funcBuf = concatBuffer(ipBuf.buffer, numArgsAndLocal.buffer)
     buffer = concatBuffer(buffer, funcBuf)
-    // console.log('FUNCTION -> ', funcInfo.ip, funcInfo.localSize)
   })
-  // console.log('string table index ->', buffer.byteLength)
 
   /** append string buffer */
-  // console.log(arrayBufferToString(stringTable.buffer), "???")
   buffer = concatBuffer(buffer, stringTable.buffer)
-
   return buffer
 }
 
@@ -463,7 +392,6 @@ const parseFunction = (func: string): IFuncInfo => {
     }
   })
 
-  // console.log(codes, '--->')
   if (funcName === '@@main') {
     codes.push(['EXIT'])
   } else if (codes.length === 0 || codes[codes.length - 1][0] !== 'RET') {

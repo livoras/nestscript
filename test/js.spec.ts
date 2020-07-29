@@ -417,7 +417,7 @@ describe('function', (): void => {
     expect(
       getOperatantByBuffer(createOperantBuffer(IOperatantType.REGISTER, 100)),
     ).deep.equal(
-      [IOperatantType.REGISTER, 100, 2],
+      [IOperatantType.REGISTER, 100, 1],
     )
   })
 })
