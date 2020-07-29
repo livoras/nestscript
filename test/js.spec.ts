@@ -1,5 +1,7 @@
 import { createVMFromJavaScript } from '../src/js'
 import { expect } from 'chai'
+import { createOperantBuffer, getOperatantByBuffer } from '../src/utils'
+import { IOperatantType } from '../src/vm'
 
 const tm = (codes: string, ctx: any = {}): void => {
   const c = { expect, Date, console, ...ctx }
@@ -397,5 +399,25 @@ describe('function', (): void => {
     expect(people.add()).equal(3)
     expect(people instanceof People).equal(true)
     `)
+  })
+
+  it(`operatant type transfer`, (): void => {
+    expect(
+      getOperatantByBuffer(createOperantBuffer(IOperatantType.NUMBER, -3368)),
+    ).deep.equal(
+      [IOperatantType.NUMBER, -3368, 3],
+    )
+
+    expect(
+      getOperatantByBuffer(createOperantBuffer(IOperatantType.NUMBER, -3.14159)),
+    ).deep.equal(
+      [IOperatantType.NUMBER, -3.14159, 8],
+    )
+
+    expect(
+      getOperatantByBuffer(createOperantBuffer(IOperatantType.REGISTER, 100)),
+    ).deep.equal(
+      [IOperatantType.REGISTER, 100, 1],
+    )
   })
 })

@@ -11,7 +11,7 @@ func @@main() {
     MOV_PROP %r1 %r3 %r2;
     MOV %r2 "add";
     SET_KEY %r1 %r2 %r0;
-    MOV %r0 'what?';
+    MOV %r0 "what?";
     PUSH %r0;
     MOV %r1 People;
     MOV %r2 "prototype";
@@ -34,11 +34,30 @@ func @@main() {
     PUSH %r0;
     MOV %r0 people;
     PUSH %r0;
-    MOV %r0 '====>';
+    MOV %r0 "====>";
     PUSH %r0;
     MOV_CTX %r0 "console";
     MOV %r1 "log";
     CALL_VAR %r0 %r1 4 false;
+    GLOBAL i;
+    MOV i 0;
+LABEL _l0_:
+    MOV %r0 i;
+    MOV %r1 10;
+    LT %r0 %r1;
+    JF %r0 _l1_;
+    MOV %r1 i;
+    PUSH %r1;
+    MOV %r1 'i --> ';
+    PUSH %r1;
+    MOV_CTX %r1 "console";
+    MOV %r2 "log";
+    CALL_VAR %r1 %r2 2 false;
+    MOV %r1 i;
+    ADD %r1 1;
+    MOV i %r1;
+    JMP _l0_;
+LABEL _l1_:
 }
 func @@f0() {
     VAR %r0;
