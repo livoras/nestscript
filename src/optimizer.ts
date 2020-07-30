@@ -22,7 +22,7 @@ const BOTH_GET = [OU.BOTH, OU.GET]
 const THREE_GET = [OU.GET, OU.GET, OU.GET]
 const TWO_GET = [OU.GET, OU.GET]
 const codeToUseAge: { [x in I]: OU[] } = {
-  [I.MOV]: BOTH_GET,
+  [I.MOV]: SET_GET,
   [I.ADD]: BOTH_GET,
   [I.SUB]: BOTH_GET,
   [I.MUL]: BOTH_GET,
@@ -66,31 +66,42 @@ const codeToUseAge: { [x in I]: OU[] } = {
   [I.CALL_VAR]: [...THREE_GET, OU.GET],
   [I.CALL_REG]: THREE_GET,
   [I.MOV_CTX]: SET_GET,
-  [I.MOV_PROP]: [],
-  [I.SET_CTX]: [],
-  [I.NEW_OBJ]: [],
-  [I.NEW_ARR]: [],
-  [I.SET_KEY]: [],
-  [I.FUNC]: [],
-  [I.ALLOC]: [],
-  [I.PLUS]: [],
-  [I.MINUS]: [],
-  [I.NOT]: [],
-  [I.VOID]: [],
-  [I.DEL]: [],
-  [I.NEG]: [],
-  [I.INST_OF]: [],
-  [I.MOV_THIS]: [],
+  [I.MOV_PROP]: [OU.SET, OU.GET, OU.GET],
+  [I.SET_CTX]: [OU.GET, OU.GET],
+  [I.NEW_OBJ]: [OU.SET],
+  [I.NEW_ARR]: [OU.SET],
+  [I.SET_KEY]: [OU.GET, OU.GET, OU.GET],
+  [I.FUNC]: SET_GET,
+  [I.ALLOC]: [OU.GET],
+  [I.PLUS]: [OU.BOTH],
+  [I.MINUS]: [OU.BOTH],
+  [I.NOT]: [OU.BOTH],
+  [I.VOID]: [OU.BOTH],
+  [I.DEL]: [OU.BOTH],
+  [I.NEG]: [OU.BOTH],
+  [I.INST_OF]: BOTH_GET,
+  [I.MOV_THIS]: [OU.SET],
 }
 
-const optimizeFunction = (code: string): string => {
-  code = code.trim()
-  const cap = code.match(/^(func[\s\S]+?\{)([\s\S]+?)\}$/)
+const IGNORE_INS = [
+  I.NEW_ARR,
+  I.NEW_OBJ,
+]
+
+const optimizeFunction = (funcString: string): string => {
+  funcString = funcString.trim()
+  const cap = funcString.match(/^(func[\s\S]+?\{)([\s\S]+?)\}$/)
   const head = cap![1]
   const codes = parseCode(cap![2])
   // console.log(codes)
+  for (const code of codes) {
+    const operator = code[0]
+    if (I[operator] === I.MOV) {
+      console.log('MOVING .... ->', code)
+    }
+  }
   // // console.log(cap![1])
   // // console.log(cap![2])
   // // console.log(cap![2])
-  return code
+  return funcString
 }
