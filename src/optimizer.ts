@@ -1,6 +1,7 @@
-import { Certificate, createDecipher } from 'crypto'
+import { Certificate, createDecipher, createDiffieHellman } from 'crypto'
 import { parseCode } from './parser'
 import { I } from './vm'
+import { use } from 'chai'
 
 export const optimizeCode = (code: string): string => {
   return (code.trim().match(/func[\s\S]+?\}/g) || [])
@@ -88,20 +89,109 @@ const IGNORE_INS = [
   I.NEW_OBJ,
 ]
 
+const enum ValueType {
+  NUMBER,
+  REGISTESR,
+  STRING,
+  OTHER,
+}
+
+interface ICandidate {
+  codeIndex: number,
+  operator: string,
+  value: string,
+  valueType: ValueType,
+  usages: { codeIndex: number, position: number }[],
+}
+
 const optimizeFunction = (funcString: string): string => {
   funcString = funcString.trim()
   const cap = funcString.match(/^(func[\s\S]+?\{)([\s\S]+?)\}$/)
   const head = cap![1]
-  const codes = parseCode(cap![2])
-  // console.log(codes)
-  for (const code of codes) {
-    const operator = code[0]
-    if (I[operator] === I.MOV) {
-      console.log('MOVING .... ->', code)
+  let codes: any[] = parseCode(cap![2])
+  const candidates: Map<string, ICandidate> = new Map()
+  const isInCandidates = (reg: string): boolean => candidates.has(reg)
+  const isReg = (s: string): boolean => s.startsWith('%')
+
+  const getValueType = (val: string): ValueType => {
+    if (isReg(val)) {
+      return ValueType.REGISTESR
+    } else if (val.match(/^['"]/)) {
+      return ValueType.STRING
+    } else if (!isNaN(Number(val))) {
+      return ValueType.NUMBER
+    } else {
+      return ValueType.OTHER
     }
   }
-  // // console.log(cap![1])
-  // // console.log(cap![2])
-  // // console.log(cap![2])
-  return funcString
+
+  const processReg = (reg: string): void => {
+    const candidate = candidates.get(reg)!
+    if (candidate.valueType === ValueType.NUMBER) { return }
+    const { codeIndex, value, usages } = candidate
+    codes[codeIndex] = null
+    for (const usage of usages) {
+      codes[usage.codeIndex][usage.position] = value
+    }
+  }
+
+  const isIgnoreOperator = (op: string): boolean => {
+    return ['VAR'].includes(op)
+  }
+
+  codes.forEach((code: string[], i: number): void => {
+    const operator = code[0]
+    if (I[operator] === I.MOV) {
+      const dst = code[1]
+      const value = code[2]
+      if (!isReg(dst)) { return }
+      if (isInCandidates(dst)) {
+        processReg(dst)
+      }
+      candidates.set(dst, {
+        codeIndex: i,
+        operator,
+        value,
+        valueType: getValueType(value),
+        usages: [],
+      })
+    } else {
+      code.forEach((operant: string, j: number): void => {
+        if (j === 0) { return }
+        if (isIgnoreOperator(operator)) { return }
+        if (!isReg(operant)) { return }
+        const isGetOperant = codeToUseAge[I[operator]][j - 1] === OU.GET
+        if (!isInCandidates(operant)) { return }
+        if (isGetOperant) {
+          const candidate = candidates.get(operant)!
+          candidate.usages.push({
+            codeIndex: i,
+            position: j,
+          })
+        } else {
+          processReg(operant)
+          candidates.delete(operant)
+        }
+      })
+    }
+  })
+
+  for (const [reg] of candidates.entries()) {
+    processReg(reg)
+  }
+
+  codes = codes.filter((c): boolean => !!c)
+  const codeString = codes.map((c: string[]): string => {
+    if (c[0] === 'LABEL') {
+      return c.join(' ') + ':\n'
+    }
+    return '  ' + c.join(' ') + ';\n'
+  }).join('')
+  const ret = `
+${head}
+${codeString}
+}
+`
+  console.log(ret)
+  return ret
 }
