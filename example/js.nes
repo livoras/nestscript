@@ -1,74 +1,59 @@
 func @@main() {
-    VAR %r0;
-    VAR %r1;
-    VAR %r2;
-    VAR %r3;
-    GLOBAL People;
-    FUNC People @@f0;
-    FUNC %r0 @@f1;
-    MOV %r3 People;
-    MOV %r2 "prototype";
-    MOV_PROP %r1 %r3 %r2;
-    MOV %r2 "add";
-    SET_KEY %r1 %r2 %r0;
-    MOV %r0 "what?";
-    PUSH %r0;
-    MOV %r1 People;
-    MOV %r2 "prototype";
-    MOV_PROP %r0 %r1 %r2;
-    PUSH %r0;
-    MOV_CTX %r0 "console";
-    MOV %r1 "log";
-    CALL_VAR %r0 %r1 2 false;
-    GLOBAL people;
-    CALL_REG People 0 true;
-    MOV people $RET;
-    MOV %r0 people;
-    MOV %r1 People;
-    INST_OF %r0 %r1;
-    PUSH %r0;
-    MOV %r1 people;
-    MOV %r2 "add";
-    CALL_VAR %r1 %r2 0 false;
-    MOV %r0 $RET;
-    PUSH %r0;
-    MOV %r0 people;
-    PUSH %r0;
-    MOV %r0 "====>";
-    PUSH %r0;
-    MOV_CTX %r0 "console";
-    MOV %r1 "log";
-    CALL_VAR %r0 %r1 4 false;
+  VAR %r0;
+  VAR %r1;
+  VAR %r2;
+  VAR %r3;
+  GLOBAL People;
+  FUNC People @@f0;
+  FUNC %r0 @@f1;
+  MOV_PROP %r1 People "prototype";
+  SET_KEY %r1 "add" %r0;
+  PUSH "what?";
+  MOV_PROP %r0 People "prototype";
+  PUSH %r0;
+  MOV_CTX %r0 "console";
+  CALL_VAR %r0 "log" 2 false;
+  GLOBAL people;
+  CALL_REG People 0 true;
+  MOV people $RET;
+  MOV %r0 people;
+  INST_OF %r0 People;
+  PUSH %r0;
+  CALL_VAR people "add" 0 false;
+  PUSH $RET;
+  PUSH people;
+  PUSH "====>";
+  MOV_CTX %r0 "console";
+  CALL_VAR %r0 "log" 4 false;
+
 }
+
+
 func @@f0() {
-    VAR %r0;
-    VAR %r1;
-    VAR %r2;
-    MOV %r0 "THIS IS NOT A GOOD DAY~~~~~~~~~~~";
-    PUSH %r0;
-    MOV_CTX %r0 "console";
-    MOV %r1 "log";
-    CALL_VAR %r0 %r1 1 false;
-    MOV %r0 1;
-    MOV_THIS %r1;
-    MOV %r2 "a";
-    SET_KEY %r1 %r2 %r0;
-    MOV %r0 2;
-    MOV_THIS %r1;
-    MOV %r2 "b";
-    SET_KEY %r1 %r2 %r0;
+  VAR %r0;
+  VAR %r1;
+  VAR %r2;
+  PUSH "THIS IS NOT A GOOD DAY~~~~~~~~~~~";
+  MOV_CTX %r0 "console";
+  CALL_VAR %r0 "log" 1 false;
+  MOV_THIS %r1;
+  SET_KEY %r1 "a" 1;
+  MOV_THIS %r1;
+  SET_KEY %r1 "b" 2;
+
 }
+
+
 func @@f1() {
-    VAR %r0;
-    VAR %r1;
-    VAR %r2;
-    VAR %r3;
-    MOV_THIS %r2;
-    MOV %r3 "a";
-    MOV_PROP %r0 %r2 %r3;
-    MOV_THIS %r2;
-    MOV %r3 "b";
-    MOV_PROP %r1 %r2 %r3;
-    ADD %r0 %r1;
-    MOV $RET %r0;
+  VAR %r0;
+  VAR %r1;
+  VAR %r2;
+  VAR %r3;
+  MOV_THIS %r2;
+  MOV_PROP %r0 %r2 "a";
+  MOV_THIS %r2;
+  MOV_PROP %r1 %r2 "b";
+  ADD %r0 %r1;
+  MOV $RET %r0;
+
 }

@@ -127,7 +127,7 @@ const optimizeFunction = (funcString: string): string => {
 
   const processReg = (reg: string): void => {
     const candidate = candidates.get(reg)!
-    if (candidate.valueType === ValueType.NUMBER) { return }
+    if (candidate.valueType === ValueType.NUMBER && candidate.usages.length > 1) { return }
     const { codeIndex, value, usages } = candidate
     codes[codeIndex] = null
     for (const usage of usages) {
@@ -144,6 +144,10 @@ const optimizeFunction = (funcString: string): string => {
     if (I[operator] === I.MOV) {
       const dst = code[1]
       const value = code[2]
+      if (dst === value) {
+        codes[i] = null
+        return
+      }
       if (isReg(value) && isInCandidates(value)) {
         const candidate = candidates.get(value)!
         candidate.usages.push({
