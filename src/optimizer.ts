@@ -144,6 +144,13 @@ const optimizeFunction = (funcString: string): string => {
     if (I[operator] === I.MOV) {
       const dst = code[1]
       const value = code[2]
+      if (isReg(value) && isInCandidates(value)) {
+        const candidate = candidates.get(value)!
+        candidate.usages.push({
+          codeIndex: i,
+          position: 2,
+        })
+      }
       if (!isReg(dst)) { return }
       if (isInCandidates(dst)) {
         processReg(dst)
@@ -160,7 +167,8 @@ const optimizeFunction = (funcString: string): string => {
         if (j === 0) { return }
         if (isIgnoreOperator(operator)) { return }
         if (!isReg(operant)) { return }
-        const isGetOperant = codeToUseAge[I[operator]][j - 1] === OU.GET
+        const useType = codeToUseAge[I[operator]][j - 1]
+        const isGetOperant = useType === OU.GET
         if (!isInCandidates(operant)) { return }
         if (isGetOperant) {
           const candidate = candidates.get(operant)!
@@ -169,7 +177,9 @@ const optimizeFunction = (funcString: string): string => {
             position: j,
           })
         } else {
-          processReg(operant)
+          if (useType === OU.SET) {
+            processReg(operant)
+          }
           candidates.delete(operant)
         }
       })
