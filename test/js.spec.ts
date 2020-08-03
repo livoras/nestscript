@@ -2,6 +2,7 @@ import { createVMFromJavaScript } from '../src/js'
 import { expect } from 'chai'
 import { createOperantBuffer, getOperatantByBuffer } from '../src/utils'
 import { IOperatantType } from '../src/vm'
+import { time } from 'console'
 const chai = require('chai')
 const spies = require('chai-spies')
 
@@ -503,7 +504,7 @@ describe('loop', (): void => {
     `, { spy })
   })
 
-  it ('continue', (): void => {
+  it('continue', (): void => {
     const spy = chai.spy((): void => {})
     tm(`
     let i = 0
@@ -517,6 +518,19 @@ describe('loop', (): void => {
       }
     }
     expect(spy).to.have.been.called.exactly(70)
+    `, { spy })
+  })
+
+  it('do while', (): void => {
+    const spy = chai.spy((): void => {})
+    tm(
+    `
+    let i = 0
+    do {
+      i++
+      spy()
+    } while (i < 10)
+    expect(spy).to.have.been.called.exactly(10)
     `, { spy })
   })
 })

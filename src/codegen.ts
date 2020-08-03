@@ -617,6 +617,14 @@ const parseToCode = (ast: any): void => {
       if (node.init) {
         c(node.init, s)
       }
+
+      // if do while
+      const isDoWhileLoop = node.type as string === 'DoWhileStatement'
+      const bodyLabel = newLabelName()
+      if (isDoWhileLoop) {
+        cg(`JMP`, bodyLabel)
+      }
+
       cg(`LABEL`, `${ startLabel }:`)
       // test
       if (node.test) {
@@ -627,6 +635,7 @@ const parseToCode = (ast: any): void => {
       // body
       s.forEndLabel = endLabel
       s.r0 = null
+      cg(`LABEL`, `${ bodyLabel }:`)
       c(node.body, s)
       // update
       if (node.update) {
@@ -641,6 +650,10 @@ const parseToCode = (ast: any): void => {
     },
 
     WhileStatement(node: et.WhileStatement, s: any, c: any): any {
+      this.ForStatement(node, s, c)
+    },
+
+    DoWhileStatement(node: et.DoWhileStatement, s: any, c: any): any {
       this.ForStatement(node, s, c)
     },
 
