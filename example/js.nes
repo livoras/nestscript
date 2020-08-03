@@ -1,24 +1,8 @@
 func @@main() {
     VAR %r0;
-    VAR %r1;
-    VAR %r2;
     GLOBAL i;
     MOV i 0;
-    JMP _l2_;
-LABEL _l0_:
     MOV %r0 i;
-    MOV %r1 10;
-    LT %r0 %r1;
-    JF %r0 _l1_;
-LABEL _l2_:
-    MOV %r1 i;
-    ADD %r1 1;
-    MOV i %r1;
-    MOV %r1 i;
-    PUSH %r1;
-    MOV_CTX %r1 "console";
-    MOV %r2 "log";
-    CALL_VAR %r1 %r2 1 false;
-    JMP _l0_;
-LABEL _l1_:
+    ADD %r0 1;
+    MOV i %r0;
 }

@@ -528,9 +528,14 @@ describe('loop', (): void => {
     let i = 0
     do {
       i++
-      spy()
+      spy(i)
     } while (i < 10)
     expect(spy).to.have.been.called.exactly(10)
+    expect(spy).on.nth(1).be.called.with(1)
     `, { spy })
   })
+})
+
+describe('try and catch', (): void => {
+
 })

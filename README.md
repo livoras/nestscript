@@ -95,6 +95,8 @@ func main() {
 - [ ] `export`，`import` 模块支持
 - [ ] `class` 支持
 - [ ] 中间代码优化
+  - [ x ] 基本中间代码优化
+  - [] 属性访问优化
 - [ ] 文档：
   - [ ] IR 指令手册
   - [ ] 安装文档
@@ -105,6 +107,10 @@ func main() {
 * * *
 
 ## Change Log
+## 2020-08-03
+* `while`, `do while`, `continue` codegen
+* 更多测试
+
 ## 2020-07-31
 * 第一版 optimizer 完成
 

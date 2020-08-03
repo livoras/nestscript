@@ -658,7 +658,7 @@ const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMac
   console.log('string table', stringsTable)
   console.log('function table', funcsTable)
   console.log(mainFunctionIndex, 'function basic index', funcionTableBasicIndex)
-  console.log('codes length -->', codesBuf.byteLength, stringTableBasicIndex)
+  console.log('total codes bytes length -->', codesBuf.byteLength)
   console.log('main start index', funcsTable[mainFunctionIndex].ip, stringTableBasicIndex)
 
   return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex, globalsSize, ctx)
