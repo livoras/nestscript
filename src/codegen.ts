@@ -314,10 +314,10 @@ const parseToCode = (ast: any): void => {
     }
   }
 
-  const loopEndLabels: string[] = []
-  const pushLoopEndLabels = (label: string): any => loopEndLabels.push(label)
-  const popLoopEndLabels = (): any => loopEndLabels.pop()
-  const getCurrentLoopEndLabel = (): string => loopEndLabels[loopEndLabels.length - 1]
+  const loopLabels: [string, string][] = []
+  const pushLoopLabels = (label: [string, string]): any => loopLabels.push(label)
+  const popLoopLabels = (): [string, string] | undefined => loopLabels.pop()
+  const getCurrentLoopLabel = (): [string, string] => loopLabels[loopLabels.length - 1]
 
   /**
    * 表达式结果处理原则：所有没有向下一层传递 s.r0 的都要处理 s.r0
@@ -612,7 +612,7 @@ const parseToCode = (ast: any): void => {
       const [newReg, freeReg] = newRegisterController()
       const startLabel = newLabelName()
       const endLabel = newLabelName()
-      pushLoopEndLabels(endLabel)
+      pushLoopLabels([startLabel, endLabel])
       // init
       if (node.init) {
         c(node.init, s)
@@ -632,21 +632,36 @@ const parseToCode = (ast: any): void => {
       if (node.update) {
         s.r0 = null
         c(node.update, s)
-        cg(`JMP`, `${ startLabel }`)
       }
+      cg(`JMP`, `${ startLabel }`)
       // end
       cg(`LABEL`, `${ endLabel }:`)
-      popLoopEndLabels()
+      popLoopLabels()
       freeReg()
     },
 
+    WhileStatement(node: et.WhileStatement, s: any, c: any): any {
+      this.ForStatement(node, s, c)
+    },
+
     BreakStatement(node: et.BreakStatement, s: any, c: any): any {
-      const endLabel = getCurrentLoopEndLabel()
-      if (!endLabel) {
-        throw new Error("Not end label, cannot use `break` here.")
+      const labels = getCurrentLoopLabel()
+      if (!labels) {
+        throw new Error("Not available labels, cannot use `break` here.")
       }
+      const [_, endLabel] = labels
       // cg(`JMP ${endLabel} (break)`)
       cg(`JMP`, `${endLabel}`)
+    },
+
+    ContinueStatement(node: et.ContinueStatement, s: any, c: any): any {
+      const labels = getCurrentLoopLabel()
+      if (!labels) {
+        throw new Error("Not available labels, cannot use `continue` here.")
+      }
+      const [startLabel, _] = labels
+      // cg(`JMP ${endLabel} (break)`)
+      cg(`JMP`, `${startLabel}`)
     },
 
     UpdateExpression(node: et.UpdateExpression, s: any, c: any): any {

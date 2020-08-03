@@ -2,6 +2,10 @@ import { createVMFromJavaScript } from '../src/js'
 import { expect } from 'chai'
 import { createOperantBuffer, getOperatantByBuffer } from '../src/utils'
 import { IOperatantType } from '../src/vm'
+const chai = require('chai')
+const spies = require('chai-spies')
+
+chai.use(spies)
 
 const tm = (codes: string, ctx: any = {}): void => {
   const c = { expect, Date, console, ...ctx }
@@ -419,5 +423,100 @@ describe('function', (): void => {
     ).deep.equal(
       [IOperatantType.REGISTER, 100, 1],
     )
+  })
+})
+
+describe('loop', (): void => {
+  it(`for loop`, (): void => {
+    const spy = chai.spy((): void => {})
+    tm(`
+    for (let i = 0; i < 100; i++) {
+      spy(i)
+    }
+    expect(spy).to.have.been.called.exactly(100);
+    expect(spy).on.nth(38).be.called.with(37)
+    `, { spy })
+  })
+
+  it(`nested for loop`, (): void => {
+    const spy = chai.spy((): void => {})
+    tm(`
+    for (let i = 0; i < 10; i++) {
+      for (let j = 0; j < 10; j++) {
+        for (let k = 0; k < 10; k++) {
+          spy(i, j, k)
+        }
+      }
+    }
+    expect(spy).to.have.been.called.exactly(1000);
+    expect(spy).on.nth(37).be.called.with(0, 3, 6)
+    `, { spy })
+  })
+
+  it('while loop', (): void => {
+    const spy = chai.spy((): void => {})
+    tm(`
+      let i = 0
+      while (i < 10) {
+        spy()
+        i++
+      }
+      expect(spy).to.have.been.called.exactly(10)
+    `, { spy })
+  })
+
+  it('nested while loop', (): void => {
+    const spy = chai.spy((): void => {})
+    tm(`
+      let i = 0
+      while (i < 10) {
+        let j = 0
+        while (j < 10) {
+          spy()
+          j++
+        }
+        i++
+      }
+      expect(spy).to.have.been.called.exactly(100)
+    `, { spy })
+  })
+
+  it('break statement', (): void => {
+    const spy = chai.spy((): void => {})
+    tm(`
+      let i = 0
+      while (i < 10) {
+        let j = 0
+        while (j < 10) {
+          spy()
+          if (j === 4) {
+            break
+          }
+          j++
+        }
+        if (i === 4) {
+          break
+        }
+        i++
+      }
+      expect(spy).to.have.been.called.exactly(25)
+    `, { spy })
+  })
+
+  it ('continue', (): void => {
+    const spy = chai.spy((): void => {})
+    tm(`
+    let i = 0
+    while (i < 10) {
+      i++
+      if (i % 3 === 0) {
+        continue
+      }
+      for (let j = 0; j < 10; j++) {
+        spy()
+      }
+    }
+    expect(spy).to.have.been.called.exactly(70)
+    `, { spy })
   })
 })
