@@ -534,8 +534,59 @@ describe('loop', (): void => {
     expect(spy).on.nth(1).be.called.with(1)
     `, { spy })
   })
-})
-
-describe('try and catch', (): void => {
 
 })
+
+describe('null and undefined', (): void => {
+  it('null', (): void => {
+    tm(`
+    const a = null
+    expect(a).equal(null)
+    `)
+  })
+
+  it('array of null', (): void => {
+    tm(`
+    const a = [null, 1]
+    expect(a[0]).equal(null)
+    expect(a[1]).equal(1)
+    `)
+  })
+
+  it('undefined', (): void => {
+    tm(`
+    const a = [undefined, 1]
+    expect(a[0]).equal(undefined)
+    expect(a[1]).equal(1)
+    `)
+  })
+
+  it('passing null as fucntion argument', (): void => {
+    tm(`
+    const a = [null, null]
+    console.log(null, null, a)
+    `)
+  })
+})
+
+describe('regular expression', (): void => {
+  it('normal regular expression', (): void => {
+    tm(`
+    const a = /\\d+/
+    expect(a.test('1234331')).equal(true)
+    `)
+  })
+
+  it('regular expression with flags', (): void => {
+    tm(`
+    const a = /HelloWorld/i
+    expect(a.test('helloworld')).equal(true)
+
+    const b = /HelloWorld/
+    expect(b.test('helloworld')).equal(false)
+    `)
+  })
+})
+
+// describe('try and catch', (): void => {
+// })

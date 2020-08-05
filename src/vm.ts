@@ -16,7 +16,7 @@ export enum I {
 
  CALL_CTX, CALL_VAR, CALL_REG, MOV_CTX, MOV_PROP,
  SET_CTX, // SET_CTX "name" R1
- NEW_OBJ, NEW_ARR, SET_KEY,
+ NEW_OBJ, NEW_ARR, NEW_REG, SET_KEY,
  FUNC, ALLOC,
 
  /* UnaryExpression */
@@ -43,6 +43,8 @@ export const enum IOperatantType {
   RETURN_VALUE = 7 << 4,
   ADDRESS = 8 << 4,
   BOOLEAN = 9 << 4,
+  NULL = 10 << 4,
+  UNDEFINED = 11 << 4,
 }
 
 class FunctionInfo {
@@ -347,6 +349,14 @@ export class VirtualMachine {
       this.setReg(dst, { value: o })
       break
     }
+    case I.NEW_REG: {
+      const dst = this.nextOperant()
+      const pattern = this.nextOperant()
+      const flags = this.nextOperant()
+      console.log(dst, pattern, flags)
+      this.setReg(dst, { value: new RegExp(pattern.value, flags.value) })
+      break
+    }
     case I.NEW_ARR: {
       const dst = this.nextOperant()
       const o: any[] = []
@@ -563,6 +573,10 @@ export class VirtualMachine {
       return this.stack[0]
     case IOperatantType.BOOLEAN:
       return !!value
+    case IOperatantType.NULL:
+      return null
+    case IOperatantType.UNDEFINED:
+      return void 0
     default:
       throw new Error("Unknown operant " + valueType)
     }

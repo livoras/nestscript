@@ -351,14 +351,16 @@ const parseToCode = (ast: any): void => {
       } else {
         throw new Error("Unprocessed node.id.type " + node.id.type + " " + node.id)
       }
-      if (node.init?.type === 'Identifier') {
-        // if (!state.isGlobal) {
-        cg(`MOV`, reg, node.init.name)
-        // }
-      } else {
-        s.r0 = reg
-        // s.funcName = funcName
-        c(node.init, s)
+      if (node.init) {
+        if (node.init?.type === 'Identifier') {
+          // if (!state.isGlobal) {
+          cg(`MOV`, reg, node.init.name)
+          // }
+        } else {
+          s.r0 = reg
+          // s.funcName = funcName
+          c(node.init, s)
+        }
       }
       freeReg()
       delete s.funcName
@@ -412,6 +414,12 @@ const parseToCode = (ast: any): void => {
     },
 
     Literal: (node: et.Literal, s: any): void => {
+      if ((node as any).regex) {
+        const { pattern, flags } = (node as any).regex
+        cg('NEW_REG', s.r0, `"${pattern}"`, `"${flags}"`)
+        return
+      }
+
       let val
       if (node.value === true) {
         val = true

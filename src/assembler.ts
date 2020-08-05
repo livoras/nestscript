@@ -185,6 +185,20 @@ export const parseCodeToProgram = (program: string): Buffer => {
             return
           }
 
+          if (o === 'null') {
+            code[i] = {
+              type: IOperatantType.NULL,
+            }
+            return
+          }
+
+          if (o === 'undefined') {
+            code[i] = {
+              type: IOperatantType.UNDEFINED,
+            }
+            return
+          }
+
           /** 返回类型 */
           if (o === '$RET') {
             code[i] = {
@@ -194,7 +208,7 @@ export const parseCodeToProgram = (program: string): Buffer => {
           }
 
           /** 字符串 */
-          if (o.match(/^\"[\s\S]+\"$/) || o.match(/^\'[\s\S]+\'$/)) {
+          if (o.match(/^\"[\s\S]*\"$/) || o.match(/^\'[\s\S]*\'$/)) {
             const str = o.replace(/^[\'\"]|[\'\"]$/g, '')
             const index = stringIndex[str]
             code[i] = {

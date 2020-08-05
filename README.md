@@ -102,11 +102,18 @@ func main() {
   - [ ] 安装文档
   - [ ] 使用手册
   - [ ] 使用 demo
+- [x] `null`, `undefined` keyword
+- [x] 正则表达式
+- `try catch`
   
 
 * * *
 
 ## Change Log
+## 2020-08-05
+* `null`, `undefined`
+* 正则表达式字面量
+
 ## 2020-08-03
 * `while`, `do while`, `continue` codegen
 * 更多测试
