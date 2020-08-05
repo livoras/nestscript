@@ -70,6 +70,7 @@ const codeMap = {
   '^': 'XOR',
   '<<': 'SHL',
   '>>': 'SHR',
+  "in": "IN",
   'instanceof': 'INST_OF',
 }
 
@@ -527,7 +528,7 @@ const parseToCode = (ast: any): void => {
 
       const op = codeMap[node.operator]
       if (!op) {
-        throw new Error(`${ op } is not implemented.`)
+        throw new Error(`${ node.operator } is not implemented.`)
       }
       cg(op, leftReg, rightReg)
       freeReg()
@@ -667,6 +668,7 @@ const parseToCode = (ast: any): void => {
 
     BreakStatement(node: et.BreakStatement, s: any, c: any): any {
       const labels = getCurrentLoopLabel()
+      console.log(node, '--->')
       if (!labels) {
         throw new Error("Not available labels, cannot use `break` here.")
       }
@@ -715,6 +717,9 @@ const parseToCode = (ast: any): void => {
       const reg = s.r0 || newReg()
       cg(`NEW_ARR`, `${reg}`)
       node.elements.forEach((el: any, i: number): void => {
+        if (!el) {
+          return
+        }
         const valReg = s.r0 = newRegister()
         c(el, s)
         cg(`SET_KEY`, `${reg}`, `${i}`, `${valReg}`)

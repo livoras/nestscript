@@ -251,12 +251,13 @@ describe("binary operators", (): void => {
     `)
   })
 
-  // TODO
-  // it('instanceof', (): void => {
-  //   tm(`
-  //   const a
-  //   `)
-  // })
+  it('in', (): void => {
+    tm(`
+    const a = 'name'
+    const b = { 'name': 'Jerry' }
+    expect(a in b).equal(true)
+    `)
+  })
 
 })
 

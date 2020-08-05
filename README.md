@@ -104,6 +104,7 @@ func main() {
   - [ ] 使用 demo
 - [x] `null`, `undefined` keyword
 - [x] 正则表达式
+- [ ] label 语法
 - `try catch`
   
 

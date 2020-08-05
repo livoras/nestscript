@@ -27,6 +27,7 @@ export enum I {
  DEL, // DEL %r0 %r1 delete
  NEG, // NEG %r0 !
 
+ IN,
  INST_OF, // instanceof
  MOV_THIS, // moving this to resgister
 }
@@ -353,7 +354,7 @@ export class VirtualMachine {
       const dst = this.nextOperant()
       const pattern = this.nextOperant()
       const flags = this.nextOperant()
-      console.log(dst, pattern, flags)
+      // console.log(dst, pattern, flags)
       this.setReg(dst, { value: new RegExp(pattern.value, flags.value) })
       break
     }
@@ -483,6 +484,12 @@ export class VirtualMachine {
     case I.INST_OF: {
       this.binaryExpression((a, b): any => {
         return a instanceof b
+      })
+      break
+    }
+    case I.IN: {
+      this.binaryExpression((a, b): any => {
+        return a in b
       })
       break
     }
