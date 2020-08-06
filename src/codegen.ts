@@ -51,6 +51,12 @@ interface IState {
   // $val: string,
 }
 
+interface BlockLabel {
+  startLabel?: string,
+  endLabel?: string,
+  updateLabel?: string,
+}
+
 const codeMap = {
   '<': 'LT',
   '>': 'GT',
@@ -315,10 +321,13 @@ const parseToCode = (ast: any): void => {
     }
   }
 
-  const loopLabels: [string, string][] = []
-  const pushLoopLabels = (label: [string, string]): any => loopLabels.push(label)
-  const popLoopLabels = (): [string, string] | undefined => loopLabels.pop()
-  const getCurrentLoopLabel = (): [string, string] => loopLabels[loopLabels.length - 1]
+  /** Label 操作 */
+  const loopLabels: BlockLabel[] = []
+  const pushLoopLabels = (label: BlockLabel): any => loopLabels.push(label)
+  const popLoopLabels = (): BlockLabel | undefined => loopLabels.pop()
+  const getCurrentLoopLabel = (): BlockLabel => loopLabels[loopLabels.length - 1]
+
+  const blockEndLabels: Map<string, BlockLabel> = new Map()
 
   /**
    * 表达式结果处理原则：所有没有向下一层传递 s.r0 的都要处理 s.r0
@@ -620,8 +629,32 @@ const parseToCode = (ast: any): void => {
     ForStatement(node: et.ForStatement, s: any, c: any): any {
       const [newReg, freeReg] = newRegisterController()
       const startLabel = newLabelName()
-      const endLabel = newLabelName()
-      pushLoopLabels([startLabel, endLabel])
+      let endLabel = newLabelName()
+      const updateLabel = newLabelName()
+
+      let labels: BlockLabel
+      if (s.jsLabel) {
+        console.log('=============================')
+        console.log(s.jsLabel)
+        console.log('=============================')
+        if (!blockEndLabels.has(s.jsLabel)) {
+          throw new Error('If has `jsLabel`, label information should be set')
+        }
+        labels = blockEndLabels.get(s.jsLabel)!
+        labels.startLabel = startLabel
+        if (!labels.endLabel) {
+          throw new Error('Endlabel is not set in label information')
+        }
+        endLabel = labels.endLabel
+        delete s.jsLabel
+      } else {
+        labels = { startLabel, endLabel }
+      }
+
+      if (node.update) {
+        labels.updateLabel = updateLabel
+      }
+      pushLoopLabels(labels)
       // init
       if (node.init) {
         c(node.init, s)
@@ -648,6 +681,7 @@ const parseToCode = (ast: any): void => {
       c(node.body, s)
       // update
       if (node.update) {
+        cg('LABEL', `${ updateLabel }:`)
         s.r0 = null
         c(node.update, s)
       }
@@ -667,24 +701,43 @@ const parseToCode = (ast: any): void => {
     },
 
     BreakStatement(node: et.BreakStatement, s: any, c: any): any {
+      if (node.label) {
+        const { name } = node.label
+        if (!blockEndLabels.has(name)) {
+          throw new Error(`Label ${name} does not exist.`)
+        }
+        cg('JMP', blockEndLabels.get(name)!.endLabel)
+        return
+      }
+
       const labels = getCurrentLoopLabel()
-      console.log(node, '--->')
       if (!labels) {
         throw new Error("Not available labels, cannot use `break` here.")
       }
-      const [_, endLabel] = labels
+      const endLabel = labels.endLabel
       // cg(`JMP ${endLabel} (break)`)
       cg(`JMP`, `${endLabel}`)
     },
 
     ContinueStatement(node: et.ContinueStatement, s: any, c: any): any {
+      if (node.label) {
+        const { name } = node.label
+        if (!blockEndLabels.has(name)) {
+          throw new Error(`Label ${name} does not exist.`)
+        }
+        const blockLabel = blockEndLabels.get(name)!
+        // continue label; 语法，如果有 update ，回到 update， 否则回到头
+        cg('JMP', blockLabel.updateLabel || blockLabel.startLabel)
+        return
+      }
+
       const labels = getCurrentLoopLabel()
       if (!labels) {
         throw new Error("Not available labels, cannot use `continue` here.")
       }
-      const [startLabel, _] = labels
+      const { startLabel, updateLabel } = labels
       // cg(`JMP ${endLabel} (break)`)
-      cg(`JMP`, `${startLabel}`)
+      cg(`JMP`, `${updateLabel || startLabel}`)
     },
 
     UpdateExpression(node: et.UpdateExpression, s: any, c: any): any {
@@ -760,6 +813,23 @@ const parseToCode = (ast: any): void => {
     NewExpression(node: et.NewExpression, s: any, c: any): any {
       s.isNewExpression = true
       this.CallExpression(node, s, c)
+    },
+
+    LabeledStatement(node: et.LabeledStatement, s: any, c: any): any {
+      const labelNode = node.label
+      const labelName = labelNode.name
+      const endLabel = newLabelName()
+      blockEndLabels.set(labelName, { endLabel })
+      if (
+        node.body.type === 'ForStatement' ||
+        node.body.type === 'WhileStatement' ||
+        node.body.type === 'DoWhileStatement'
+      ) {
+        s.jsLabel = labelName
+      }
+      c(node.body, s)
+      blockEndLabels.delete(labelName)
+      cg(`LABEL ${endLabel}:`)
     },
   })
 

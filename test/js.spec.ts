@@ -8,6 +8,8 @@ const spies = require('chai-spies')
 
 chai.use(spies)
 
+const makeSpy = (): any => chai.spy((): void => {})
+
 const tm = (codes: string, ctx: any = {}): void => {
   const c = { expect, Date, console, ...ctx }
   const vm = createVMFromJavaScript(codes, c)
@@ -587,6 +589,99 @@ describe('regular expression', (): void => {
     expect(b.test('helloworld')).equal(false)
     `)
   })
+})
+
+describe("continue and break", (): void => {
+  it('label statment', (): void => {
+    const spy = chai.spy((): void => {})
+    tm(`
+    a: {
+      const n = 1
+      spy()
+      b: {
+        if (n > 1) {
+          break b
+        } else {
+          spy()
+          break a
+        }
+      }
+      spy()
+    }
+    expect(spy).to.have.been.called.exactly(2)
+
+    d: {
+      spy()
+      break d
+      spy()
+    }
+
+    expect(spy).to.have.been.called.exactly(3)
+    `, { spy })
+  })
+
+  it('for continue', (): void => {
+    const spy = makeSpy()
+    tm(`
+    for (let i = 0; i < 10; i++) {
+      if (i % 3 === 0) { continue }
+      spy()
+    }
+    expect(spy).to.have.been.called.exactly(6)
+    `, { spy })
+  })
+
+  it(`while continue`, (): void => {
+    const spy = makeSpy()
+    tm(`
+    let i = 0
+    while (i < 10) {
+      i++
+      if (i % 3 === 0) { continue }
+      spy()
+    }
+    expect(spy).to.have.been.called.exactly(7)
+    `, { spy })
+  })
+
+  it(`continue with label`, (): void => {
+    const spy = makeSpy()
+    tm(`
+    a:
+    for (let i = 0; i < 10; i++) {
+      b:
+      for (let j = 0; j < 10; j++) {
+        spy()
+        if (j % 3 === 2) {
+          continue a
+        }
+      }
+    }
+    expect(spy).to.have.been.called.exactly(30)
+    `, { spy })
+  })
+
+  it(`while continue with label`, (): void => {
+    const spy = makeSpy()
+    tm(`
+    let i = 0
+    b:
+    while (i < 10) {
+      i++
+      let j = 0
+      c:
+      while (j < 10) {
+        spy()
+        j++
+        if (j % 3 == 0) {
+          continue b
+        }
+      }
+    }
+    expect(spy).to.have.been.called.exactly(30)
+    `, { spy })
+  })
+
 })
 
 // describe('try and catch', (): void => {

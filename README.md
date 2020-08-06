@@ -104,13 +104,16 @@ func main() {
   - [ ] 使用 demo
 - [x] `null`, `undefined` keyword
 - [x] 正则表达式
-- [ ] label 语法
+- [x] label 语法
 - `try catch`
   
 
 * * *
 
 ## Change Log
+## 2020-08-06
+* 完成 label 语法：循环、block label
+
 ## 2020-08-05
 * `null`, `undefined`
 * 正则表达式字面量
