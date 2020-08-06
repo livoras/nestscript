@@ -47,6 +47,7 @@ const codeToUseAge: { [x in I]: OU[] } = {
   [I.XOR]: BOTH_GET,
   [I.SHL]: BOTH_GET,
   [I.SHR]: BOTH_GET,
+  [I.ZSHR]: BOTH_GET,
   [I.JMP]: [OU.GET],
   [I.JE]: THREE_GET,
   [I.JNE]: THREE_GET,

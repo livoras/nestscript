@@ -684,5 +684,28 @@ describe("continue and break", (): void => {
 
 })
 
-// describe('try and catch', (): void => {
-// })
+describe('switch case and break', (): void => {
+  const spy = makeSpy()
+  it('switch case', (): void => {
+    tm(`
+    let i = 2
+    switch(i) {
+      case 0:
+        console.log('ok')
+        spy(1)
+        break
+      case 2:
+        console.log(2)
+        spy('ok')
+      case 3:
+        console.log(3)
+        break
+      default:
+        spy('default')
+        console.log("NOTHING")
+    }
+    expect(spy).on.nth(1).be.called.with('ok')
+    `, { spy })
+  })
+})
+// tslint:disable-next-line: max-file-line-count

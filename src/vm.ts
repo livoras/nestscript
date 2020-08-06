@@ -8,7 +8,7 @@ export enum I {
 
  LT, GT, EQ, LE, GE, NE, WEQ, WNE,
  LG_AND, LG_OR,
- AND, OR, XOR, SHL, SHR,
+ AND, OR, XOR, SHL, SHR, ZSHR,
 
  JMP, JE, JNE, JG, JL, JIF, JF,
  JGE, JLE, PUSH, POP, CALL, PRINT,
@@ -212,7 +212,7 @@ export class VirtualMachine {
     const op = this.nextOperator()
     // 用来判断是否嵌套调用 vm 函数
     let isCallVMFunction = false
-    // console.log(op)
+    console.log(op, I[op])
     // tslint:disable-next-line: max-switch-cases
     switch (op) {
     case I.PUSH: {
@@ -473,6 +473,11 @@ export class VirtualMachine {
       this.binaryExpression((a, b): any => a >> b)
       break
     }
+    case I.ZSHR: {
+      // tslint:disable-next-line: no-bitwise
+      this.binaryExpression((a, b): any => a >>> b)
+      break
+    }
     case I.LG_AND: {
       this.binaryExpression((a, b): any => a && b)
       break
@@ -533,7 +538,7 @@ export class VirtualMachine {
     }
     default:
       console.log(this.ip)
-      throw new Error("Unknow command " + op)
+      throw new Error("Unknow command " + op + " " + I[op],)
     }
 
     return [op, isCallVMFunction]
@@ -552,12 +557,14 @@ export class VirtualMachine {
     const codes = this.codes
     const [operantType, value, byteLength] = getOperatantByBuffer(codes, this.ip++)
     this.ip = this.ip + byteLength
-    return {
+    const ret = {
       type: operantType,
       value: this.parseValue(operantType, value),
       raw: value,
       index: operantType === IOperatantType.REGISTER ? (this.fp + value) : value,
     }
+    console.log('raw', ret)
+    return ret
   }
 
   public parseValue(valueType: IOperatantType, value: any): any {

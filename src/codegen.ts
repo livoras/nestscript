@@ -76,6 +76,7 @@ const codeMap = {
   '^': 'XOR',
   '<<': 'SHL',
   '>>': 'SHR',
+  '>>>': 'ZSHR',
   "in": "IN",
   'instanceof': 'INST_OF',
 }
@@ -627,6 +628,7 @@ const parseToCode = (ast: any): void => {
     },
 
     ForStatement(node: et.ForStatement, s: any, c: any): any {
+      console.log("====> FOR STATEMENT", node)
       const [newReg, freeReg] = newRegisterController()
       const startLabel = newLabelName()
       let endLabel = newLabelName()
@@ -634,9 +636,6 @@ const parseToCode = (ast: any): void => {
 
       let labels: BlockLabel
       if (s.jsLabel) {
-        console.log('=============================')
-        console.log(s.jsLabel)
-        console.log('=============================')
         if (!blockEndLabels.has(s.jsLabel)) {
           throw new Error('If has `jsLabel`, label information should be set')
         }
@@ -657,6 +656,7 @@ const parseToCode = (ast: any): void => {
       pushLoopLabels(labels)
       // init
       if (node.init) {
+        // console.log('--- INTI -->', node.init)
         c(node.init, s)
       }
 
@@ -710,7 +710,9 @@ const parseToCode = (ast: any): void => {
         return
       }
 
+      console.log(loopLabels)
       const labels = getCurrentLoopLabel()
+      console.log(node)
       if (!labels) {
         throw new Error("Not available labels, cannot use `break` here.")
       }
@@ -830,6 +832,37 @@ const parseToCode = (ast: any): void => {
       c(node.body, s)
       blockEndLabels.delete(labelName)
       cg(`LABEL ${endLabel}:`)
+    },
+
+    SwitchStatement(node: et.SwitchStatement, s: any, c: any): any {
+      const [newReg, freeReg] = newRegisterController()
+      const discriminantReg = newReg()
+      getValueOfNode(node.discriminant, discriminantReg, s, c)
+      const switchEndLabel = newLabelName()
+      const label: BlockLabel = { endLabel: switchEndLabel }
+      pushLoopLabels(label)
+      node.cases.forEach((cs: et.SwitchCase): void => {
+        const startLabel = newLabelName()
+        const endLabel = newLabelName()
+        if (cs.test) {
+          const testReg = newReg()
+          getValueOfNode(cs.test, testReg, s, c)
+          cg(`JE ${discriminantReg} ${testReg} ${startLabel}`)
+          cg(`JUMP ${endLabel}`)
+        }
+        cg(`LABEL ${startLabel}:`)
+        cs.consequent.forEach((n: any): void => {
+          c(n, s)
+        })
+        cg(`LABEL ${endLabel}:`)
+      })
+      cg(`LABEL ${switchEndLabel}:`)
+      popLoopLabels()
+      freeReg()
+    },
+
+    SwitchCase(node: et.SwitchCase, s: any, c: any): any {
+
     },
   })
 

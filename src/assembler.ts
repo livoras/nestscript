@@ -92,6 +92,7 @@ export const parseCodeToProgram = (program: string): Buffer => {
   const stringTable: string[] = []
   const stringIndex: any = {}
   const funcs = optimizeCode(program)
+  // const funcs = program
     .trim()
     .match(/func[\s\S]+?\}/g) || []
 
