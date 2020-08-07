@@ -328,6 +328,7 @@ describe('function', (): void => {
   it('call function of virual machine from raw js with proper this', (): void => {
     tm(`
     wrapper.sub = function (a, b) {
+      this && 1
       console.log(this, a - b + this.a, 'this is the result')
       return a - b + this.a + this.c
     }
@@ -706,6 +707,20 @@ describe('switch case and break', (): void => {
     }
     expect(spy).on.nth(1).be.called.with('ok')
     `, { spy })
+  })
+})
+
+describe("misc", (): void => {
+  it('return sequence', (): void => {
+    tm(`
+    const a = () => {
+      return (
+        a ? "A" : "B",
+        "C"
+      );
+    }
+    expect(a()).equal("C")
+    `)
   })
 })
 // tslint:disable-next-line: max-file-line-count

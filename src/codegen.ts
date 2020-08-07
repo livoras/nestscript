@@ -628,7 +628,6 @@ const parseToCode = (ast: any): void => {
     },
 
     ForStatement(node: et.ForStatement, s: any, c: any): any {
-      console.log("====> FOR STATEMENT", node)
       const [newReg, freeReg] = newRegisterController()
       const startLabel = newLabelName()
       let endLabel = newLabelName()
@@ -710,9 +709,9 @@ const parseToCode = (ast: any): void => {
         return
       }
 
-      console.log(loopLabels)
+      // console.log(loopLabels)
       const labels = getCurrentLoopLabel()
-      console.log(node)
+      // console.log(node)
       if (!labels) {
         throw new Error("Not available labels, cannot use `break` here.")
       }
@@ -805,6 +804,17 @@ const parseToCode = (ast: any): void => {
       freeRegister()
     },
 
+    SequenceExpression(node: et.SequenceExpression, s: any, c: any): any {
+      const r0 = s.r0
+      delete s.r0
+      node.expressions.forEach((n, i): void => {
+        if (i === node.expressions.length - 1) {
+          s.r0 = r0
+        }
+        c(n, s)
+      })
+    },
+
     ThisExpression(node: et.ThisExpression, s: any, c: any): any {
       if (!s.r0) {
         throw new Error('Access `this` without register r0')
@@ -848,7 +858,7 @@ const parseToCode = (ast: any): void => {
           const testReg = newReg()
           getValueOfNode(cs.test, testReg, s, c)
           cg(`JE ${discriminantReg} ${testReg} ${startLabel}`)
-          cg(`JUMP ${endLabel}`)
+          cg(`JMP ${endLabel}`)
         }
         cg(`LABEL ${startLabel}:`)
         cs.consequent.forEach((n: any): void => {
