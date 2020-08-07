@@ -83,7 +83,7 @@ export const parseCode = (cd: string): string[][] => {
   return codes
 }
 
-interface IParsedFunction {
+export interface IParsedFunction {
   instructions: string[][],
   params: string[],
   functionName: string,
@@ -156,8 +156,10 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
     if (tokenizingState === TokenizingState.PARAMING) {
       if (isEmpyty(c)) { continue }
       if (c === ',' || c === ')') {
-        if (!token) { throw new Error('parameter name should not be empty') }
         if (!currentFunctionInfo) { throw new Error(NO_SET_FUNCTION_INFO_ERROR) }
+        if (c === ',' && !token) {
+          throw new Error('parameter name should not be empty')
+        }
         currentFunctionInfo.params.push(token)
         token = ''
         if (c === ')') {
@@ -257,8 +259,7 @@ const test = (): void => {
   })
 }
 
-test()
-
+// test()
 // console.log(parseCode(`PUSH "DIE WORLD"`))
 // console.log(parseCode(`PUSH "HELLO WORLD"`))
 // console.log(parseCode('MOV R0 1'))

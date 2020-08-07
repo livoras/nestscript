@@ -1,12 +1,10 @@
 import { Certificate, createDecipher, createDiffieHellman } from 'crypto'
-import { parseCode } from './parser'
+import { parseCode, parseAssembler, IParsedFunction } from './parser'
 import { I } from './vm'
 import { use } from 'chai'
 
 export const optimizeCode = (code: string): string => {
-  return (code.trim().match(/func[\s\S]+?\}/g) || [])
-    .map(optimizeFunction)
-    .join('\n')
+  return parseAssembler(code).map(optimizeFunction).join('\n')
 }
 
 const enum OU {
@@ -107,11 +105,8 @@ interface ICandidate {
   usages: { codeIndex: number, position: number }[],
 }
 
-const optimizeFunction = (funcString: string): string => {
-  funcString = funcString.trim()
-  const cap = funcString.match(/^(func[\s\S]+?\{)([\s\S]+?)\}$/)
-  const head = cap![1]
-  let codes: any[] = parseCode(cap![2])
+const optimizeFunction = (func: IParsedFunction): string => {
+  let codes: any[] = func.instructions
   const candidates: Map<string, ICandidate> = new Map()
   const isInCandidates = (reg: string): boolean => candidates.has(reg)
   const isReg = (s: string): boolean => s.startsWith('%')
@@ -205,7 +200,7 @@ const optimizeFunction = (funcString: string): string => {
     return '  ' + c.join(' ') + ';\n'
   }).join('')
   const ret = `
-${head}
+func ${func.functionName} (${func.params.join(', ')}) {
 ${codeString}
 }
 `

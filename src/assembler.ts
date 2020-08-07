@@ -1,6 +1,6 @@
 import { I, IOperatantType } from './vm'
 import { getByteLengthFromInt32, concatBuffer, stringToArrayBuffer, createOperantBuffer, getOperatantByBuffer, getOperantName } from './utils'
-import { parseCode } from './parser'
+import { parseCode, parseAssembler, IParsedFunction } from './parser'
 import { optimizeCode } from './optimizer'
 
 /**
@@ -91,15 +91,15 @@ export const parseCodeToProgram = (program: string): Buffer => {
   const globalSymbols = {}
   const stringTable: string[] = []
   const stringIndex: any = {}
-  const funcs = optimizeCode(program)
-  // const funcs = program
-    .trim()
-    .match(/func[\s\S]+?\}/g) || []
+  const funcs = parseAssembler(optimizeCode(program))
+  // const funcs = parseAssembler(program) // program
+    // .trim()
+    // .match(/func\s[\s\S]+?\}/g) || []
 
   // 1 pass
   const funcsInfo: any[] = []
   let globalSize: number = 0
-  funcs.forEach((func: string): void => {
+  funcs.forEach((func: IParsedFunction): void => {
     if (!func) { return }
     const funcInfo = parseFunction(func)
     funcInfo.index = funcsInfo.length
@@ -380,13 +380,10 @@ const parseStringTableToBuffer = (stringTable: string[]): {
   }
 }
 
-const parseFunction = (func: string): IFuncInfo => {
-  const caps = func.match(/func\s+([@\w\d_]+)\s*?\(([\s\S]*)\)\s*?\{([\s\S]*?)\n\}/)
-  const funcName = caps![1]
-  const args = caps![2]
-    .split(/\s*,\s*/g)
-    .filter((s: string): boolean => !!s)
-  const body = parseCode(caps![3])
+const parseFunction = (func: IParsedFunction): IFuncInfo => {
+  const funcName = func.functionName
+  const args = func.params
+  const body = func.instructions
 
   const vars = body.filter((stat: string[]): boolean => stat[0] === 'VAR')
   const globals = body
