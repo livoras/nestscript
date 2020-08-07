@@ -4,7 +4,9 @@ import { I } from './vm'
 import { use } from 'chai'
 
 export const optimizeCode = (code: string): string => {
-  return parseAssembler(code).map(optimizeFunction).join('\n')
+  const funcs = parseAssembler(code)
+  console.log(funcs, '?????')
+  return funcs.map(optimizeFunction).join('\n')
 }
 
 const enum OU {

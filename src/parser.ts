@@ -116,8 +116,11 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
   const NO_SET_FUNCTION_INFO_ERROR = 'current function info is not set.'
 
   const isEmpyty = (c: string): boolean => /\s/.test(c)
+  let j = 0
+  let k = 0
 
   while (i < code.length) {
+    // console.log(tokenizingState, '===>', i, code[i])
     const c = code[i++]
 
     if (tokenizingState === TokenizingState.INIT) {
@@ -128,6 +131,8 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
         }
         token = ''
         tokenizingState = TokenizingState.FUNCTION_NAME
+        k++
+        console.log(k, 'coount ')
         currentFunctionInfo = { functionName: '', params: [], instructions: [] }
         codes = currentFunctionInfo.instructions
       } else {
@@ -160,7 +165,9 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
         if (c === ',' && !token) {
           throw new Error('parameter name should not be empty')
         }
-        currentFunctionInfo.params.push(token)
+        if (token) {
+          currentFunctionInfo.params.push(token)
+        }
         token = ''
         if (c === ')') {
           tokenizingState = TokenizingState.PARAMING_ENCLOSING
@@ -225,14 +232,19 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
     }
 
     if (c === '}') {
+      j++
       if (operants.length > 0) {
         codes.push(operants)
       }
       if (!currentFunctionInfo) { throw new Error(NO_SET_FUNCTION_INFO_ERROR) }
       funcs.push(currentFunctionInfo)
       tokenizingState = TokenizingState.INIT
+      currentFunctionInfo = null
+      console.log('functions ====>', funcs)
       continue
     }
+
+    console.log(operants)
 
     val += c
   }

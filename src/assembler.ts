@@ -96,6 +96,7 @@ export const parseCodeToProgram = (program: string): Buffer => {
     // .trim()
     // .match(/func\s[\s\S]+?\}/g) || []
 
+  console.log(funcs, '--->')
   // 1 pass
   const funcsInfo: any[] = []
   let globalSize: number = 0

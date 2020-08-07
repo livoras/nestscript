@@ -557,14 +557,14 @@ export class VirtualMachine {
     const codes = this.codes
     const [operantType, value, byteLength] = getOperatantByBuffer(codes, this.ip++)
     this.ip = this.ip + byteLength
-    const ret = {
+    return {
       type: operantType,
       value: this.parseValue(operantType, value),
       raw: value,
       index: operantType === IOperatantType.REGISTER ? (this.fp + value) : value,
     }
-    console.log('raw', ret)
-    return ret
+    // console.log('raw', ret, byteLength)
+    // return ret
   }
 
   public parseValue(valueType: IOperatantType, value: any): any {
