@@ -1,4 +1,5 @@
 import { runInThisContext } from 'vm'
+import { isRegExp } from 'util'
 
 const fs = require('fs')
 
@@ -132,7 +133,7 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
       if (isEmpyty(c)) {
         if (!token) { continue }
         if (token !== 'func') {
-          throw new Error('Unexpected token ' + token)
+          throw new Error('INIT Unexpected token ' + token)
         }
         token = ''
         tokenizingState = TokenizingState.FUNCTION_NAME
@@ -190,7 +191,7 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
       if (c === '{') {
         tokenizingState = TokenizingState.FUNCTION_BODY
       } else {
-        throw new Error("Unexpected token " + c)
+        throw new Error("PARAMING_ENCLOSING Unexpected token " + c)
       }
       continue
     }
@@ -210,21 +211,26 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
           isEscape = false
         } else {
           isEscape = true
+          val += c
         }
-        val += c
         continue
       }
 
-      if (c === oldStringStart && !isEscape) {
+      if (c === '"' && isEscape) {
+        console.log('--->', val)
+        val = val.substring(0, val.length - 1) + '"'
+        isEscape = false
+        continue
+      }
+
+      if (c === oldStringStart) {
         val += c
         operants.push(val)
+        console.log("<-----", val)
         isInString = false
         val = ''
       } else {
-        if (!isEscape) {
-          val += c
-        } else {
-        }
+        val += c
       }
       isEscape = false
       continue

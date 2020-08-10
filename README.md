@@ -111,6 +111,9 @@ func main() {
 * * *
 
 ## Change Log
+## 2020-08-10
+* 解析 lodash 成功
+
 ## 2020-08-06
 * 完成 label 语法：循环、block label
 

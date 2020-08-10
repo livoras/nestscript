@@ -214,7 +214,7 @@ export class VirtualMachine {
     const op = this.nextOperator()
     // 用来判断是否嵌套调用 vm 函数
     let isCallVMFunction = false
-    console.log(op, I[op])
+    // console.log(op, I[op])
     // tslint:disable-next-line: max-switch-cases
     switch (op) {
     case I.PUSH: {
@@ -321,6 +321,7 @@ export class VirtualMachine {
       const funcName = this.nextOperant().value
       const numArgs = this.nextOperant().value
       const isNewExpression = this.nextOperant().value
+      console.log(funcName, '--->', o, '--->', numArgs)
       isCallVMFunction = this.callFunction(void 0, o, funcName, numArgs, isNewExpression)
       break
     }
@@ -660,9 +661,15 @@ export class VirtualMachine {
         args.push(stack[this.sp--])
       }
       if (o) {
-        stack[0] = isNewExpression
-          ? new o[funcName](...args)
-          : o[funcName](...args)
+        try {
+          stack[0] = isNewExpression
+            ? new o[funcName](...args)
+            : o[funcName](...args)
+        } catch(e) {
+          console.error(`Calling function ${funcName} failed.`, o)
+          // console.error(`Function '${funcName}' is not found.`, o)
+          throw new Error(e)
+        }
       } else {
         stack[0] = isNewExpression
           ? new f(...args)

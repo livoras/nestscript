@@ -438,9 +438,11 @@ const parseToCode = (ast: any): void => {
     },
 
     Literal: (node: et.Literal, s: any): void => {
+      const unescape = (ss: string): string => ss.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+
       if ((node as any).regex) {
         const { pattern, flags } = (node as any).regex
-        cg('NEW_REG', s.r0, `"${pattern.replace(/"/g, '\\"')}"`, `"${flags}"`)
+        cg('NEW_REG', s.r0, `"${unescape(pattern)}"`, `"${flags}"`)
         return
       }
 
@@ -450,7 +452,10 @@ const parseToCode = (ast: any): void => {
       } else if (node.value === false) {
         val = false
       } else {
-        val = node.raw
+        val = node.value
+        if (typeof val === 'string') {
+          val = `"${unescape(val)}"`
+        }
       }
       if (s.r0) {
         cg(`MOV`, s.r0, val)
