@@ -231,7 +231,7 @@ func @@f0() {
     NEW_REG @c365 "&(?:amp|lt|gt|quot|#39);" "g";
     VAR @c327;
     ALLOC @c327;
-    NEW_REG @c327 "[&<>"']" "g";
+    NEW_REG @c327 "[&<>\"']" "g";
     VAR @c363;
     ALLOC @c363;
     MOV %r1 @c365;
@@ -259,13 +259,13 @@ func @@f0() {
     NEW_REG @c33 "<%=([\s\S]+?)%>" "g";
     VAR @c224;
     ALLOC @c224;
-    NEW_REG @c224 "\.|\[(?:[^[\]]*|(["'])(?:(?!\1)[^\\]|\\.)*?\1)\]" "";
+    NEW_REG @c224 "\.|\[(?:[^[\]]*|([\"'])(?:(?!\1)[^\\]|\\.)*?\1)\]" "";
     VAR @c223;
     ALLOC @c223;
     NEW_REG @c223 "^\w*$" "";
     VAR @c282;
     ALLOC @c282;
-    NEW_REG @c282 "[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|$))" "g";
+    NEW_REG @c282 "[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|([\"'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|$))" "g";
     VAR @c29;
     ALLOC @c29;
     NEW_REG @c29 "[\\^$.*+?()[\]{}|]" "g";
@@ -608,18 +608,17 @@ func @@f0() {
     ALLOC @c12;
     NEW_OBJ @c12;
     MOV %r0 "\\";
-    SET_KEY @c12 "\" %r0;
+    SET_KEY @c12 "\\" %r0;
     MOV %r0 "'";
     SET_KEY @c12 "'" %r0;
     MOV %r0 "n";
-    SET_KEY @c12 "
-" %r0;
+    SET_KEY @c12 "\n" %r0;
     MOV %r0 "r";
-    SET_KEY @c12 "" %r0;
+    SET_KEY @c12 "\r" %r0;
     MOV %r0 "u2028";
-    SET_KEY @c12 " " %r0;
+    SET_KEY @c12 "\u2028" %r0;
     MOV %r0 "u2029";
-    SET_KEY @c12 " " %r0;
+    SET_KEY @c12 "\u2029" %r0;
     VAR @c346;
     ALLOC @c346;
     MOV @c346 parseFloat;
@@ -629,7 +628,7 @@ func @@f0() {
     VAR @c22;
     ALLOC @c22;
     MOV_CTX %r2 "global";
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "object";
     WEQ %r2 %r3;
     MOV %r1 %r2;
@@ -654,7 +653,7 @@ LABEL _l0_:
     VAR @c23;
     ALLOC @c23;
     MOV_CTX %r2 "self";
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "object";
     WEQ %r2 %r3;
     MOV %r1 %r2;
@@ -697,7 +696,7 @@ LABEL _l6_:
     VAR @c24;
     ALLOC @c24;
     MOV_CTX %r2 "exports";
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "object";
     WEQ %r2 %r3;
     MOV %r1 %r2;
@@ -724,7 +723,7 @@ LABEL _l8_:
     MOV %r2 %r3;
     JF %r3 _l14_;
     MOV_CTX %r4 "module";
-    undefined %r4;
+    TYPE_OF %r4;
     MOV %r5 "object";
     WEQ %r4 %r5;
     LG_AND %r2 %r4;
@@ -843,385 +842,385 @@ LABEL _l22_:
     ALLOC @c257;
     NEW_OBJ %r0;
     MOV %r1 "A";
-    SET_KEY %r0 "À" %r1;
+    SET_KEY %r0 'À' %r1;
     MOV %r1 "A";
-    SET_KEY %r0 "Á" %r1;
+    SET_KEY %r0 'Á' %r1;
     MOV %r1 "A";
-    SET_KEY %r0 "Â" %r1;
+    SET_KEY %r0 'Â' %r1;
     MOV %r1 "A";
-    SET_KEY %r0 "Ã" %r1;
+    SET_KEY %r0 'Ã' %r1;
     MOV %r1 "A";
-    SET_KEY %r0 "Ä" %r1;
+    SET_KEY %r0 'Ä' %r1;
     MOV %r1 "A";
-    SET_KEY %r0 "Å" %r1;
+    SET_KEY %r0 'Å' %r1;
     MOV %r1 "a";
-    SET_KEY %r0 "à" %r1;
+    SET_KEY %r0 'à' %r1;
     MOV %r1 "a";
-    SET_KEY %r0 "á" %r1;
+    SET_KEY %r0 'á' %r1;
     MOV %r1 "a";
-    SET_KEY %r0 "â" %r1;
+    SET_KEY %r0 'â' %r1;
     MOV %r1 "a";
-    SET_KEY %r0 "ã" %r1;
+    SET_KEY %r0 'ã' %r1;
     MOV %r1 "a";
-    SET_KEY %r0 "ä" %r1;
+    SET_KEY %r0 'ä' %r1;
     MOV %r1 "a";
-    SET_KEY %r0 "å" %r1;
+    SET_KEY %r0 'å' %r1;
     MOV %r1 "C";
-    SET_KEY %r0 "Ç" %r1;
+    SET_KEY %r0 'Ç' %r1;
     MOV %r1 "c";
-    SET_KEY %r0 "ç" %r1;
+    SET_KEY %r0 'ç' %r1;
     MOV %r1 "D";
-    SET_KEY %r0 "Ð" %r1;
+    SET_KEY %r0 'Ð' %r1;
     MOV %r1 "d";
-    SET_KEY %r0 "ð" %r1;
+    SET_KEY %r0 'ð' %r1;
     MOV %r1 "E";
-    SET_KEY %r0 "È" %r1;
+    SET_KEY %r0 'È' %r1;
     MOV %r1 "E";
-    SET_KEY %r0 "É" %r1;
+    SET_KEY %r0 'É' %r1;
     MOV %r1 "E";
-    SET_KEY %r0 "Ê" %r1;
+    SET_KEY %r0 'Ê' %r1;
     MOV %r1 "E";
-    SET_KEY %r0 "Ë" %r1;
+    SET_KEY %r0 'Ë' %r1;
     MOV %r1 "e";
-    SET_KEY %r0 "è" %r1;
+    SET_KEY %r0 'è' %r1;
     MOV %r1 "e";
-    SET_KEY %r0 "é" %r1;
+    SET_KEY %r0 'é' %r1;
     MOV %r1 "e";
-    SET_KEY %r0 "ê" %r1;
+    SET_KEY %r0 'ê' %r1;
     MOV %r1 "e";
-    SET_KEY %r0 "ë" %r1;
+    SET_KEY %r0 'ë' %r1;
     MOV %r1 "I";
-    SET_KEY %r0 "Ì" %r1;
+    SET_KEY %r0 'Ì' %r1;
     MOV %r1 "I";
-    SET_KEY %r0 "Í" %r1;
+    SET_KEY %r0 'Í' %r1;
     MOV %r1 "I";
-    SET_KEY %r0 "Î" %r1;
+    SET_KEY %r0 'Î' %r1;
     MOV %r1 "I";
-    SET_KEY %r0 "Ï" %r1;
+    SET_KEY %r0 'Ï' %r1;
     MOV %r1 "i";
-    SET_KEY %r0 "ì" %r1;
+    SET_KEY %r0 'ì' %r1;
     MOV %r1 "i";
-    SET_KEY %r0 "í" %r1;
+    SET_KEY %r0 'í' %r1;
     MOV %r1 "i";
-    SET_KEY %r0 "î" %r1;
+    SET_KEY %r0 'î' %r1;
     MOV %r1 "i";
-    SET_KEY %r0 "ï" %r1;
+    SET_KEY %r0 'ï' %r1;
     MOV %r1 "N";
-    SET_KEY %r0 "Ñ" %r1;
+    SET_KEY %r0 'Ñ' %r1;
     MOV %r1 "n";
-    SET_KEY %r0 "ñ" %r1;
+    SET_KEY %r0 'ñ' %r1;
     MOV %r1 "O";
-    SET_KEY %r0 "Ò" %r1;
+    SET_KEY %r0 'Ò' %r1;
     MOV %r1 "O";
-    SET_KEY %r0 "Ó" %r1;
+    SET_KEY %r0 'Ó' %r1;
     MOV %r1 "O";
-    SET_KEY %r0 "Ô" %r1;
+    SET_KEY %r0 'Ô' %r1;
     MOV %r1 "O";
-    SET_KEY %r0 "Õ" %r1;
+    SET_KEY %r0 'Õ' %r1;
     MOV %r1 "O";
-    SET_KEY %r0 "Ö" %r1;
+    SET_KEY %r0 'Ö' %r1;
     MOV %r1 "O";
-    SET_KEY %r0 "Ø" %r1;
+    SET_KEY %r0 'Ø' %r1;
     MOV %r1 "o";
-    SET_KEY %r0 "ò" %r1;
+    SET_KEY %r0 'ò' %r1;
     MOV %r1 "o";
-    SET_KEY %r0 "ó" %r1;
+    SET_KEY %r0 'ó' %r1;
     MOV %r1 "o";
-    SET_KEY %r0 "ô" %r1;
+    SET_KEY %r0 'ô' %r1;
     MOV %r1 "o";
-    SET_KEY %r0 "õ" %r1;
+    SET_KEY %r0 'õ' %r1;
     MOV %r1 "o";
-    SET_KEY %r0 "ö" %r1;
+    SET_KEY %r0 'ö' %r1;
     MOV %r1 "o";
-    SET_KEY %r0 "ø" %r1;
+    SET_KEY %r0 'ø' %r1;
     MOV %r1 "U";
-    SET_KEY %r0 "Ù" %r1;
+    SET_KEY %r0 'Ù' %r1;
     MOV %r1 "U";
-    SET_KEY %r0 "Ú" %r1;
+    SET_KEY %r0 'Ú' %r1;
     MOV %r1 "U";
-    SET_KEY %r0 "Û" %r1;
+    SET_KEY %r0 'Û' %r1;
     MOV %r1 "U";
-    SET_KEY %r0 "Ü" %r1;
+    SET_KEY %r0 'Ü' %r1;
     MOV %r1 "u";
-    SET_KEY %r0 "ù" %r1;
+    SET_KEY %r0 'ù' %r1;
     MOV %r1 "u";
-    SET_KEY %r0 "ú" %r1;
+    SET_KEY %r0 'ú' %r1;
     MOV %r1 "u";
-    SET_KEY %r0 "û" %r1;
+    SET_KEY %r0 'û' %r1;
     MOV %r1 "u";
-    SET_KEY %r0 "ü" %r1;
+    SET_KEY %r0 'ü' %r1;
     MOV %r1 "Y";
-    SET_KEY %r0 "Ý" %r1;
+    SET_KEY %r0 'Ý' %r1;
     MOV %r1 "y";
-    SET_KEY %r0 "ý" %r1;
+    SET_KEY %r0 'ý' %r1;
     MOV %r1 "y";
-    SET_KEY %r0 "ÿ" %r1;
+    SET_KEY %r0 'ÿ' %r1;
     MOV %r1 "Ae";
-    SET_KEY %r0 "Æ" %r1;
+    SET_KEY %r0 'Æ' %r1;
     MOV %r1 "ae";
-    SET_KEY %r0 "æ" %r1;
+    SET_KEY %r0 'æ' %r1;
     MOV %r1 "Th";
-    SET_KEY %r0 "Þ" %r1;
+    SET_KEY %r0 'Þ' %r1;
     MOV %r1 "th";
-    SET_KEY %r0 "þ" %r1;
+    SET_KEY %r0 'þ' %r1;
     MOV %r1 "ss";
-    SET_KEY %r0 "ß" %r1;
+    SET_KEY %r0 'ß' %r1;
     MOV %r1 "A";
-    SET_KEY %r0 "Ā" %r1;
+    SET_KEY %r0 'Ā' %r1;
     MOV %r1 "A";
-    SET_KEY %r0 "Ă" %r1;
+    SET_KEY %r0 'Ă' %r1;
     MOV %r1 "A";
-    SET_KEY %r0 "Ą" %r1;
+    SET_KEY %r0 'Ą' %r1;
     MOV %r1 "a";
-    SET_KEY %r0 "ā" %r1;
+    SET_KEY %r0 'ā' %r1;
     MOV %r1 "a";
-    SET_KEY %r0 "ă" %r1;
+    SET_KEY %r0 'ă' %r1;
     MOV %r1 "a";
-    SET_KEY %r0 "ą" %r1;
+    SET_KEY %r0 'ą' %r1;
     MOV %r1 "C";
-    SET_KEY %r0 "Ć" %r1;
+    SET_KEY %r0 'Ć' %r1;
     MOV %r1 "C";
-    SET_KEY %r0 "Ĉ" %r1;
+    SET_KEY %r0 'Ĉ' %r1;
     MOV %r1 "C";
-    SET_KEY %r0 "Ċ" %r1;
+    SET_KEY %r0 'Ċ' %r1;
     MOV %r1 "C";
-    SET_KEY %r0 "Č" %r1;
+    SET_KEY %r0 'Č' %r1;
     MOV %r1 "c";
-    SET_KEY %r0 "ć" %r1;
+    SET_KEY %r0 'ć' %r1;
     MOV %r1 "c";
-    SET_KEY %r0 "ĉ" %r1;
+    SET_KEY %r0 'ĉ' %r1;
     MOV %r1 "c";
-    SET_KEY %r0 "ċ" %r1;
+    SET_KEY %r0 'ċ' %r1;
     MOV %r1 "c";
-    SET_KEY %r0 "č" %r1;
+    SET_KEY %r0 'č' %r1;
     MOV %r1 "D";
-    SET_KEY %r0 "Ď" %r1;
+    SET_KEY %r0 'Ď' %r1;
     MOV %r1 "D";
-    SET_KEY %r0 "Đ" %r1;
+    SET_KEY %r0 'Đ' %r1;
     MOV %r1 "d";
-    SET_KEY %r0 "ď" %r1;
+    SET_KEY %r0 'ď' %r1;
     MOV %r1 "d";
-    SET_KEY %r0 "đ" %r1;
+    SET_KEY %r0 'đ' %r1;
     MOV %r1 "E";
-    SET_KEY %r0 "Ē" %r1;
+    SET_KEY %r0 'Ē' %r1;
     MOV %r1 "E";
-    SET_KEY %r0 "Ĕ" %r1;
+    SET_KEY %r0 'Ĕ' %r1;
     MOV %r1 "E";
-    SET_KEY %r0 "Ė" %r1;
+    SET_KEY %r0 'Ė' %r1;
     MOV %r1 "E";
-    SET_KEY %r0 "Ę" %r1;
+    SET_KEY %r0 'Ę' %r1;
     MOV %r1 "E";
-    SET_KEY %r0 "Ě" %r1;
+    SET_KEY %r0 'Ě' %r1;
     MOV %r1 "e";
-    SET_KEY %r0 "ē" %r1;
+    SET_KEY %r0 'ē' %r1;
     MOV %r1 "e";
-    SET_KEY %r0 "ĕ" %r1;
+    SET_KEY %r0 'ĕ' %r1;
     MOV %r1 "e";
-    SET_KEY %r0 "ė" %r1;
+    SET_KEY %r0 'ė' %r1;
     MOV %r1 "e";
-    SET_KEY %r0 "ę" %r1;
+    SET_KEY %r0 'ę' %r1;
     MOV %r1 "e";
-    SET_KEY %r0 "ě" %r1;
+    SET_KEY %r0 'ě' %r1;
     MOV %r1 "G";
-    SET_KEY %r0 "Ĝ" %r1;
+    SET_KEY %r0 'Ĝ' %r1;
     MOV %r1 "G";
-    SET_KEY %r0 "Ğ" %r1;
+    SET_KEY %r0 'Ğ' %r1;
     MOV %r1 "G";
-    SET_KEY %r0 "Ġ" %r1;
+    SET_KEY %r0 'Ġ' %r1;
     MOV %r1 "G";
-    SET_KEY %r0 "Ģ" %r1;
+    SET_KEY %r0 'Ģ' %r1;
     MOV %r1 "g";
-    SET_KEY %r0 "ĝ" %r1;
+    SET_KEY %r0 'ĝ' %r1;
     MOV %r1 "g";
-    SET_KEY %r0 "ğ" %r1;
+    SET_KEY %r0 'ğ' %r1;
     MOV %r1 "g";
-    SET_KEY %r0 "ġ" %r1;
+    SET_KEY %r0 'ġ' %r1;
     MOV %r1 "g";
-    SET_KEY %r0 "ģ" %r1;
+    SET_KEY %r0 'ģ' %r1;
     MOV %r1 "H";
-    SET_KEY %r0 "Ĥ" %r1;
+    SET_KEY %r0 'Ĥ' %r1;
     MOV %r1 "H";
-    SET_KEY %r0 "Ħ" %r1;
+    SET_KEY %r0 'Ħ' %r1;
     MOV %r1 "h";
-    SET_KEY %r0 "ĥ" %r1;
+    SET_KEY %r0 'ĥ' %r1;
     MOV %r1 "h";
-    SET_KEY %r0 "ħ" %r1;
+    SET_KEY %r0 'ħ' %r1;
     MOV %r1 "I";
-    SET_KEY %r0 "Ĩ" %r1;
+    SET_KEY %r0 'Ĩ' %r1;
     MOV %r1 "I";
-    SET_KEY %r0 "Ī" %r1;
+    SET_KEY %r0 'Ī' %r1;
     MOV %r1 "I";
-    SET_KEY %r0 "Ĭ" %r1;
+    SET_KEY %r0 'Ĭ' %r1;
     MOV %r1 "I";
-    SET_KEY %r0 "Į" %r1;
+    SET_KEY %r0 'Į' %r1;
     MOV %r1 "I";
-    SET_KEY %r0 "İ" %r1;
+    SET_KEY %r0 'İ' %r1;
     MOV %r1 "i";
-    SET_KEY %r0 "ĩ" %r1;
+    SET_KEY %r0 'ĩ' %r1;
     MOV %r1 "i";
-    SET_KEY %r0 "ī" %r1;
+    SET_KEY %r0 'ī' %r1;
     MOV %r1 "i";
-    SET_KEY %r0 "ĭ" %r1;
+    SET_KEY %r0 'ĭ' %r1;
     MOV %r1 "i";
-    SET_KEY %r0 "į" %r1;
+    SET_KEY %r0 'į' %r1;
     MOV %r1 "i";
-    SET_KEY %r0 "ı" %r1;
+    SET_KEY %r0 'ı' %r1;
     MOV %r1 "J";
-    SET_KEY %r0 "Ĵ" %r1;
+    SET_KEY %r0 'Ĵ' %r1;
     MOV %r1 "j";
-    SET_KEY %r0 "ĵ" %r1;
+    SET_KEY %r0 'ĵ' %r1;
     MOV %r1 "K";
-    SET_KEY %r0 "Ķ" %r1;
+    SET_KEY %r0 'Ķ' %r1;
     MOV %r1 "k";
-    SET_KEY %r0 "ķ" %r1;
+    SET_KEY %r0 'ķ' %r1;
     MOV %r1 "k";
-    SET_KEY %r0 "ĸ" %r1;
+    SET_KEY %r0 'ĸ' %r1;
     MOV %r1 "L";
-    SET_KEY %r0 "Ĺ" %r1;
+    SET_KEY %r0 'Ĺ' %r1;
     MOV %r1 "L";
-    SET_KEY %r0 "Ļ" %r1;
+    SET_KEY %r0 'Ļ' %r1;
     MOV %r1 "L";
-    SET_KEY %r0 "Ľ" %r1;
+    SET_KEY %r0 'Ľ' %r1;
     MOV %r1 "L";
-    SET_KEY %r0 "Ŀ" %r1;
+    SET_KEY %r0 'Ŀ' %r1;
     MOV %r1 "L";
-    SET_KEY %r0 "Ł" %r1;
+    SET_KEY %r0 'Ł' %r1;
     MOV %r1 "l";
-    SET_KEY %r0 "ĺ" %r1;
+    SET_KEY %r0 'ĺ' %r1;
     MOV %r1 "l";
-    SET_KEY %r0 "ļ" %r1;
+    SET_KEY %r0 'ļ' %r1;
     MOV %r1 "l";
-    SET_KEY %r0 "ľ" %r1;
+    SET_KEY %r0 'ľ' %r1;
     MOV %r1 "l";
-    SET_KEY %r0 "ŀ" %r1;
+    SET_KEY %r0 'ŀ' %r1;
     MOV %r1 "l";
-    SET_KEY %r0 "ł" %r1;
+    SET_KEY %r0 'ł' %r1;
     MOV %r1 "N";
-    SET_KEY %r0 "Ń" %r1;
+    SET_KEY %r0 'Ń' %r1;
     MOV %r1 "N";
-    SET_KEY %r0 "Ņ" %r1;
+    SET_KEY %r0 'Ņ' %r1;
     MOV %r1 "N";
-    SET_KEY %r0 "Ň" %r1;
+    SET_KEY %r0 'Ň' %r1;
     MOV %r1 "N";
-    SET_KEY %r0 "Ŋ" %r1;
+    SET_KEY %r0 'Ŋ' %r1;
     MOV %r1 "n";
-    SET_KEY %r0 "ń" %r1;
+    SET_KEY %r0 'ń' %r1;
     MOV %r1 "n";
-    SET_KEY %r0 "ņ" %r1;
+    SET_KEY %r0 'ņ' %r1;
     MOV %r1 "n";
-    SET_KEY %r0 "ň" %r1;
+    SET_KEY %r0 'ň' %r1;
     MOV %r1 "n";
-    SET_KEY %r0 "ŋ" %r1;
+    SET_KEY %r0 'ŋ' %r1;
     MOV %r1 "O";
-    SET_KEY %r0 "Ō" %r1;
+    SET_KEY %r0 'Ō' %r1;
     MOV %r1 "O";
-    SET_KEY %r0 "Ŏ" %r1;
+    SET_KEY %r0 'Ŏ' %r1;
     MOV %r1 "O";
-    SET_KEY %r0 "Ő" %r1;
+    SET_KEY %r0 'Ő' %r1;
     MOV %r1 "o";
-    SET_KEY %r0 "ō" %r1;
+    SET_KEY %r0 'ō' %r1;
     MOV %r1 "o";
-    SET_KEY %r0 "ŏ" %r1;
+    SET_KEY %r0 'ŏ' %r1;
     MOV %r1 "o";
-    SET_KEY %r0 "ő" %r1;
+    SET_KEY %r0 'ő' %r1;
     MOV %r1 "R";
-    SET_KEY %r0 "Ŕ" %r1;
+    SET_KEY %r0 'Ŕ' %r1;
     MOV %r1 "R";
-    SET_KEY %r0 "Ŗ" %r1;
+    SET_KEY %r0 'Ŗ' %r1;
     MOV %r1 "R";
-    SET_KEY %r0 "Ř" %r1;
+    SET_KEY %r0 'Ř' %r1;
     MOV %r1 "r";
-    SET_KEY %r0 "ŕ" %r1;
+    SET_KEY %r0 'ŕ' %r1;
     MOV %r1 "r";
-    SET_KEY %r0 "ŗ" %r1;
+    SET_KEY %r0 'ŗ' %r1;
     MOV %r1 "r";
-    SET_KEY %r0 "ř" %r1;
+    SET_KEY %r0 'ř' %r1;
     MOV %r1 "S";
-    SET_KEY %r0 "Ś" %r1;
+    SET_KEY %r0 'Ś' %r1;
     MOV %r1 "S";
-    SET_KEY %r0 "Ŝ" %r1;
+    SET_KEY %r0 'Ŝ' %r1;
     MOV %r1 "S";
-    SET_KEY %r0 "Ş" %r1;
+    SET_KEY %r0 'Ş' %r1;
     MOV %r1 "S";
-    SET_KEY %r0 "Š" %r1;
+    SET_KEY %r0 'Š' %r1;
     MOV %r1 "s";
-    SET_KEY %r0 "ś" %r1;
+    SET_KEY %r0 'ś' %r1;
     MOV %r1 "s";
-    SET_KEY %r0 "ŝ" %r1;
+    SET_KEY %r0 'ŝ' %r1;
     MOV %r1 "s";
-    SET_KEY %r0 "ş" %r1;
+    SET_KEY %r0 'ş' %r1;
     MOV %r1 "s";
-    SET_KEY %r0 "š" %r1;
+    SET_KEY %r0 'š' %r1;
     MOV %r1 "T";
-    SET_KEY %r0 "Ţ" %r1;
+    SET_KEY %r0 'Ţ' %r1;
     MOV %r1 "T";
-    SET_KEY %r0 "Ť" %r1;
+    SET_KEY %r0 'Ť' %r1;
     MOV %r1 "T";
-    SET_KEY %r0 "Ŧ" %r1;
+    SET_KEY %r0 'Ŧ' %r1;
     MOV %r1 "t";
-    SET_KEY %r0 "ţ" %r1;
+    SET_KEY %r0 'ţ' %r1;
     MOV %r1 "t";
-    SET_KEY %r0 "ť" %r1;
+    SET_KEY %r0 'ť' %r1;
     MOV %r1 "t";
-    SET_KEY %r0 "ŧ" %r1;
+    SET_KEY %r0 'ŧ' %r1;
     MOV %r1 "U";
-    SET_KEY %r0 "Ũ" %r1;
+    SET_KEY %r0 'Ũ' %r1;
     MOV %r1 "U";
-    SET_KEY %r0 "Ū" %r1;
+    SET_KEY %r0 'Ū' %r1;
     MOV %r1 "U";
-    SET_KEY %r0 "Ŭ" %r1;
+    SET_KEY %r0 'Ŭ' %r1;
     MOV %r1 "U";
-    SET_KEY %r0 "Ů" %r1;
+    SET_KEY %r0 'Ů' %r1;
     MOV %r1 "U";
-    SET_KEY %r0 "Ű" %r1;
+    SET_KEY %r0 'Ű' %r1;
     MOV %r1 "U";
-    SET_KEY %r0 "Ų" %r1;
+    SET_KEY %r0 'Ų' %r1;
     MOV %r1 "u";
-    SET_KEY %r0 "ũ" %r1;
+    SET_KEY %r0 'ũ' %r1;
     MOV %r1 "u";
-    SET_KEY %r0 "ū" %r1;
+    SET_KEY %r0 'ū' %r1;
     MOV %r1 "u";
-    SET_KEY %r0 "ŭ" %r1;
+    SET_KEY %r0 'ŭ' %r1;
     MOV %r1 "u";
-    SET_KEY %r0 "ů" %r1;
+    SET_KEY %r0 'ů' %r1;
     MOV %r1 "u";
-    SET_KEY %r0 "ű" %r1;
+    SET_KEY %r0 'ű' %r1;
     MOV %r1 "u";
-    SET_KEY %r0 "ų" %r1;
+    SET_KEY %r0 'ų' %r1;
     MOV %r1 "W";
-    SET_KEY %r0 "Ŵ" %r1;
+    SET_KEY %r0 'Ŵ' %r1;
     MOV %r1 "w";
-    SET_KEY %r0 "ŵ" %r1;
+    SET_KEY %r0 'ŵ' %r1;
     MOV %r1 "Y";
-    SET_KEY %r0 "Ŷ" %r1;
+    SET_KEY %r0 'Ŷ' %r1;
     MOV %r1 "y";
-    SET_KEY %r0 "ŷ" %r1;
+    SET_KEY %r0 'ŷ' %r1;
     MOV %r1 "Y";
-    SET_KEY %r0 "Ÿ" %r1;
+    SET_KEY %r0 'Ÿ' %r1;
     MOV %r1 "Z";
-    SET_KEY %r0 "Ź" %r1;
+    SET_KEY %r0 'Ź' %r1;
     MOV %r1 "Z";
-    SET_KEY %r0 "Ż" %r1;
+    SET_KEY %r0 'Ż' %r1;
     MOV %r1 "Z";
-    SET_KEY %r0 "Ž" %r1;
+    SET_KEY %r0 'Ž' %r1;
     MOV %r1 "z";
-    SET_KEY %r0 "ź" %r1;
+    SET_KEY %r0 'ź' %r1;
     MOV %r1 "z";
-    SET_KEY %r0 "ż" %r1;
+    SET_KEY %r0 'ż' %r1;
     MOV %r1 "z";
-    SET_KEY %r0 "ž" %r1;
+    SET_KEY %r0 'ž' %r1;
     MOV %r1 "IJ";
-    SET_KEY %r0 "Ĳ" %r1;
+    SET_KEY %r0 'Ĳ' %r1;
     MOV %r1 "ij";
-    SET_KEY %r0 "ĳ" %r1;
+    SET_KEY %r0 'ĳ' %r1;
     MOV %r1 "Oe";
-    SET_KEY %r0 "Œ" %r1;
+    SET_KEY %r0 'Œ' %r1;
     MOV %r1 "oe";
-    SET_KEY %r0 "œ" %r1;
+    SET_KEY %r0 'œ' %r1;
     MOV %r1 "'n";
-    SET_KEY %r0 "ŉ" %r1;
+    SET_KEY %r0 'ŉ' %r1;
     MOV %r1 "s";
-    SET_KEY %r0 "ſ" %r1;
+    SET_KEY %r0 'ſ' %r1;
     PUSH %r0;
     CALL_REG @c44 1 false;
     MOV @c257 $RET;
@@ -1235,7 +1234,7 @@ LABEL _l22_:
     MOV %r1 "&gt;";
     SET_KEY %r0 ">" %r1;
     MOV %r1 "&quot;";
-    SET_KEY %r0 """ %r1;
+    SET_KEY %r0 '"' %r1;
     MOV %r1 "&#39;";
     SET_KEY %r0 "'" %r1;
     PUSH %r0;
@@ -1263,7 +1262,7 @@ LABEL _l22_:
     CALL_REG %r0 0 false;
     MOV @c28 $RET;
     MOV_CTX %r2 "define";
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WEQ %r2 %r3;
     MOV %r1 %r2;
@@ -1271,7 +1270,7 @@ LABEL _l22_:
     MOV_CTX %r5 "define";
     MOV %r6 "amd";
     MOV_PROP %r3 %r5 %r6;
-    undefined %r3;
+    TYPE_OF %r3;
     MOV %r4 "object";
     WEQ %r3 %r4;
     LG_AND %r1 %r3;
@@ -1665,7 +1664,6 @@ LABEL _l70_:
     PUSH %r2;
     CALL_REG @c13 3 false;
     MOV %r1 $RET;
-    MOV null %r1;
     JF %r1 _l71_;
     MOV %r3 @c2;
     MOV %r4 @c1;
@@ -1674,7 +1672,6 @@ LABEL _l70_:
     MOV @c0 %r6;
     SET_KEY %r4 %r5 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l71_:
     JMP _l65_;
 LABEL _l66_:
@@ -1890,7 +1887,6 @@ LABEL _l93_:
     MOV %r2 @c1;
     LG_AND %r0 %r2;
 LABEL _l98_:
-    MOV null %r0;
     JF %r0 _l97_;
     MOV %r3 @c17;
     MOV %r5 @c0;
@@ -1899,7 +1895,6 @@ LABEL _l98_:
     MOV_PROP %r2 %r3 %r4;
     MOV @c3 %r2;
     MOV %r1 %r2;
-    LG_AND null %r1;
 LABEL _l97_:
 LABEL _l94_:
     MOV %r2 @c0;
@@ -1952,7 +1947,6 @@ LABEL _l101_:
     MOV %r2 @c0;
     LG_AND %r0 %r2;
 LABEL _l106_:
-    MOV null %r0;
     JF %r0 _l105_;
     MOV %r3 @c17;
     MOV %r5 @c0;
@@ -1961,7 +1955,6 @@ LABEL _l106_:
     MOV_PROP %r2 %r3 %r4;
     MOV @c3 %r2;
     MOV %r1 %r2;
-    LG_AND null %r1;
 LABEL _l105_:
 LABEL _l102_:
     MOV %r1 @c0;
@@ -2339,7 +2332,6 @@ LABEL _l151_:
     MOV %r1 @c1;
     MOV %r2 @c10;
     NE %r1 %r2;
-    MOV null %r1;
     JF %r1 _l152_;
     MOV %r4 @c3;
     MOV %r5 @c10;
@@ -2354,7 +2346,6 @@ LABEL _l153_:
 LABEL _l154_:
     MOV @c3 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l152_:
     JMP _l148_;
 LABEL _l149_:
@@ -2605,7 +2596,6 @@ LABEL _l172_:
     NE %r3 %r4;
     LG_AND %r1 %r3;
 LABEL _l174_:
-    MOV null %r1;
     JIF %r1 _l173_;
     MOV %r3 "__lodash_placeholder__";
     MOV %r4 @c17;
@@ -2618,7 +2608,6 @@ LABEL _l174_:
     MOV @c0 %r6;
     SET_KEY %r4 %r5 %r3;
     MOV %r2 %r3;
-    LG_OR null %r2;
 LABEL _l173_:
     JMP _l169_;
 LABEL _l170_:
@@ -3923,17 +3912,17 @@ LABEL _l214_:
     MOV @c218 $RET;
     NEW_OBJ %r0;
     MOV %r1 @c31;
-    SET_KEY %r0 "escape" %r1;
+    SET_KEY %r0 'escape' %r1;
     MOV %r1 @c32;
-    SET_KEY %r0 "evaluate" %r1;
+    SET_KEY %r0 'evaluate' %r1;
     MOV %r1 @c33;
-    SET_KEY %r0 "interpolate" %r1;
+    SET_KEY %r0 'interpolate' %r1;
     MOV %r1 "";
-    SET_KEY %r0 "variable" %r1;
+    SET_KEY %r0 'variable' %r1;
     NEW_OBJ %r1;
     MOV %r2 @c20;
-    SET_KEY %r1 "_" %r2;
-    SET_KEY %r0 "imports" %r1;
+    SET_KEY %r1 '_' %r2;
+    SET_KEY %r0 'imports' %r1;
     MOV %r1 @c20;
     MOV %r2 "templateSettings";
     SET_KEY %r1 %r2 %r0;
@@ -4303,12 +4292,10 @@ LABEL _l231_:
 LABEL _l238_:
     LG_OR %r0 %r2;
 LABEL _l230_:
-    MOV null %r0;
     JF %r0 _l229_;
     FUNC %r2 @@f302;
     MOV @c96 %r2;
     MOV %r1 %r2;
-    LG_AND null %r1;
 LABEL _l229_:
     VAR @c335;
     ALLOC @c335;
@@ -6096,7 +6083,7 @@ LABEL _l257_:
     SET_KEY %r2 %r3 %r1;
     NEW_OBJ %r1;
     MOV %r2 false;
-    SET_KEY %r1 "chain" %r2;
+    SET_KEY %r1 'chain' %r2;
     PUSH %r1;
     FUNC %r2 @@f518;
     CALL_REG %r2 0 false;
@@ -6235,9 +6222,9 @@ LABEL _l257_:
     NEW_ARR %r1;
     NEW_OBJ %r2;
     MOV %r3 "wrapper";
-    SET_KEY %r2 "name" %r3;
+    SET_KEY %r2 'name' %r3;
     MOV %r3 @c10;
-    SET_KEY %r2 "func" %r3;
+    SET_KEY %r2 'func' %r3;
     SET_KEY %r1 0 %r2;
     MOV %r2 @c212;
     MOV %r5 2;
@@ -6332,7 +6319,6 @@ LABEL _l257_:
     MOV %r3 "first";
     SET_KEY %r2 %r3 %r1;
     MOV %r1 @c243;
-    MOV null %r1;
     JF %r1 _l258_;
     MOV %r3 Qe;
     MOV %r6 @c20;
@@ -6341,7 +6327,6 @@ LABEL _l257_:
     MOV %r5 @c243;
     SET_KEY %r4 %r5 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l258_:
     MOV $RET %r0;
 }
@@ -7053,7 +7038,6 @@ LABEL _l312_:
 LABEL _l311_:
     LG_OR %r0 %r2;
 LABEL _l309_:
-    MOV null %r0;
     JIF %r0 _l308_;
     MOV %r2 @c3;
     PUSH %r2;
@@ -7061,7 +7045,6 @@ LABEL _l309_:
     MOV %r3 "push";
     CALL_VAR %r2 %r3 1 false;
     MOV %r1 $RET;
-    LG_OR null %r1;
 LABEL _l308_:
     MOV $RET %r0;
 }
@@ -7170,7 +7153,6 @@ LABEL _l324_:
 LABEL _l325_:
     LG_AND %r0 %r2;
 LABEL _l323_:
-    MOV null %r0;
     JIF %r0 _l322_;
     MOV %r2 @c3;
     PUSH %r2;
@@ -7180,7 +7162,6 @@ LABEL _l323_:
     PUSH %r2;
     CALL_REG @c83 3 false;
     MOV %r1 $RET;
-    LG_OR null %r1;
 LABEL _l322_:
 }
 func @@f68(n, t, r) {
@@ -7227,7 +7208,6 @@ LABEL _l328_:
 LABEL _l329_:
     LG_AND %r0 %r2;
 LABEL _l327_:
-    MOV null %r0;
     JIF %r0 _l326_;
     MOV %r2 @c3;
     PUSH %r2;
@@ -7237,7 +7217,6 @@ LABEL _l327_:
     PUSH %r2;
     CALL_REG @c83 3 false;
     MOV %r1 $RET;
-    LG_OR null %r1;
 LABEL _l326_:
 }
 func @@f69(n, t) {
@@ -7354,13 +7333,13 @@ LABEL _l340_:
     JF %r0 _l338_;
     NEW_OBJ %r1;
     MOV %r2 true;
-    SET_KEY %r1 "configurable" %r2;
+    SET_KEY %r1 'configurable' %r2;
     MOV %r2 true;
-    SET_KEY %r1 "enumerable" %r2;
+    SET_KEY %r1 'enumerable' %r2;
     MOV %r2 @c3;
-    SET_KEY %r1 "value" %r2;
+    SET_KEY %r1 'value' %r2;
     MOV %r2 true;
-    SET_KEY %r1 "writable" %r2;
+    SET_KEY %r1 'writable' %r2;
     PUSH %r1;
     MOV %r1 @c13;
     PUSH %r1;
@@ -7442,12 +7421,10 @@ func @@f75(n, t, r) {
     MOV %r1 @c17;
     MOV %r2 @c17;
     EQ %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l347_;
     MOV %r3 @c3;
     MOV %r4 @c10;
     NE %r3 %r4;
-    MOV undefined %r3;
     JF %r3 _l348_;
     MOV %r6 @c17;
     MOV %r7 @c3;
@@ -7460,7 +7437,6 @@ LABEL _l349_:
 LABEL _l350_:
     MOV @c17 %r5;
     MOV %r4 %r5;
-    LG_AND undefined %r4;
 LABEL _l348_:
     MOV %r3 @c13;
     MOV %r4 @c10;
@@ -7480,7 +7456,6 @@ LABEL _l353_:
     MOV %r4 %r5;
     LG_AND %r2 %r4;
 LABEL _l351_:
-    LG_AND undefined %r2;
 LABEL _l347_:
     MOV $RET %r0;
 }
@@ -7510,7 +7485,6 @@ func @@f76(n, t, e, u, i, o) {
     MOV %r0 @c13;
     AND @c92 %r0;
     MOV %r1 @c4;
-    MOV undefined %r1;
     JF %r1 _l356_;
     JF %r4 _l357_;
     MOV %r5 @c2;
@@ -7531,7 +7505,6 @@ LABEL _l357_:
     MOV %r3 $RET;
     MOV @c76 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l356_:
     MOV %r0 @c76;
     MOV %r1 @c10;
@@ -7703,13 +7676,11 @@ LABEL _l373_:
     MOV @c76 %r2;
 LABEL _l361_:
     MOV %r1 @c2;
-    MOV undefined %r1;
     JIF %r1 _l377_;
     CALL_REG @c105 0 true;
     MOV %r3 $RET;
     MOV @c2 %r3;
     MOV %r2 %r3;
-    LG_OR undefined %r2;
 LABEL _l377_:
     MOV %r2 @c17;
     PUSH %r2;
@@ -7892,7 +7863,7 @@ func @@f79(n, t, r) {
     VAR %r0;
     VAR %r1;
     MOV %r0 @c17;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "function";
     WNE %r0 %r1;
     JF %r0 _l399_;
@@ -7949,7 +7920,6 @@ func @@f80(n, t, r, e) {
 LABEL _l401_:
 LABEL _l402_:
     MOV %r0 @c3;
-    MOV undefined %r0;
     JF %r0 _l403_;
     MOV %r4 @c3;
     PUSH %r4;
@@ -7962,7 +7932,6 @@ LABEL _l402_:
     MOV %r2 $RET;
     MOV @c13 %r2;
     MOV %r1 %r2;
-    LG_AND undefined %r1;
 LABEL _l403_:
     JF %r0 _l404_;
     MOV %r1 @c76;
@@ -7976,7 +7945,6 @@ LABEL _l404_:
     MOV %r4 "length";
     MOV_PROP %r2 %r3 %r4;
     LE %r1 %r2;
-    MOV null %r1;
     JF %r1 _l406_;
     MOV %r3 @c114;
     MOV @c1 %r3;
@@ -7988,7 +7956,6 @@ LABEL _l404_:
     MOV %r3 $RET;
     MOV @c13 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l406_:
 LABEL _l405_:
 LABEL _l408_:
@@ -8078,7 +8045,6 @@ LABEL _l417_:
     PUSH %r3;
     CALL_REG @c1 3 false;
     MOV %r2 $RET;
-    MOV null %r2;
     JIF %r2 _l425_;
     MOV %r4 @c110;
     PUSH %r4;
@@ -8086,7 +8052,6 @@ LABEL _l417_:
     MOV %r5 "push";
     CALL_VAR %r4 %r5 1 false;
     MOV %r3 $RET;
-    LG_OR null %r3;
 LABEL _l425_:
 LABEL _l418_:
     JMP _l408_;
@@ -8221,20 +8186,16 @@ func @@f84(n, t, r, e, u) {
     MOV %r1 "length";
     MOV_PROP @c2 %r0 %r1;
     MOV %r0 @c3;
-    MOV undefined %r0;
     JIF %r0 _l438_;
     MOV %r2 @c117;
     MOV @c3 %r2;
     MOV %r1 %r2;
-    LG_OR undefined %r1;
 LABEL _l438_:
     MOV %r0 @c0;
-    MOV null %r0;
     JIF %r0 _l439_;
     NEW_ARR %r2;
     MOV @c0 %r2;
     MOV %r1 %r2;
-    LG_OR null %r1;
 LABEL _l439_:
 LABEL _l435_:
     MOV %r2 @c1;
@@ -8288,7 +8249,6 @@ LABEL _l444_:
     JMP _l442_;
 LABEL _l441_:
     MOV %r2 @c4;
-    MOV null %r2;
     JIF %r2 _l445_;
     MOV %r4 @c76;
     MOV %r5 @c0;
@@ -8297,7 +8257,6 @@ LABEL _l441_:
     MOV_PROP %r6 %r5 %r7;
     SET_KEY %r5 %r6 %r4;
     MOV %r3 %r4;
-    LG_OR null %r3;
 LABEL _l445_:
 LABEL _l442_:
     JMP _l435_;
@@ -8518,7 +8477,6 @@ LABEL _l462_:
     CALL_VAR %r2 %r3 1 false;
     MOV @c0 $RET;
     MOV %r2 @c4;
-    MOV undefined %r2;
     JF %r2 _l463_;
     JF %r4 _l464_;
     MOV %r5 @c3;
@@ -8531,7 +8489,6 @@ LABEL _l464_:
     MOV %r5 @c17;
     MOV %r6 @c123;
     DEL %r5 %r6;
-    LG_AND undefined %r3;
 LABEL _l463_:
     MOV %r2 @c0;
     MOV @c17 %r2;
@@ -8666,7 +8623,6 @@ LABEL _l472_:
     MOV %r3 @c13;
     LG_AND %r1 %r3;
 LABEL _l474_:
-    MOV undefined %r1;
     JF %r1 _l473_;
     MOV %r5 @c13;
     PUSH %r5;
@@ -8679,7 +8635,6 @@ LABEL _l474_:
     MOV %r3 $RET;
     MOV @c110 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l473_:
     MOV %r2 @c95;
     PUSH %r2;
@@ -8856,7 +8811,6 @@ LABEL _l499_:
     JMP _l495_;
 LABEL _l496_:
     MOV %r2 @c5;
-    MOV undefined %r2;
     JF %r2 _l501_;
     MOV %r4 @c6;
     PUSH %r4;
@@ -8864,7 +8818,6 @@ LABEL _l496_:
     MOV %r5 "push";
     CALL_VAR %r4 %r5 1 false;
     MOV %r3 $RET;
-    LG_AND undefined %r3;
 LABEL _l501_:
     MOV %r2 @c126;
     PUSH %r2;
@@ -9203,13 +9156,11 @@ LABEL _l523_:
 LABEL _l527_:
     JF %r2 _l526_;
     MOV %r3 @c0;
-    MOV undefined %r3;
     JIF %r3 _l528_;
     CALL_REG @c105 0 true;
     MOV %r5 $RET;
     MOV @c0 %r5;
     MOV %r4 %r5;
-    LG_OR undefined %r4;
 LABEL _l528_:
     MOV %r5 @c1;
     MOV %r4 %r5;
@@ -9318,13 +9269,11 @@ LABEL _l537_:
     MOV %r4 @c13;
     MOV @c13 %r4;
     MOV %r4 @c0;
-    MOV null %r4;
     JIF %r4 _l538_;
     CALL_REG @c105 0 true;
     MOV %r6 $RET;
     MOV @c0 %r6;
     MOV %r5 %r6;
-    LG_OR null %r5;
 LABEL _l538_:
     MOV %r5 @c0;
     PUSH %r5;
@@ -9344,13 +9293,11 @@ LABEL _l538_:
 LABEL _l531_:
     JF %r3 _l539_;
     MOV %r5 @c0;
-    MOV undefined %r5;
     JIF %r5 _l542_;
     CALL_REG @c105 0 true;
     MOV %r7 $RET;
     MOV @c0 %r7;
     MOV %r6 %r7;
-    LG_OR undefined %r6;
 LABEL _l542_:
     MOV %r5 1;
     MOV %r6 @c3;
@@ -9555,14 +9502,12 @@ LABEL _l559_:
     JMP _l512_;
 LABEL _l558_:
     MOV %r7 @c95;
-    MOV null %r7;
     JIF %r7 _l561_;
     MOV %r9 "constructor";
     MOV %r10 @c92;
     WEQ %r9 %r10;
     MOV @c95 %r9;
     MOV %r8 %r9;
-    LG_OR null %r8;
 LABEL _l561_:
     JMP _l552_;
 LABEL _l553_:
@@ -9573,7 +9518,6 @@ LABEL _l553_:
     NEG %r8;
     LG_AND %r6 %r8;
 LABEL _l563_:
-    MOV undefined %r6;
     JF %r6 _l562_;
     MOV %r9 @c17;
     MOV %r10 "constructor";
@@ -9603,7 +9547,7 @@ LABEL _l566_:
     MOV %r8 %r9;
     JF %r9 _l565_;
     MOV %r13 @c3;
-    undefined %r13;
+    TYPE_OF %r13;
     MOV %r14 "function";
     WEQ %r13 %r14;
     MOV %r12 %r13;
@@ -9616,7 +9560,7 @@ LABEL _l570_:
     MOV %r11 %r12;
     JF %r12 _l569_;
     MOV %r13 @c4;
-    undefined %r13;
+    TYPE_OF %r13;
     MOV %r14 "function";
     WEQ %r13 %r14;
     LG_AND %r11 %r13;
@@ -9638,7 +9582,6 @@ LABEL _l565_:
     MOV %r9 %r10;
     LG_AND %r7 %r9;
 LABEL _l564_:
-    LG_AND undefined %r7;
 LABEL _l562_:
     MOV %r6 @c17;
     PUSH %r6;
@@ -10017,7 +9960,7 @@ func @@f107(n) {
     VAR %r6;
     VAR %r7;
     MOV %r1 @c17;
-    undefined %r1;
+    TYPE_OF %r1;
     MOV %r2 "function";
     WEQ %r1 %r2;
     JF %r1 _l603_;
@@ -10032,7 +9975,7 @@ LABEL _l603_:
     JMP _l604_;
 LABEL _l605_:
     MOV %r3 @c17;
-    undefined %r3;
+    TYPE_OF %r3;
     MOV %r4 "object";
     WEQ %r3 %r4;
     JF %r3 _l606_;
@@ -10108,7 +10051,6 @@ LABEL _l609_:
     WNE %r2 %r3;
     LG_AND %r0 %r2;
 LABEL _l611_:
-    MOV null %r0;
     JF %r0 _l610_;
     MOV %r2 @c13;
     PUSH %r2;
@@ -10116,7 +10058,6 @@ LABEL _l611_:
     MOV %r3 "push";
     CALL_VAR %r2 %r3 1 false;
     MOV %r1 $RET;
-    LG_AND null %r1;
 LABEL _l610_:
     MOV $RET %r0;
 }
@@ -10261,7 +10202,6 @@ func @@f113(n, t, r, e, u) {
     MOV %r0 @c17;
     MOV %r1 @c13;
     NE %r0 %r1;
-    MOV null %r0;
     JF %r0 _l621_;
     MOV %r2 @c87;
     PUSH %r2;
@@ -10271,7 +10211,6 @@ func @@f113(n, t, r, e, u) {
     PUSH %r2;
     CALL_REG @c119 3 false;
     MOV %r1 $RET;
-    LG_AND null %r1;
 LABEL _l621_:
 }
 func @@f114(n, t) {
@@ -10419,7 +10358,6 @@ LABEL _l631_:
     PUSH %r2;
     CALL_REG @c3 2 false;
     MOV %r1 $RET;
-    MOV null %r1;
     JF %r1 _l632_;
     MOV %r3 @c76;
     PUSH %r3;
@@ -10434,7 +10372,6 @@ LABEL _l631_:
     PUSH %r3;
     CALL_REG @c157 3 false;
     MOV %r2 $RET;
-    LG_AND null %r2;
 LABEL _l632_:
     JMP _l628_;
 LABEL _l629_:
@@ -10475,7 +10412,6 @@ LABEL _l634_:
     MOV %r0 @c17;
     MOV %r1 @c13;
     EQ %r0 %r1;
-    MOV undefined %r0;
     JF %r0 _l638_;
     MOV %r3 @c13;
     PUSH %r3;
@@ -10483,10 +10419,8 @@ LABEL _l634_:
     MOV %r2 $RET;
     MOV @c13 %r2;
     MOV %r1 %r2;
-    LG_AND undefined %r1;
 LABEL _l638_:
     MOV %r0 @c3;
-    MOV null %r0;
     JF %r0 _l639_;
     MOV %r4 @c3;
     PUSH %r4;
@@ -10499,7 +10433,6 @@ LABEL _l638_:
     MOV %r2 $RET;
     MOV @c76 %r2;
     MOV %r1 %r2;
-    LG_AND null %r1;
 LABEL _l639_:
 LABEL _l635_:
     MOV %r2 @c1;
@@ -10549,7 +10482,6 @@ LABEL _l646_:
     MOV %r2 @c76;
     MOV %r3 @c17;
     NE %r2 %r3;
-    MOV undefined %r2;
     JF %r2 _l647_;
     MOV %r4 1;
     PUSH %r4;
@@ -10561,7 +10493,6 @@ LABEL _l646_:
     MOV %r5 "call";
     CALL_VAR %r4 %r5 3 false;
     MOV %r3 $RET;
-    LG_AND undefined %r3;
 LABEL _l647_:
     MOV %r2 1;
     PUSH %r2;
@@ -10710,14 +10641,12 @@ LABEL _l665_:
     MOV %r1 @c13;
     MOV %r2 2;
     MOD %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l666_;
     MOV %r3 @c17;
     MOV %r4 @c3;
     ADD %r4 %r3;
     MOV @c3 %r4;
     MOV %r2 %r4;
-    LG_AND undefined %r2;
 LABEL _l666_:
     MOV %r3 @c13;
     MOV %r4 2;
@@ -10727,14 +10656,12 @@ LABEL _l666_:
     MOV %r2 $RET;
     MOV @c13 %r2;
     MOV %r1 %r2;
-    MOV null %r1;
     JF %r1 _l667_;
     MOV %r3 @c17;
     MOV %r4 @c17;
     ADD %r4 %r3;
     MOV @c17 %r4;
     MOV %r2 %r4;
-    LG_AND null %r2;
 LABEL _l667_:
     JMP _l662_;
 LABEL _l663_:
@@ -10901,7 +10828,6 @@ LABEL _l677_:
     MOV %r2 @c91;
     MOV %r3 @c10;
     EQ %r2 %r3;
-    MOV null %r2;
     JF %r2 _l678_;
     MOV %r6 @c92;
     PUSH %r6;
@@ -10926,7 +10852,6 @@ LABEL _l680_:
     NEW_OBJ %r4;
     MOV @c91 %r4;
     MOV %r3 %r4;
-    LG_AND null %r3;
 LABEL _l678_:
     JMP _l676_;
 LABEL _l675_:
@@ -10977,7 +10902,6 @@ func @@f128(n, t, r) {
     MOV %r0 0;
     MOV %r1 @c13;
     GT %r0 %r1;
-    MOV undefined %r0;
     JF %r0 _l684_;
     MOV %r3 @c13;
     MINUS %r3;
@@ -10993,7 +10917,6 @@ LABEL _l685_:
 LABEL _l686_:
     MOV @c13 %r2;
     MOV %r1 %r2;
-    LG_AND undefined %r1;
 LABEL _l684_:
     MOV %r1 @c3;
     MOV %r2 @c0;
@@ -11008,14 +10931,12 @@ LABEL _l688_:
     MOV %r0 0;
     MOV %r1 @c3;
     GT %r0 %r1;
-    MOV null %r0;
     JF %r0 _l689_;
     MOV %r2 @c0;
     MOV %r3 @c3;
     ADD %r3 %r2;
     MOV @c3 %r3;
     MOV %r1 %r3;
-    LG_AND null %r1;
 LABEL _l689_:
     MOV %r1 @c13;
     MOV %r2 @c3;
@@ -11100,7 +11021,7 @@ LABEL _l693_:
     MOV_PROP @c0 %r1 %r2;
 LABEL _l694_:
     MOV %r2 @c13;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "number";
     WEQ %r2 %r3;
     MOV %r1 %r2;
@@ -11483,7 +11404,7 @@ func @@f133(n) {
     VAR %r2;
     VAR %r3;
     MOV %r1 @c17;
-    undefined %r1;
+    TYPE_OF %r1;
     MOV %r2 "number";
     WEQ %r1 %r2;
     JF %r1 _l742_;
@@ -11511,7 +11432,7 @@ func @@f134(n) {
     VAR %r4;
     VAR %r5;
     MOV %r0 @c17;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "string";
     WEQ %r0 %r1;
     JF %r0 _l745_;
@@ -11728,7 +11649,6 @@ LABEL _l778_:
     JMP _l774_;
 LABEL _l775_:
     MOV %r2 @c13;
-    MOV undefined %r2;
     JF %r2 _l779_;
     MOV %r4 @c43;
     PUSH %r4;
@@ -11736,7 +11656,6 @@ LABEL _l775_:
     MOV %r5 "push";
     CALL_VAR %r4 %r5 1 false;
     MOV %r3 $RET;
-    LG_AND undefined %r3;
 LABEL _l779_:
     MOV %r2 @c95;
     PUSH %r2;
@@ -11753,12 +11672,10 @@ LABEL _l771_:
     PUSH %r3;
     CALL_REG @c0 3 false;
     MOV %r2 $RET;
-    MOV null %r2;
     JIF %r2 _l780_;
     MOV %r4 @c92;
     MOV %r5 @c91;
     NE %r4 %r5;
-    MOV undefined %r4;
     JF %r4 _l781_;
     MOV %r6 @c43;
     PUSH %r6;
@@ -11766,7 +11683,6 @@ LABEL _l771_:
     MOV %r7 "push";
     CALL_VAR %r6 %r7 1 false;
     MOV %r5 $RET;
-    LG_AND undefined %r5;
 LABEL _l781_:
     MOV %r4 @c95;
     PUSH %r4;
@@ -11774,7 +11690,6 @@ LABEL _l781_:
     MOV %r5 "push";
     CALL_VAR %r4 %r5 1 false;
     MOV %r3 $RET;
-    LG_OR null %r3;
 LABEL _l780_:
 LABEL _l772_:
     JMP _l762_;
@@ -11947,7 +11862,6 @@ func @@f138(n, t) {
     MOV %r1 @c3;
     MOV %r2 @c65;
     INST_OF %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l800_;
     MOV %r4 @c3;
     MOV %r5 "value";
@@ -11955,7 +11869,6 @@ func @@f138(n, t) {
     MOV %r3 $RET;
     MOV @c3 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l800_:
     MOV %r1 @c3;
     PUSH %r1;
@@ -12038,7 +11951,6 @@ LABEL _l811_:
     MOV %r2 @c76;
     MOV %r3 @c0;
     WNE %r2 %r3;
-    MOV null %r2;
     JF %r2 _l812_;
     MOV %r5 @c3;
     PUSH %r5;
@@ -12063,7 +11975,6 @@ LABEL _l813_:
     MOV %r6 @c0;
     SET_KEY %r5 %r6 %r4;
     MOV %r3 %r4;
-    LG_AND null %r3;
 LABEL _l812_:
     JMP _l808_;
 LABEL _l809_:
@@ -12159,7 +12070,7 @@ func @@f142(n) {
     VAR %r1;
     VAR %r2;
     MOV %r1 @c17;
-    undefined %r1;
+    TYPE_OF %r1;
     MOV %r2 "function";
     WEQ %r1 %r2;
     JF %r1 _l822_;
@@ -12675,7 +12586,6 @@ LABEL _l877_:
     LT %r3 %r4;
     LG_OR %r1 %r3;
 LABEL _l879_:
-    MOV null %r1;
     JF %r1 _l878_;
     MOV %r4 @c17;
     MOV %r5 @c0;
@@ -12686,7 +12596,6 @@ LABEL _l879_:
     MOV_PROP %r5 %r4 %r6;
     SET_KEY %r4 %r5 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l878_:
     JMP _l874_;
 LABEL _l875_:
@@ -12818,7 +12727,6 @@ LABEL _l895_:
     LT %r3 %r4;
     LG_OR %r1 %r3;
 LABEL _l897_:
-    MOV null %r1;
     JF %r1 _l896_;
     MOV %r4 @c17;
     MOV %r6 @c0;
@@ -12833,7 +12741,6 @@ LABEL _l897_:
     ADD %r5 %r6;
     SET_KEY %r4 %r5 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l896_:
     JMP _l892_;
 LABEL _l893_:
@@ -12854,7 +12761,6 @@ func @@f151(n, t) {
     MOV %r1 "length";
     MOV_PROP @c4 %r0 %r1;
     MOV %r0 @c13;
-    MOV null %r0;
     JIF %r0 _l901_;
     MOV %r3 @c4;
     PUSH %r3;
@@ -12862,7 +12768,6 @@ func @@f151(n, t) {
     MOV %r2 $RET;
     MOV @c13 %r2;
     MOV %r1 %r2;
-    LG_OR null %r1;
 LABEL _l901_:
 LABEL _l898_:
     MOV %r2 @c3;
@@ -12894,12 +12799,10 @@ func @@f152(n, t, r, e) {
     MOV @c0 @c3;
     NEG u;
     MOV %r0 @c3;
-    MOV null %r0;
     JIF %r0 _l903_;
     NEW_OBJ %r2;
     MOV @c3 %r2;
     MOV %r1 %r2;
-    LG_OR null %r1;
 LABEL _l903_:
     VAR @c1;
     ALLOC @c1;
@@ -12949,14 +12852,12 @@ LABEL _l909_:
     MOV %r1 @c11;
     MOV %r2 @c10;
     EQ %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l910_;
     MOV %r4 @c17;
     MOV %r5 @c76;
     MOV_PROP %r3 %r4 %r5;
     MOV @c11 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l910_:
     JF %r1 _l911_;
     MOV %r2 @c11;
@@ -13343,7 +13244,6 @@ LABEL _l932_:
     MOV %r1 4;
     MOV %r2 @c13;
     AND %r1 %r2;
-    MOV null %r1;
     JIF %r1 _l933_;
     MOV %r3 4;
     MINUS %r3;
@@ -13351,7 +13251,6 @@ LABEL _l932_:
     AND %r4 %r3;
     MOV @c13 %r4;
     MOV %r2 %r4;
-    LG_OR null %r2;
 LABEL _l933_:
     NEW_ARR %r1;
     SET_KEY %r1 0 %r2;
@@ -13378,7 +13277,6 @@ LABEL _l933_:
     PUSH %r2;
     CALL_REG @c190 1 false;
     MOV %r1 $RET;
-    MOV null %r1;
     JF %r1 _l934_;
     MOV %r3 @c0;
     PUSH %r3;
@@ -13386,7 +13284,6 @@ LABEL _l933_:
     PUSH %r3;
     CALL_REG @c191 2 false;
     MOV %r2 $RET;
-    LG_AND null %r2;
 LABEL _l934_:
     MOV %r1 @c4;
     MOV %r2 @c3;
@@ -13444,7 +13341,7 @@ func @@f177(n, t, r, e, u, i, o, f) {
     MOV %r0 %r1;
     JF %r1 _l937_;
     MOV %r2 @c17;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WNE %r2 %r3;
     LG_AND %r0 %r2;
@@ -13467,7 +13364,6 @@ LABEL _l938_:
     MOV @c91 0;
 LABEL _l939_:
     MOV %r1 @c91;
-    MOV undefined %r1;
     JIF %r1 _l942_;
     MOV %r3 97;
     MINUS %r3;
@@ -13479,7 +13375,6 @@ LABEL _l939_:
     MOV %r3 %r4;
     MOV @c4 %r3;
     MOV %r2 %r3;
-    LG_OR undefined %r2;
 LABEL _l942_:
     MOV %r2 @c2;
     MOV %r3 @c10;
@@ -13650,12 +13545,10 @@ LABEL _l950_:
 LABEL _l957_:
     LG_AND %r1 %r3;
 LABEL _l949_:
-    MOV null %r1;
     JF %r1 _l948_;
     MOV %r3 1;
     MOV %r4 @c17;
     AND %r3 %r4;
-    MOV undefined %r3;
     JF %r3 _l958_;
     MOV %r6 @c43;
     MOV %r7 2;
@@ -13676,14 +13569,12 @@ LABEL _l960_:
     OR %r6 %r5;
     MOV @c13 %r6;
     MOV %r4 %r6;
-    LG_AND undefined %r4;
 LABEL _l958_:
     MOV %r5 @c43;
     MOV %r6 3;
     MOV_PROP %r4 %r5 %r6;
     MOV @c3 %r4;
     MOV %r3 %r4;
-    MOV null %r3;
     JF %r3 _l961_;
     MOV %r6 @c1;
     MOV %r7 3;
@@ -13726,14 +13617,12 @@ LABEL _l965_:
     MOV %r7 4;
     SET_KEY %r6 %r7 %r5;
     MOV %r4 %r5;
-    LG_AND null %r4;
 LABEL _l961_:
     MOV %r5 @c43;
     MOV %r6 5;
     MOV_PROP %r4 %r5 %r6;
     MOV @c3 %r4;
     MOV %r3 %r4;
-    MOV null %r3;
     JF %r3 _l966_;
     MOV %r6 @c1;
     MOV %r7 5;
@@ -13776,26 +13665,22 @@ LABEL _l970_:
     MOV %r7 6;
     SET_KEY %r6 %r7 %r5;
     MOV %r4 %r5;
-    LG_AND null %r4;
 LABEL _l966_:
     MOV %r5 @c43;
     MOV %r6 7;
     MOV_PROP %r4 %r5 %r6;
     MOV @c3 %r4;
     MOV %r3 %r4;
-    MOV null %r3;
     JF %r3 _l971_;
     MOV %r5 @c3;
     MOV %r6 @c1;
     MOV %r7 7;
     SET_KEY %r6 %r7 %r5;
     MOV %r4 %r5;
-    LG_AND null %r4;
 LABEL _l971_:
     MOV %r3 128;
     MOV %r4 @c17;
     AND %r3 %r4;
-    MOV null %r3;
     JF %r3 _l972_;
     MOV %r6 null;
     MOV %r8 @c1;
@@ -13823,14 +13708,12 @@ LABEL _l974_:
     MOV %r7 8;
     SET_KEY %r6 %r7 %r5;
     MOV %r4 %r5;
-    LG_AND null %r4;
 LABEL _l972_:
     MOV %r3 null;
     MOV %r5 @c1;
     MOV %r6 9;
     MOV_PROP %r4 %r5 %r6;
     WEQ %r3 %r4;
-    MOV null %r3;
     JF %r3 _l975_;
     MOV %r6 @c43;
     MOV %r7 9;
@@ -13839,7 +13722,6 @@ LABEL _l972_:
     MOV %r7 9;
     SET_KEY %r6 %r7 %r5;
     MOV %r4 %r5;
-    LG_AND null %r4;
 LABEL _l975_:
     MOV %r4 @c43;
     MOV %r5 0;
@@ -13852,7 +13734,6 @@ LABEL _l975_:
     MOV %r5 1;
     SET_KEY %r4 %r5 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l948_:
     MOV %r2 @c1;
     MOV %r3 0;
@@ -13914,7 +13795,6 @@ LABEL _l977_:
     AND %r3 %r4;
     LG_AND %r1 %r3;
 LABEL _l980_:
-    MOV null %r1;
     JF %r1 _l979_;
     MOV %r3 25;
     MINUS %r3;
@@ -13922,7 +13802,6 @@ LABEL _l980_:
     AND %r4 %r3;
     MOV @c13 %r4;
     MOV %r2 %r4;
-    LG_AND null %r2;
 LABEL _l979_:
     MOV %r1 @c13;
     PUSH %r1;
@@ -14086,7 +13965,6 @@ func @@f179(n, t, r, e, u, i) {
     MOV %r3 $RET;
     LG_AND %r1 %r3;
 LABEL _l996_:
-    MOV undefined %r1;
     JF %r1 _l995_;
     MOV %r3 @c17;
     PUSH %r3;
@@ -14112,7 +13990,6 @@ LABEL _l996_:
     MOV %r4 "delete";
     CALL_VAR %r3 %r4 1 false;
     MOV %r2 $RET;
-    LG_AND undefined %r2;
 LABEL _l995_:
     MOV $RET %r0;
 }
@@ -14529,12 +14406,10 @@ LABEL _l1048_:
     JMP _l1050_;
 LABEL _l1049_:
     MOV %r12 @c76;
-    MOV undefined %r12;
     JIF %r12 _l1053_;
     MOV %r14 @c34;
     MOV @c76 %r14;
     MOV %r13 %r14;
-    LG_OR undefined %r13;
 LABEL _l1053_:
     MOV %r14 @c17;
     MOV %r15 "size";
@@ -14847,7 +14722,7 @@ func @@f189(n, t) {
     VAR @c4;
     ALLOC @c4;
     MOV @c4 @c13;
-    undefined e;
+    TYPE_OF e;
     MOV %r5 "string";
     MOV %r6 @c4;
     WEQ %r5 %r6;
@@ -14884,7 +14759,7 @@ LABEL _l1079_:
     JF %r1 _l1077_;
     MOV %r2 @c3;
     MOV %r4 @c13;
-    undefined %r4;
+    TYPE_OF %r4;
     MOV %r5 "string";
     WEQ %r4 %r5;
     JF %r4 _l1083_;
@@ -15151,7 +15026,7 @@ func @@f193(n) {
     MOV %r6 @c17;
     MOV %r7 0;
     MOV_PROP %r5 %r6 %r7;
-    undefined %r5;
+    TYPE_OF %r5;
     WEQ %r4 %r5;
     LG_AND %r2 %r4;
 LABEL _l1110_:
@@ -15167,7 +15042,6 @@ LABEL _l1110_:
     MOV %r3 $RET;
     LG_AND %r1 %r3;
 LABEL _l1109_:
-    MOV undefined %r1;
     JF %r1 _l1108_;
     MOV %r4 @c17;
     MOV %r5 "index";
@@ -15182,7 +15056,6 @@ LABEL _l1109_:
     MOV %r5 "input";
     SET_KEY %r4 %r5 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1108_:
     MOV $RET %r0;
 }
@@ -15196,7 +15069,7 @@ func @@f194(n) {
     MOV %r4 @c17;
     MOV %r5 "constructor";
     MOV_PROP %r2 %r4 %r5;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WNE %r2 %r3;
     MOV %r1 %r2;
@@ -15503,7 +15376,7 @@ func @@f197(n, t) {
     VAR @c3;
     ALLOC @c3;
     MOV @c3 @c17;
-    undefined r;
+    TYPE_OF r;
     MOV %r2 null;
     MOV %r3 @c13;
     WEQ %r2 %r3;
@@ -15590,7 +15463,7 @@ LABEL _l1170_:
     VAR @c4;
     ALLOC @c4;
     MOV @c4 @c13;
-    undefined e;
+    TYPE_OF e;
     MOV %r2 "number";
     MOV %r3 @c4;
     WEQ %r2 %r3;
@@ -15664,7 +15537,7 @@ LABEL _l1177_:
     VAR @c3;
     ALLOC @c3;
     MOV @c3 @c17;
-    undefined r;
+    TYPE_OF r;
     MOV %r7 "number";
     MOV %r8 @c3;
     WNE %r7 %r8;
@@ -15762,7 +15635,7 @@ func @@f200(n) {
     MOV %r1 @c13;
     MOV_PROP @c3 %r0 %r1;
     MOV %r2 @c3;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WEQ %r2 %r3;
     MOV %r1 %r2;
@@ -15824,7 +15697,7 @@ func @@f201(n) {
 LABEL _l1190_:
     MOV %r0 @c17;
     MOV %r3 @c13;
-    undefined %r3;
+    TYPE_OF %r3;
     MOV %r4 "function";
     WEQ %r3 %r4;
     MOV %r2 %r3;
@@ -15931,7 +15804,6 @@ LABEL _l1196_:
     MOV_PROP %r2 %r3 %r4;
     MOV @c1 %r2;
     MOV %r1 %r2;
-    MOV null %r1;
     JF %r1 _l1197_;
     MOV %r3 @c1;
     MOV %r4 1;
@@ -15982,7 +15854,6 @@ LABEL _l1201_:
     MOV %r3 $RET;
     MOV @c4 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l1197_:
     MOV %r1 @c4;
     PUSH %r1;
@@ -16079,7 +15950,7 @@ func @@f207(n) {
     VAR %r4;
     VAR %r5;
     MOV %r1 @c17;
-    undefined %r1;
+    TYPE_OF %r1;
     MOV %r2 "string";
     WEQ %r1 %r2;
     MOV %r0 %r1;
@@ -16252,7 +16123,6 @@ LABEL _l1222_:
     MOV %r2 0;
     MOV %r3 @c3;
     GT %r2 %r3;
-    MOV null %r2;
     JF %r2 _l1223_;
     MOV %r5 0;
     PUSH %r5;
@@ -16264,7 +16134,6 @@ LABEL _l1222_:
     MOV %r4 $RET;
     MOV @c3 %r4;
     MOV %r3 %r4;
-    LG_AND null %r3;
 LABEL _l1223_:
     MOV %r2 @c3;
     PUSH %r2;
@@ -16324,7 +16193,6 @@ LABEL _l1227_:
     MOV %r1 @c3;
     MOV %r2 @c10;
     NE %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l1228_;
     MOV %r4 @c3;
     PUSH %r4;
@@ -16356,7 +16224,6 @@ LABEL _l1229_:
 LABEL _l1230_:
     MOV @c0 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1228_:
     MOV %r1 true;
     PUSH %r1;
@@ -16777,7 +16644,7 @@ func @@f227(n, t) {
     VAR @c3;
     ALLOC @c3;
     MOV %r0 @c13;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "function";
     WNE %r0 %r1;
     JF %r0 _l1267_;
@@ -16924,7 +16791,7 @@ func @@f230(n, t, r) {
     ALLOC @c6;
     MOV @c6 true;
     MOV %r0 @c17;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "function";
     WNE %r0 %r1;
     JF %r0 _l1273_;
@@ -16948,7 +16815,6 @@ LABEL _l1275_:
     PUSH %r2;
     CALL_REG @c93 1 false;
     MOV %r1 $RET;
-    MOV null %r1;
     JF %r1 _l1276_;
     MOV %r4 @c3;
     MOV %r5 "leading";
@@ -16998,7 +16864,6 @@ LABEL _l1280_:
 LABEL _l1281_:
     MOV @c6 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l1276_:
     FUNC %r1 @@f598;
     MOV %r2 @c76;
@@ -17021,7 +16886,7 @@ func @@f231(n, t) {
     ALLOC @c3;
     FUNC @c3 @@f600;
     MOV %r1 @c17;
-    undefined %r1;
+    TYPE_OF %r1;
     MOV %r2 "function";
     WNE %r1 %r2;
     MOV %r0 %r1;
@@ -17032,7 +16897,7 @@ func @@f231(n, t) {
     MOV %r2 %r3;
     JF %r3 _l1285_;
     MOV %r4 @c13;
-    undefined %r4;
+    TYPE_OF %r4;
     MOV %r5 "function";
     WNE %r4 %r5;
     LG_AND %r2 %r4;
@@ -17065,7 +16930,7 @@ func @@f232(n) {
     VAR %r0;
     VAR %r1;
     MOV %r0 @c17;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "function";
     WNE %r0 %r1;
     JF %r0 _l1287_;
@@ -17197,7 +17062,7 @@ LABEL _l1297_:
     MOV %r6 @c17;
     MOV %r7 "message";
     MOV_PROP %r4 %r6 %r7;
-    undefined %r4;
+    TYPE_OF %r4;
     MOV %r5 "string";
     WEQ %r4 %r5;
     MOV %r3 %r4;
@@ -17205,7 +17070,7 @@ LABEL _l1297_:
     MOV %r7 @c17;
     MOV %r8 "name";
     MOV_PROP %r5 %r7 %r8;
-    undefined %r5;
+    TYPE_OF %r5;
     MOV %r6 "string";
     WEQ %r5 %r6;
     LG_AND %r3 %r5;
@@ -17280,7 +17145,7 @@ func @@f238(n) {
     VAR %r3;
     VAR %r4;
     MOV %r1 @c17;
-    undefined %r1;
+    TYPE_OF %r1;
     MOV %r2 "number";
     WEQ %r1 %r2;
     MOV %r0 %r1;
@@ -17303,7 +17168,7 @@ func @@f239(n) {
     VAR %r4;
     VAR %r5;
     MOV %r3 @c17;
-    undefined %r3;
+    TYPE_OF %r3;
     MOV %r4 "number";
     WEQ %r3 %r4;
     MOV %r2 %r3;
@@ -17342,7 +17207,7 @@ func @@f240(n) {
     VAR @c13;
     ALLOC @c13;
     MOV @c13 @c17;
-    undefined t;
+    TYPE_OF t;
     MOV %r1 null;
     MOV %r2 @c17;
     WNE %r1 %r2;
@@ -17373,7 +17238,7 @@ func @@f241(n) {
     MOV %r0 %r1;
     JF %r1 _l1310_;
     MOV %r2 @c17;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "object";
     WEQ %r2 %r3;
     LG_AND %r0 %r2;
@@ -17389,7 +17254,7 @@ func @@f242(n) {
     VAR %r5;
     VAR %r6;
     MOV %r1 @c17;
-    undefined %r1;
+    TYPE_OF %r1;
     MOV %r2 "number";
     WEQ %r1 %r2;
     MOV %r0 %r1;
@@ -17468,7 +17333,7 @@ LABEL _l1314_:
 LABEL _l1316_:
     MOV @c17 %r5;
     MOV %r6 @c17;
-    undefined %r6;
+    TYPE_OF %r6;
     MOV %r7 "function";
     WEQ %r6 %r7;
     MOV %r5 %r6;
@@ -17505,7 +17370,7 @@ func @@f244(n) {
     VAR %r5;
     VAR %r6;
     MOV %r1 @c17;
-    undefined %r1;
+    TYPE_OF %r1;
     MOV %r2 "string";
     WEQ %r1 %r2;
     MOV %r0 %r1;
@@ -17546,7 +17411,7 @@ func @@f245(n) {
     VAR %r5;
     VAR %r6;
     MOV %r1 @c17;
-    undefined %r1;
+    TYPE_OF %r1;
     MOV %r2 "symbol";
     WEQ %r1 %r2;
     MOV %r0 %r1;
@@ -17804,7 +17669,7 @@ func @@f250(n) {
     VAR %r6;
     VAR %r7;
     MOV %r0 @c17;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "number";
     WEQ %r0 %r1;
     JF %r0 _l1351_;
@@ -17825,12 +17690,11 @@ LABEL _l1354_:
     PUSH %r2;
     CALL_REG @c93 1 false;
     MOV %r1 $RET;
-    MOV undefined %r1;
     JF %r1 _l1357_;
     MOV %r6 @c17;
     MOV %r7 "valueOf";
     MOV_PROP %r4 %r6 %r7;
-    undefined %r4;
+    TYPE_OF %r4;
     MOV %r5 "function";
     WEQ %r4 %r5;
     JF %r4 _l1358_;
@@ -17855,10 +17719,9 @@ LABEL _l1359_:
     MOV %r3 @c17;
     MOV @c17 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1357_:
     MOV %r0 @c17;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "string";
     WNE %r0 %r1;
     JF %r0 _l1355_;
@@ -18105,7 +17968,6 @@ LABEL _l1375_:
 LABEL _l1380_:
     LG_OR %r2 %r4;
 LABEL _l1379_:
-    MOV null %r2;
     JF %r2 _l1378_;
     MOV %r4 @c13;
     PUSH %r4;
@@ -18113,7 +17975,6 @@ LABEL _l1379_:
     MOV %r5 "push";
     CALL_VAR %r4 %r5 1 false;
     MOV %r3 $RET;
-    LG_AND null %r3;
 LABEL _l1378_:
     MOV %r2 @c4;
     MOV @c17 %r2;
@@ -18341,7 +18202,7 @@ func @@f264(n) {
     VAR %r2;
     VAR %r3;
     MOV %r2 @c17;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WEQ %r2 %r3;
     JF %r2 _l1395_;
@@ -18410,7 +18271,6 @@ LABEL _l1400_:
 LABEL _l1399_:
     LG_OR %r0 %r2;
 LABEL _l1398_:
-    MOV null %r0;
     JIF %r0 _l1397_;
     MOV %r2 @c13;
     MOV @c4 %r2;
@@ -18429,7 +18289,6 @@ LABEL _l1398_:
     MOV %r2 $RET;
     MOV @c1 %r2;
     MOV %r1 %r2;
-    LG_OR null %r1;
 LABEL _l1397_:
     VAR @c2;
     ALLOC @c2;
@@ -18956,7 +18815,7 @@ func @@f283() {
     NEW_OBJ %r0;
     CALL_REG @c270 0 true;
     MOV %r1 $RET;
-    SET_KEY %r0 "hash" %r1;
+    SET_KEY %r0 'hash' %r1;
     MOV %r3 @c271;
     MOV %r2 %r3;
     JIF %r3 _l1433_;
@@ -18965,10 +18824,10 @@ func @@f283() {
 LABEL _l1433_:
     CALL_REG %r2 0 true;
     MOV %r1 $RET;
-    SET_KEY %r0 "map" %r1;
+    SET_KEY %r0 'map' %r1;
     CALL_REG @c270 0 true;
     MOV %r1 $RET;
-    SET_KEY %r0 "string" %r1;
+    SET_KEY %r0 'string' %r1;
     MOV_THIS %r1;
     MOV %r2 "__data__";
     SET_KEY %r1 %r2 %r0;
@@ -19294,16 +19153,16 @@ func @@f296(n, t) {
     VAR %r3;
     NEW_OBJ %r1;
     MOV %r2 true;
-    SET_KEY %r1 "configurable" %r2;
+    SET_KEY %r1 'configurable' %r2;
     MOV %r2 false;
-    SET_KEY %r1 "enumerable" %r2;
+    SET_KEY %r1 'enumerable' %r2;
     MOV %r3 @c13;
     PUSH %r3;
     CALL_REG @c274 1 false;
     MOV %r2 $RET;
-    SET_KEY %r1 "value" %r2;
+    SET_KEY %r1 'value' %r2;
     MOV %r2 true;
-    SET_KEY %r1 "writable" %r2;
+    SET_KEY %r1 'writable' %r2;
     PUSH %r1;
     MOV %r1 "toString";
     PUSH %r1;
@@ -19513,7 +19372,6 @@ func @@f304(n) {
     CALL_VAR %r3 %r4 1 false;
     MOV %r2 $RET;
     EQ %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l1463_;
     MOV %r3 "";
     PUSH %r3;
@@ -19521,7 +19379,6 @@ func @@f304(n) {
     MOV %r4 "push";
     CALL_VAR %r3 %r4 1 false;
     MOV %r2 $RET;
-    LG_AND undefined %r2;
 LABEL _l1463_:
     FUNC %r1 @@f609;
     PUSH %r1;
@@ -19595,12 +19452,10 @@ func @@f307(n, t) {
     PUSH %r2;
     CALL_REG @c173 1 false;
     MOV %r1 $RET;
-    MOV undefined %r1;
     JF %r1 _l1466_;
     MOV %r3 @c10;
     MOV @c3 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1466_:
     MOV %r2 @c17;
     PUSH %r2;
@@ -19650,12 +19505,10 @@ func @@f308(n, t) {
     PUSH %r2;
     CALL_REG @c173 1 false;
     MOV %r1 $RET;
-    MOV undefined %r1;
     JF %r1 _l1469_;
     MOV %r3 @c10;
     MOV @c3 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1469_:
     MOV %r2 @c17;
     PUSH %r2;
@@ -19820,7 +19673,7 @@ func @@f311(n) {
     CALL_REG @c11 2 false;
     MOV @c3 $RET;
     MOV %r3 @c13;
-    undefined %r3;
+    TYPE_OF %r3;
     MOV %r4 "function";
     WEQ %r3 %r4;
     JF %r3 _l1481_;
@@ -19831,13 +19684,11 @@ LABEL _l1481_:
 LABEL _l1482_:
     MOV @c13 %r2;
     MOV %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l1480_;
     MOV %r3 @c3;
     MOV %r4 "pop";
     CALL_VAR %r3 %r4 0 false;
     MOV %r2 $RET;
-    LG_AND undefined %r2;
 LABEL _l1480_:
     MOV %r3 @c3;
     MOV %r4 "length";
@@ -19946,12 +19797,10 @@ func @@f314(n) {
     PUSH %r2;
     CALL_REG @c173 1 false;
     MOV %r1 $RET;
-    MOV undefined %r1;
     JF %r1 _l1488_;
     MOV %r3 @c10;
     MOV @c13 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1488_:
     MOV %r2 2;
     PUSH %r2;
@@ -19988,7 +19837,7 @@ func @@f315(n) {
     VAR @c13;
     ALLOC @c13;
     MOV %r0 @c13;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "function";
     WEQ %r0 %r1;
     JF %r0 _l1489_;
@@ -20067,12 +19916,10 @@ func @@f318(n) {
     PUSH %r2;
     CALL_REG @c173 1 false;
     MOV %r1 $RET;
-    MOV undefined %r1;
     JF %r1 _l1493_;
     MOV %r3 @c10;
     MOV @c13 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1493_:
     MOV %r2 2;
     PUSH %r2;
@@ -20105,7 +19952,7 @@ func @@f319(n) {
     VAR @c13;
     ALLOC @c13;
     MOV %r0 @c13;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "function";
     WEQ %r0 %r1;
     JF %r0 _l1494_;
@@ -20157,7 +20004,7 @@ LABEL _l1497_:
     VAR @c13;
     ALLOC @c13;
     MOV %r0 @c13;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "function";
     WEQ %r0 %r1;
     JF %r0 _l1498_;
@@ -20257,12 +20104,12 @@ LABEL _l1507_:
     MOV @c0 %r2;
     NEW_OBJ %r2;
     MOV %r3 @c290;
-    SET_KEY %r2 "func" %r3;
+    SET_KEY %r2 'func' %r3;
     NEW_ARR %r3;
     SET_KEY %r3 0 %r4;
-    SET_KEY %r2 "args" %r3;
+    SET_KEY %r2 'args' %r3;
     MOV %r3 @c10;
-    SET_KEY %r2 "thisArg" %r3;
+    SET_KEY %r2 'thisArg' %r3;
     PUSH %r2;
     MOV %r4 @c0;
     MOV %r3 "__actions__";
@@ -20370,7 +20217,7 @@ func @@f324(t, r, e) {
     VAR @c1;
     ALLOC @c1;
     MOV @c1 @c3;
-    undefined i;
+    TYPE_OF i;
     MOV %r0 "function";
     WEQ @c1 %r0;
     VAR @c2;
@@ -20503,7 +20350,6 @@ LABEL _l1518_:
     MOV %r4 $RET;
     LG_AND %r2 %r4;
 LABEL _l1522_:
-    MOV undefined %r2;
     JF %r2 _l1521_;
     NEW_ARR %r4;
     MOV %r6 @c13;
@@ -20512,7 +20358,6 @@ LABEL _l1522_:
     SET_KEY %r4 0 %r5;
     MOV @c13 %r4;
     MOV %r3 %r4;
-    LG_AND undefined %r3;
 LABEL _l1521_:
 LABEL _l1519_:
     NEW_ARR %r1;
@@ -20906,7 +20751,6 @@ LABEL _l1533_:
     MOV %r3 "call";
     CALL_VAR %r2 %r3 2 false;
     MOV %r1 $RET;
-    MOV null %r1;
     JF %r1 _l1536_;
     MOV %r4 @c13;
     MOV %r5 @c3;
@@ -20918,7 +20762,6 @@ LABEL _l1533_:
     PUSH %r3;
     CALL_REG @c166 3 false;
     MOV %r2 $RET;
-    LG_AND null %r2;
 LABEL _l1536_:
 LABEL _l1534_:
 }
@@ -21022,12 +20865,10 @@ LABEL _l1538_:
     MOV %r2 $RET;
     LG_AND %r0 %r2;
 LABEL _l1543_:
-    MOV null %r0;
     JF %r0 _l1542_;
     MOV %r2 1;
     MOV @c4 %r2;
     MOV %r1 %r2;
-    LG_AND null %r1;
 LABEL _l1542_:
 LABEL _l1539_:
     MOV %r2 @c3;
@@ -21103,7 +20944,6 @@ LABEL _l1548_:
 LABEL _l1551_:
     LG_OR %r2 %r4;
 LABEL _l1550_:
-    MOV null %r2;
     JF %r2 _l1549_;
     MOV %r5 @c0;
     MOV %r6 @c11;
@@ -21112,7 +20952,6 @@ LABEL _l1550_:
     MOV %r6 @c11;
     SET_KEY %r5 %r6 %r4;
     MOV %r3 %r4;
-    LG_AND null %r3;
 LABEL _l1549_:
     JMP _l1545_;
 LABEL _l1546_:
@@ -21156,12 +20995,11 @@ func @@f348(n, t, r) {
     MOV %r4 @c13;
     MOV %r5 "toString";
     MOV_PROP %r2 %r4 %r5;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WNE %r2 %r3;
     LG_AND %r0 %r2;
 LABEL _l1553_:
-    MOV undefined %r0;
     JF %r0 _l1552_;
     MOV %r3 @c13;
     PUSH %r3;
@@ -21171,7 +21009,6 @@ LABEL _l1553_:
     MOV %r2 $RET;
     MOV @c13 %r2;
     MOV %r1 %r2;
-    LG_AND undefined %r1;
 LABEL _l1552_:
     MOV %r0 @c3;
     MOV %r1 @c17;
@@ -21193,12 +21030,11 @@ func @@f349(n, t, r) {
     MOV %r4 @c13;
     MOV %r5 "toString";
     MOV_PROP %r2 %r4 %r5;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WNE %r2 %r3;
     LG_AND %r0 %r2;
 LABEL _l1555_:
-    MOV undefined %r0;
     JF %r0 _l1554_;
     MOV %r3 @c13;
     PUSH %r3;
@@ -21208,7 +21044,6 @@ LABEL _l1555_:
     MOV %r2 $RET;
     MOV @c13 %r2;
     MOV %r1 %r2;
-    LG_AND undefined %r1;
 LABEL _l1554_:
     MOV %r1 @c13;
     PUSH %r1;
@@ -21294,7 +21129,6 @@ LABEL _l1559_:
     PUSH %r0;
     CALL_REG @c86 3 false;
     MOV %r0 @c4;
-    MOV null %r0;
     JF %r0 _l1560_;
     MOV %r3 @c301;
     PUSH %r3;
@@ -21306,7 +21140,6 @@ LABEL _l1559_:
     MOV %r2 $RET;
     MOV @c3 %r2;
     MOV %r1 %r2;
-    LG_AND null %r1;
 LABEL _l1560_:
     VAR @c0;
     ALLOC @c0;
@@ -21558,7 +21391,7 @@ func @@f368(n, t) {
     VAR %r1;
     VAR %r2;
     MOV %r0 @c13;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "function";
     WNE %r0 %r1;
     JF %r0 _l1581_;
@@ -21757,7 +21590,6 @@ LABEL _l1602_:
     MOV %r2 @c13;
     MOV_PROP @c1 %r1 %r2;
     MOV %r1 @c1;
-    MOV null %r1;
     JF %r1 _l1603_;
     MOV %r3 @c1;
     MOV %r4 @c0;
@@ -21766,7 +21598,6 @@ LABEL _l1602_:
     MOV @c4 %r6;
     SET_KEY %r4 %r5 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l1603_:
     JMP _l1597_;
 LABEL _l1598_:
@@ -22154,7 +21985,7 @@ LABEL _l1641_:
     MOV %r1 %r2;
     JF %r2 _l1647_;
     MOV %r3 @c3;
-    undefined %r3;
+    TYPE_OF %r3;
     MOV %r4 "number";
     WNE %r3 %r4;
     LG_AND %r1 %r3;
@@ -22171,14 +22002,12 @@ LABEL _l1647_:
     MOV %r2 $RET;
     LG_AND %r0 %r2;
 LABEL _l1646_:
-    MOV undefined %r0;
     JF %r0 _l1645_;
     MOV %r2 0;
     MOV @c3 %r2;
     MOV %r2 @c0;
     MOV @c4 %r2;
     MOV %r1 %r2;
-    LG_AND undefined %r1;
 LABEL _l1645_:
     MOV %r1 @c17;
     MOV %r2 "length";
@@ -22192,7 +22021,6 @@ LABEL _l1645_:
     MOV %r0 0;
     MOV %r1 @c3;
     GT %r0 %r1;
-    MOV null %r0;
     JF %r0 _l1648_;
     MOV %r3 @c3;
     MINUS %r3;
@@ -22208,7 +22036,6 @@ LABEL _l1649_:
 LABEL _l1650_:
     MOV @c3 %r2;
     MOV %r1 %r2;
-    LG_AND null %r1;
 LABEL _l1648_:
     MOV %r2 @c4;
     MOV %r3 @c10;
@@ -22233,14 +22060,12 @@ LABEL _l1652_:
     MOV %r0 0;
     MOV %r1 @c4;
     GT %r0 %r1;
-    MOV null %r0;
     JF %r0 _l1654_;
     MOV %r2 @c0;
     MOV %r3 @c4;
     ADD %r3 %r2;
     MOV @c4 %r3;
     MOV %r1 %r3;
-    LG_AND null %r1;
 LABEL _l1654_:
     MOV %r1 @c3;
     MOV %r2 @c4;
@@ -22715,7 +22540,6 @@ LABEL _l1682_:
     PUSH %r3;
     CALL_REG @c64 1 false;
     MOV %r2 $RET;
-    MOV undefined %r2;
     JIF %r2 _l1684_;
     MOV %r5 null;
     MOV %r6 @c13;
@@ -22728,7 +22552,6 @@ LABEL _l1685_:
     SET_KEY %r4 0 %r6;
     MOV @c13 %r4;
     MOV %r3 %r4;
-    LG_OR undefined %r3;
 LABEL _l1684_:
     JF %r3 _l1686_;
     MOV %r2 @c10;
@@ -22740,7 +22563,6 @@ LABEL _l1686_:
     PUSH %r3;
     CALL_REG @c64 1 false;
     MOV %r2 $RET;
-    MOV null %r2;
     JIF %r2 _l1687_;
     MOV %r5 null;
     MOV %r6 @c3;
@@ -22753,7 +22575,6 @@ LABEL _l1688_:
     SET_KEY %r4 0 %r6;
     MOV @c3 %r4;
     MOV %r3 %r4;
-    LG_OR null %r3;
 LABEL _l1687_:
     MOV %r2 @c3;
     PUSH %r2;
@@ -22961,7 +22782,6 @@ LABEL _l1707_:
     PUSH %r2;
     CALL_REG @c13 3 false;
     MOV %r1 $RET;
-    MOV null %r1;
     JF %r1 _l1708_;
     MOV %r3 @c2;
     PUSH %r3;
@@ -22974,7 +22794,6 @@ LABEL _l1707_:
     MOV %r4 "push";
     CALL_VAR %r3 %r4 1 false;
     MOV %r2 $RET;
-    LG_AND null %r2;
 LABEL _l1708_:
     JMP _l1704_;
 LABEL _l1705_:
@@ -22991,7 +22810,7 @@ func @@f405(n, t) {
     VAR %r2;
     VAR %r3;
     MOV %r0 @c17;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "function";
     WNE %r0 %r1;
     JF %r0 _l1709_;
@@ -23098,7 +22917,7 @@ func @@f408(n, t, r, e) {
     VAR %r2;
     VAR %r3;
     MOV %r2 @c4;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WEQ %r2 %r3;
     JF %r2 _l1720_;
@@ -23175,7 +22994,7 @@ LABEL _l1727_:
     MOV %r3 %r4;
     JF %r4 _l1732_;
     MOV %r5 @c3;
-    undefined %r5;
+    TYPE_OF %r5;
     MOV %r6 "number";
     WNE %r5 %r6;
     LG_AND %r3 %r5;
@@ -23312,7 +23131,7 @@ func @@f413(n, t, r) {
     MOV %r2 %r3;
     JF %r3 _l1743_;
     MOV %r4 @c3;
-    undefined %r4;
+    TYPE_OF %r4;
     MOV %r5 "number";
     WNE %r4 %r5;
     LG_AND %r2 %r4;
@@ -23329,14 +23148,12 @@ LABEL _l1743_:
     MOV %r3 $RET;
     LG_AND %r1 %r3;
 LABEL _l1742_:
-    MOV undefined %r1;
     JF %r1 _l1741_;
     MOV %r4 @c10;
     MOV @c3 %r4;
     MOV %r3 %r4;
     MOV @c13 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1741_:
     MOV %r2 @c3;
     MOV %r3 @c10;
@@ -23360,7 +23177,7 @@ LABEL _l1745_:
     MOV %r3 %r4;
     JF %r4 _l1750_;
     MOV %r6 @c13;
-    undefined %r6;
+    TYPE_OF %r6;
     MOV %r7 "string";
     WEQ %r6 %r7;
     MOV %r5 %r6;
@@ -23437,7 +23254,7 @@ func @@f414(t, r) {
     VAR %r3;
     VAR %r4;
     MOV %r0 @c13;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "function";
     WNE %r0 %r1;
     JF %r0 _l1754_;
@@ -23715,7 +23532,7 @@ func @@f421(n, t, r) {
     ALLOC @c0;
     MOV @c0 true;
     MOV %r0 @c17;
-    undefined %r0;
+    TYPE_OF %r0;
     MOV %r1 "function";
     WNE %r0 %r1;
     JF %r0 _l1781_;
@@ -23729,7 +23546,6 @@ LABEL _l1782_:
     PUSH %r2;
     CALL_REG @c93 1 false;
     MOV %r1 $RET;
-    MOV undefined %r1;
     JF %r1 _l1783_;
     MOV %r4 "leading";
     MOV %r5 @c3;
@@ -23760,15 +23576,14 @@ LABEL _l1786_:
 LABEL _l1787_:
     MOV @c0 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1783_:
     NEW_OBJ %r1;
     MOV %r2 @c4;
-    SET_KEY %r1 "leading" %r2;
+    SET_KEY %r1 'leading' %r2;
     MOV %r2 @c13;
-    SET_KEY %r1 "maxWait" %r2;
+    SET_KEY %r1 'maxWait' %r2;
     MOV %r2 @c0;
-    SET_KEY %r1 "trailing" %r2;
+    SET_KEY %r1 'trailing' %r2;
     PUSH %r1;
     MOV %r1 @c13;
     PUSH %r1;
@@ -24001,7 +23816,7 @@ func @@f427(n, t) {
     VAR %r4;
     VAR %r5;
     MOV %r2 @c13;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WEQ %r2 %r3;
     JF %r2 _l1808_;
@@ -24102,7 +23917,7 @@ func @@f430(n, t, r, e) {
     VAR %r5;
     VAR %r6;
     MOV %r2 @c4;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WEQ %r2 %r3;
     JF %r2 _l1816_;
@@ -24115,7 +23930,6 @@ LABEL _l1817_:
     MOV %r1 null;
     MOV %r2 @c17;
     WNE %r1 %r2;
-    MOV null %r1;
     JF %r1 _l1818_;
     MOV %r4 @c4;
     PUSH %r4;
@@ -24141,7 +23955,6 @@ LABEL _l1817_:
     MOV %r3 $RET;
     MOV @c17 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l1818_:
     MOV $RET %r0;
 }
@@ -24244,19 +24057,16 @@ func @@f435(n, t, r) {
     MOV %r1 @c3;
     MOV %r2 @c10;
     EQ %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l1825_;
     MOV %r3 @c13;
     MOV @c3 %r3;
     MOV %r3 @c10;
     MOV @c13 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1825_:
     MOV %r1 @c3;
     MOV %r2 @c10;
     NE %r1 %r2;
-    MOV null %r1;
     JF %r1 _l1826_;
     MOV %r4 @c3;
     PUSH %r4;
@@ -24274,12 +24084,10 @@ LABEL _l1827_:
 LABEL _l1828_:
     MOV @c3 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l1826_:
     MOV %r1 @c13;
     MOV %r2 @c10;
     NE %r1 %r2;
-    MOV null %r1;
     JF %r1 _l1829_;
     MOV %r4 @c13;
     PUSH %r4;
@@ -24297,7 +24105,6 @@ LABEL _l1830_:
 LABEL _l1831_:
     MOV @c13 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l1829_:
     MOV %r1 @c3;
     PUSH %r1;
@@ -24340,7 +24147,7 @@ func @@f438(n, t) {
     VAR %r2;
     VAR %r3;
     MOV %r2 @c13;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WEQ %r2 %r3;
     JF %r2 _l1832_;
@@ -24366,7 +24173,7 @@ func @@f439(n, t) {
     VAR %r2;
     VAR %r3;
     MOV %r2 @c13;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WEQ %r2 %r3;
     JF %r2 _l1834_;
@@ -24613,12 +24420,10 @@ LABEL _l1850_:
     MOV %r3 $RET;
     LG_AND %r1 %r3;
 LABEL _l1852_:
-    MOV undefined %r1;
     JF %r1 _l1851_;
     MOV %r3 @c10;
     MOV @c13 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1851_:
     MOV %r2 3;
     PUSH %r2;
@@ -24843,7 +24648,6 @@ LABEL _l1863_:
     MOV %r1 0;
     MOV %r2 @c3;
     GT %r1 %r2;
-    MOV null %r1;
     JF %r1 _l1865_;
     MOV %r4 0;
     PUSH %r4;
@@ -24855,7 +24659,6 @@ LABEL _l1863_:
     MOV %r3 $RET;
     MOV @c3 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l1865_:
     MOV %r2 @c17;
     PUSH %r2;
@@ -24940,7 +24743,6 @@ LABEL _l1874_:
     MOV %r2 0;
     MOV %r3 @c3;
     GT %r2 %r3;
-    MOV null %r2;
     JF %r2 _l1875_;
     MOV %r5 0;
     PUSH %r5;
@@ -24952,7 +24754,6 @@ LABEL _l1874_:
     MOV %r4 $RET;
     MOV @c3 %r4;
     MOV %r3 %r4;
-    LG_AND null %r3;
 LABEL _l1875_:
     MOV %r2 @c3;
     PUSH %r2;
@@ -25127,7 +24928,7 @@ LABEL _l1885_:
     MOV %r6 %r7;
     JIF %r7 _l1893_;
     MOV %r8 @c17;
-    undefined %r8;
+    TYPE_OF %r8;
     MOV %r9 "string";
     WEQ %r8 %r9;
     LG_OR %r6 %r8;
@@ -25137,7 +24938,7 @@ LABEL _l1893_:
     MOV %r9 @c17;
     MOV %r10 "splice";
     MOV_PROP %r7 %r9 %r10;
-    undefined %r7;
+    TYPE_OF %r7;
     MOV %r8 "function";
     WEQ %r7 %r8;
     LG_OR %r5 %r7;
@@ -25256,7 +25057,7 @@ func @@f460(n, t, r) {
     VAR @c4;
     ALLOC @c4;
     MOV %r2 @c3;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WEQ %r2 %r3;
     JF %r2 _l1903_;
@@ -25305,7 +25106,7 @@ func @@f461(n) {
     VAR %r2;
     VAR %r3;
     MOV %r1 @c17;
-    undefined %r1;
+    TYPE_OF %r1;
     MOV %r2 "number";
     WEQ %r1 %r2;
     MOV %r0 %r1;
@@ -25350,7 +25151,7 @@ func @@f463(n, t, r) {
     VAR %r2;
     VAR %r3;
     MOV %r2 @c3;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WEQ %r2 %r3;
     JF %r2 _l1908_;
@@ -25568,7 +25369,6 @@ LABEL _l1922_:
     MOV %r1 @c3;
     MOV %r2 @c10;
     NE %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l1925_;
     MOV %r4 @c3;
     PUSH %r4;
@@ -25599,7 +25399,6 @@ LABEL _l1926_:
     MOV %r3 $RET;
     MOV @c0 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1925_:
     MOV %r0 @c13;
     MOV %r1 @c13;
@@ -25860,14 +25659,12 @@ func @@f484() {
     MOV_PROP %r1 %r3 %r4;
     MOV_THIS %r2;
     EQ %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l1947_;
     MOV %r3 @c342;
     MOV %r4 @c26;
     MOV %r5 "_";
     SET_KEY %r4 %r5 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1947_:
     MOV_THIS %r0;
     MOV $RET %r0;
@@ -26070,13 +25867,11 @@ LABEL _l1965_:
     JMP _l1964_;
 LABEL _l1963_:
     MOV %r2 @c13;
-    MOV undefined %r2;
     JF %r2 _l1966_;
     MOV %r4 @c13;
     PLUS %r4;
     MOV @c13 %r4;
     MOV %r3 %r4;
-    LG_AND undefined %r3;
 LABEL _l1966_:
 LABEL _l1964_:
     MOV %r2 @c13;
@@ -26119,7 +25914,7 @@ func @@f489(n, t, r) {
     MOV %r2 %r3;
     JF %r3 _l1972_;
     MOV %r4 @c3;
-    undefined %r4;
+    TYPE_OF %r4;
     MOV %r5 "boolean";
     WNE %r4 %r5;
     LG_AND %r2 %r4;
@@ -26136,22 +25931,19 @@ LABEL _l1972_:
     MOV %r3 $RET;
     LG_AND %r1 %r3;
 LABEL _l1971_:
-    MOV undefined %r1;
     JF %r1 _l1970_;
     MOV %r4 @c10;
     MOV @c3 %r4;
     MOV %r3 %r4;
     MOV @c13 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1970_:
     MOV %r1 @c3;
     MOV %r2 @c10;
     EQ %r1 %r2;
-    MOV null %r1;
     JF %r1 _l1973_;
     MOV %r3 @c13;
-    undefined %r3;
+    TYPE_OF %r3;
     MOV %r4 "boolean";
     WEQ %r3 %r4;
     JF %r3 _l1974_;
@@ -26163,7 +25955,7 @@ LABEL _l1970_:
     JMP _l1969_;
 LABEL _l1974_:
     MOV %r4 @c17;
-    undefined %r4;
+    TYPE_OF %r4;
     MOV %r5 "boolean";
     WEQ %r4 %r5;
     MOV %r2 %r4;
@@ -26175,7 +25967,6 @@ LABEL _l1974_:
     MOV %r5 %r6;
     LG_AND %r2 %r5;
 LABEL _l1975_:
-    LG_AND null %r2;
 LABEL _l1973_:
     MOV %r2 @c17;
     MOV %r3 @c10;
@@ -26474,14 +26265,12 @@ func @@f494(n, t, r) {
     MOV %r1 "length";
     MOV_PROP @c0 %r0 %r1;
     MOV %r0 @c0;
-    MOV null %r0;
     JIF %r0 _l1995_;
     MOV %r2 1;
     MOV @c0 %r2;
     MOV %r2 @c10;
     MOV @c17 %r2;
     MOV %r1 %r2;
-    LG_OR null %r1;
 LABEL _l1995_:
 LABEL _l1992_:
     MOV %r2 @c4;
@@ -26512,14 +26301,12 @@ LABEL _l1998_:
     MOV %r1 @c1;
     MOV %r2 @c10;
     EQ %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l1999_;
     MOV %r3 @c0;
     MOV @c4 %r3;
     MOV %r3 @c3;
     MOV @c1 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l1999_:
     MOV %r3 @c1;
     PUSH %r3;
@@ -26662,12 +26449,10 @@ LABEL _l2013_:
     MOV %r3 $RET;
     LG_AND %r1 %r3;
 LABEL _l2015_:
-    MOV undefined %r1;
     JF %r1 _l2014_;
     MOV %r3 @c10;
     MOV @c13 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l2014_:
     MOV %r2 3;
     PUSH %r2;
@@ -26999,12 +26784,10 @@ func @@f507(n, t, r) {
     MOV %r2 $RET;
     LG_AND %r0 %r2;
 LABEL _l2035_:
-    MOV undefined %r0;
     JF %r0 _l2034_;
     MOV %r2 @c10;
     MOV @c13 %r2;
     MOV %r1 %r2;
-    LG_AND undefined %r1;
 LABEL _l2034_:
     MOV %r1 @c17;
     PUSH %r1;
@@ -27154,7 +26937,6 @@ LABEL _l2042_:
     MOV_PROP %r2 %r3 %r4;
     MOV @c13 %r2;
     MOV %r1 %r2;
-    MOV null %r1;
     JIF %r1 _l2045_;
     MOV %r3 "with(obj){";
     MOV %r5 @c91;
@@ -27163,7 +26945,6 @@ LABEL _l2042_:
     ADD %r3 %r4;
     MOV @c91 %r3;
     MOV %r2 %r3;
-    LG_OR null %r2;
 LABEL _l2045_:
     MOV %r2 "$1;";
     PUSH %r2;
@@ -27791,7 +27572,6 @@ LABEL _l2092_:
 LABEL _l2090_:
 LABEL _l2091_:
     MOV %r1 @c2;
-    MOV undefined %r1;
     JF %r1 _l2095_;
     MOV %r5 @c3;
     MOV %r6 "length";
@@ -27802,7 +27582,6 @@ LABEL _l2091_:
     ADD %r4 %r3;
     MOV @c1 %r4;
     MOV %r2 %r4;
-    LG_AND undefined %r2;
 LABEL _l2095_:
     MOV %r1 @c0;
     PUSH %r1;
@@ -27827,7 +27606,6 @@ LABEL _l2095_:
     MOV %r3 @c0;
     MOV %r4 "global";
     MOV_PROP %r2 %r3 %r4;
-    MOV undefined %r2;
     JIF %r2 _l2100_;
     MOV %r8 @c0;
     PUSH %r8;
@@ -27849,7 +27627,6 @@ LABEL _l2095_:
     MOV %r4 $RET;
     MOV @c0 %r4;
     MOV %r3 %r4;
-    LG_OR undefined %r3;
 LABEL _l2100_:
     MOV %r2 0;
     MOV %r3 @c0;
@@ -27906,7 +27683,6 @@ LABEL _l2093_:
     MOV %r1 $RET;
     MOV %r2 @c1;
     WNE %r1 %r2;
-    MOV null %r1;
     JF %r1 _l2103_;
     MOV %r4 @c0;
     PUSH %r4;
@@ -27933,7 +27709,6 @@ LABEL _l2093_:
     MOV %r4 %r5;
     LG_AND %r2 %r4;
 LABEL _l2104_:
-    LG_AND null %r2;
 LABEL _l2103_:
 LABEL _l2094_:
     MOV %r0 @c3;
@@ -28166,7 +27941,7 @@ func @@f527(n, t) {
     VAR %r2;
     VAR %r3;
     MOV %r1 @c17;
-    undefined %r1;
+    TYPE_OF %r1;
     MOV %r2 "function";
     WEQ %r1 %r2;
     JF %r1 _l2113_;
@@ -28260,7 +28035,6 @@ LABEL _l2115_:
     JMP _l2116_;
 LABEL _l2119_:
     MOV %r3 @c17;
-    MOV undefined %r3;
     JF %r3 _l2120_;
     MOV %r6 @c17;
     PUSH %r6;
@@ -28270,12 +28044,10 @@ LABEL _l2119_:
     MOV %r5 $RET;
     MOV @c3 %r5;
     MOV %r4 %r5;
-    LG_AND undefined %r4;
 LABEL _l2120_:
     MOV %r2 @c13;
     MOV %r3 @c10;
     NE %r2 %r3;
-    MOV null %r2;
     JF %r2 _l2121_;
     MOV %r5 @c13;
     PUSH %r5;
@@ -28305,7 +28077,6 @@ LABEL _l2122_:
     MOV %r4 $RET;
     MOV @c3 %r4;
     MOV %r3 %r4;
-    LG_AND null %r3;
 LABEL _l2121_:
 LABEL _l2116_:
     MOV $RET %r0;
@@ -28400,7 +28171,6 @@ LABEL _l2124_:
     LG_OR @c1 %r1;
 LABEL _l2126_:
     MOV %r0 @c0;
-    MOV null %r0;
     JF %r0 _l2127_;
     FUNC %r2 @@f638;
     MOV %r5 @c213;
@@ -28409,7 +28179,6 @@ LABEL _l2126_:
     MOV %r4 @c13;
     SET_KEY %r3 %r4 %r2;
     MOV %r1 %r2;
-    LG_AND null %r1;
 LABEL _l2127_:
 }
 func @@f533(n) {
@@ -28475,9 +28244,9 @@ func @@f534(n, t) {
     ADD @c4 %r1;
     NEW_OBJ %r1;
     MOV %r2 @c13;
-    SET_KEY %r1 "name" %r2;
+    SET_KEY %r1 'name' %r2;
     MOV %r2 @c3;
-    SET_KEY %r1 "func" %r2;
+    SET_KEY %r1 'func' %r2;
     PUSH %r1;
     MOV %r1 @c212;
     MOV %r2 @c4;
@@ -28746,9 +28515,9 @@ LABEL _l2141_:
 LABEL _l2138_:
     NEW_OBJ %r1;
     MOV %r2 @c76;
-    SET_KEY %r1 "start" %r2;
+    SET_KEY %r1 'start' %r2;
     MOV %r2 @c17;
-    SET_KEY %r1 "end" %r2;
+    SET_KEY %r1 'end' %r2;
     MOV @c17 %r1;
     MOV %r2 @c17;
     MOV %r3 "start";
@@ -28953,7 +28722,6 @@ func @@f540() {
     MOV_PROP %r0 %r2 %r3;
     MOV %r1 @c10;
     EQ %r0 %r1;
-    MOV null %r0;
     JF %r0 _l2170_;
     MOV_THIS %r4;
     MOV %r5 "value";
@@ -28966,7 +28734,6 @@ func @@f540() {
     MOV %r4 "__values__";
     SET_KEY %r3 %r4 %r2;
     MOV %r1 %r2;
-    LG_AND null %r1;
 LABEL _l2170_:
     VAR @c17;
     ALLOC @c17;
@@ -28981,7 +28748,7 @@ LABEL _l2170_:
     GE @c17 %r0;
     NEW_OBJ %r0;
     MOV %r1 @c17;
-    SET_KEY %r0 "done" %r1;
+    SET_KEY %r0 'done' %r1;
     JF %r2 _l2171_;
     MOV %r1 @c10;
     JMP _l2172_;
@@ -28998,7 +28765,7 @@ LABEL _l2171_:
     SET_KEY %r6 %r7 %r5;
     MOV_PROP %r1 %r3 %r4;
 LABEL _l2172_:
-    SET_KEY %r0 "value" %r1;
+    SET_KEY %r0 'value' %r1;
     MOV $RET %r0;
 }
 func @@f541(n) {
@@ -29080,7 +28847,6 @@ func @@f542() {
     MOV_PROP %r3 %r5 %r6;
     MOV %r4 "length";
     MOV_PROP %r2 %r3 %r4;
-    MOV undefined %r2;
     JF %r2 _l2181_;
     MOV_THIS %r5;
     PUSH %r5;
@@ -29088,7 +28854,6 @@ func @@f542() {
     MOV %r4 $RET;
     MOV @c17 %r4;
     MOV %r3 %r4;
-    LG_AND undefined %r3;
 LABEL _l2181_:
     MOV %r3 @c17;
     MOV %r4 "reverse";
@@ -29097,12 +28862,12 @@ LABEL _l2181_:
     MOV @c17 %r2;
     NEW_OBJ %r2;
     MOV %r3 @c290;
-    SET_KEY %r2 "func" %r3;
+    SET_KEY %r2 'func' %r3;
     NEW_ARR %r3;
     SET_KEY %r3 0 %r4;
-    SET_KEY %r2 "args" %r3;
+    SET_KEY %r2 'args' %r3;
     MOV %r3 @c10;
-    SET_KEY %r2 "thisArg" %r3;
+    SET_KEY %r2 'thisArg' %r3;
     PUSH %r2;
     MOV %r4 @c17;
     MOV %r3 "__actions__";
@@ -29214,7 +28979,6 @@ func @@f547(r, u) {
     VAR %r3;
     VAR %r4;
     MOV %r0 @c381;
-    MOV undefined %r0;
     JF %r0 _l2182_;
     MOV %r2 @c3;
     MOV @c0 %r2;
@@ -29223,7 +28987,6 @@ func @@f547(r, u) {
     MOV_PROP %r2 %r3 %r4;
     MOV @c3 %r2;
     MOV %r1 %r2;
-    LG_AND undefined %r1;
 LABEL _l2182_:
     MOV %r1 @c376;
     PUSH %r1;
@@ -29301,7 +29064,6 @@ func @@f551(n, e, u) {
     PUSH %r1;
     CALL_REG @c388 3 false;
     MOV %r0 $RET;
-    MOV null %r0;
     JF %r0 _l2183_;
     MOV %r2 @c17;
     PUSH %r2;
@@ -29309,7 +29071,6 @@ func @@f551(n, e, u) {
     MOV %r3 "push";
     CALL_VAR %r2 %r3 1 false;
     MOV %r1 $RET;
-    LG_AND null %r1;
 LABEL _l2183_:
 }
 func @@f552(t) {
@@ -29445,13 +29206,11 @@ func @@f557(i, o) {
     MOV %r0 $RET;
     JF %r0 _l2188_;
     MOV %r1 @c402;
-    MOV null %r1;
     JIF %r1 _l2190_;
     CALL_REG @c105 0 true;
     MOV %r3 $RET;
     MOV @c402 %r3;
     MOV %r2 %r3;
-    LG_OR null %r2;
 LABEL _l2190_:
     VAR @c76;
     ALLOC @c76;
@@ -29671,7 +29430,6 @@ LABEL _l2208_:
 LABEL _l2211_:
     LG_OR %r6 %r8;
 LABEL _l2210_:
-    MOV null %r6;
     JF %r6 _l2209_;
     MOV %r9 @c91;
     PUSH %r9;
@@ -29679,7 +29437,6 @@ LABEL _l2210_:
     MOV %r8 $RET;
     MOV @c92 %r8;
     MOV %r7 %r8;
-    LG_AND null %r7;
 LABEL _l2209_:
     JMP _l2189_;
 LABEL _l2206_:
@@ -29688,7 +29445,6 @@ LABEL _l2206_:
     JMP _l2189_;
 LABEL _l2195_:
     MOV %r2 @c95;
-    MOV undefined %r2;
     JF %r2 _l2212_;
     MOV %r4 @c92;
     PUSH %r4;
@@ -29714,7 +29470,6 @@ LABEL _l2195_:
     MOV %r5 "delete";
     CALL_VAR %r4 %r5 1 false;
     MOV %r3 $RET;
-    LG_AND undefined %r3;
 LABEL _l2212_:
     MOV %r2 @c92;
     PUSH %r2;
@@ -29758,12 +29513,10 @@ LABEL _l2213_:
     MOV %r1 @c76;
     MOV %r2 @c10;
     EQ %r1 %r2;
-    MOV null %r1;
     JF %r1 _l2215_;
     MOV %r3 @c1;
     MOV @c76 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l2215_:
     MOV %r1 @c76;
     PUSH %r1;
@@ -29785,13 +29538,13 @@ func @@f558(n) {
     PUSH %r2;
     CALL_REG @c11 2 false;
     MOV %r1 $RET;
-    SET_KEY %r0 "a" %r1;
+    SET_KEY %r0 'a' %r1;
     MOV %r2 @c410;
     ADD %r2 1;
     MOV @c410 %r2;
-    SET_KEY %r0 "b" %r1;
+    SET_KEY %r0 'b' %r1;
     MOV %r1 @c17;
-    SET_KEY %r0 "c" %r1;
+    SET_KEY %r0 'c' %r1;
     MOV $RET %r0;
 }
 func @@f559(n, t) {
@@ -30051,7 +29804,7 @@ LABEL _l2232_:
     MOV %r0 %r1;
     JF %r1 _l2235_;
     MOV %r2 @c1;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "function";
     WEQ %r2 %r3;
     LG_AND %r0 %r2;
@@ -30081,7 +29834,6 @@ LABEL _l2234_:
     MOV %r2 $RET;
     LG_AND %r0 %r2;
 LABEL _l2240_:
-    MOV undefined %r0;
     JF %r0 _l2239_;
     MOV %r3 3;
     MOV %r4 @c0;
@@ -30096,7 +29848,6 @@ LABEL _l2242_:
     MOV %r2 1;
     MOV @c0 %r2;
     MOV %r1 %r2;
-    LG_AND undefined %r1;
 LABEL _l2239_:
     MOV %r1 @c13;
     PUSH %r1;
@@ -30116,7 +29867,6 @@ LABEL _l2243_:
     MOV_PROP %r2 %r3 %r4;
     MOV @c2 %r2;
     MOV %r1 %r2;
-    MOV null %r1;
     JF %r1 _l2244_;
     MOV %r3 @c1;
     PUSH %r3;
@@ -30128,7 +29878,6 @@ LABEL _l2243_:
     PUSH %r3;
     CALL_REG @c419 4 false;
     MOV %r2 $RET;
-    LG_AND null %r2;
 LABEL _l2244_:
     JMP _l2236_;
 LABEL _l2237_:
@@ -30903,13 +30652,11 @@ func @@f574(t) {
     MOV %r1 "thru";
     MOV_PROP @c0 %r0 %r1;
     MOV %r0 @c438;
-    MOV null %r0;
     JF %r0 _l2318_;
     MOV %r2 @c13;
     MOV %r3 "reverse";
     CALL_VAR %r2 %r3 0 false;
     MOV %r1 $RET;
-    LG_AND null %r1;
 LABEL _l2318_:
 LABEL _l2315_:
     MOV %r1 @c4;
@@ -30923,7 +30670,7 @@ LABEL _l2319_:
     MOV %r2 @c4;
     MOV_PROP @c1 %r1 %r2;
     MOV %r1 @c1;
-    undefined %r1;
+    TYPE_OF %r1;
     MOV %r2 "function";
     WNE %r1 %r2;
     JF %r1 _l2320_;
@@ -31160,12 +30907,10 @@ LABEL _l2351_:
     MOV_PROP %r2 %r4 %r5;
     MOV %r3 @c347;
     EQ %r2 %r3;
-    MOV null %r2;
     JF %r2 _l2352_;
     MOV %r4 @c44;
     ADD %r4 1;
     MOV @c44 %r4;
-    LG_AND null %r3;
 LABEL _l2352_:
     JMP _l2348_;
 LABEL _l2349_:
@@ -31173,7 +30918,6 @@ LABEL _l2349_:
 LABEL _l2346_:
 LABEL _l2347_:
     MOV %r1 @c440;
-    MOV undefined %r1;
     JF %r1 _l2355_;
     MOV %r4 @c441;
     PUSH %r4;
@@ -31187,10 +30931,8 @@ LABEL _l2347_:
     MOV %r3 $RET;
     MOV @c127 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l2355_:
     MOV %r1 @c443;
-    MOV null %r1;
     JF %r1 _l2356_;
     MOV %r4 @c441;
     PUSH %r4;
@@ -31204,7 +30946,6 @@ LABEL _l2355_:
     MOV %r3 $RET;
     MOV @c127 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l2356_:
     MOV %r1 @c44;
     MOV %r2 @c6;
@@ -31334,13 +31075,11 @@ LABEL _l2358_:
     LT %r3 %r4;
     LG_AND %r1 %r3;
 LABEL _l2368_:
-    MOV null %r1;
     JF %r1 _l2367_;
     MOV %r3 @c127;
     MOV %r4 "reverse";
     CALL_VAR %r3 %r4 0 false;
     MOV %r2 $RET;
-    LG_AND null %r2;
 LABEL _l2367_:
 LABEL _l2359_:
     MOV %r2 @c452;
@@ -31351,14 +31090,12 @@ LABEL _l2359_:
     LT %r3 %r4;
     LG_AND %r1 %r3;
 LABEL _l2370_:
-    MOV undefined %r1;
     JF %r1 _l2369_;
     MOV %r3 @c446;
     MOV %r4 @c127;
     MOV %r5 "length";
     SET_KEY %r4 %r5 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l2369_:
     MOV_THIS %r3;
     MOV %r2 %r3;
@@ -31375,7 +31112,6 @@ LABEL _l2373_:
     INST_OF %r3 %r4;
     LG_AND %r1 %r3;
 LABEL _l2372_:
-    MOV null %r1;
     JF %r1 _l2371_;
     MOV %r4 @c453;
     MOV %r3 %r4;
@@ -31388,7 +31124,6 @@ LABEL _l2372_:
 LABEL _l2374_:
     MOV @c264 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l2371_:
     MOV %r1 @c127;
     PUSH %r1;
@@ -31443,12 +31178,10 @@ LABEL _l2376_:
     MOV %r1 @c3;
     MOV %r2 @c10;
     NE %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l2380_;
     MOV %r3 @c3;
     MOV @c0 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l2380_:
     MOV %r0 @c4;
     MOV %r1 @c10;
@@ -31462,13 +31195,13 @@ LABEL _l2380_:
     JMP _l2379_;
 LABEL _l2381_:
     MOV %r2 @c3;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "string";
     WEQ %r2 %r3;
     MOV %r1 %r2;
     JIF %r2 _l2383_;
     MOV %r3 @c4;
-    undefined %r3;
+    TYPE_OF %r3;
     MOV %r4 "string";
     WEQ %r3 %r4;
     LG_OR %r1 %r3;
@@ -31645,7 +31378,7 @@ func @@f580(t, r, e) {
     MOV %r1 %r2;
     JF %r2 _l2400_;
     MOV %r3 @c4;
-    undefined %r3;
+    TYPE_OF %r3;
     MOV %r4 "number";
     WNE %r3 %r4;
     LG_AND %r1 %r3;
@@ -31662,14 +31395,12 @@ LABEL _l2400_:
     MOV %r2 $RET;
     LG_AND %r0 %r2;
 LABEL _l2399_:
-    MOV undefined %r0;
     JF %r0 _l2398_;
     MOV %r3 @c10;
     MOV @c4 %r3;
     MOV %r2 %r3;
     MOV @c3 %r2;
     MOV %r1 %r2;
-    LG_AND undefined %r1;
 LABEL _l2398_:
     MOV %r1 @c13;
     PUSH %r1;
@@ -31774,18 +31505,17 @@ func @@f581(t, r) {
     VAR %r3;
     VAR %r4;
     MOV %r2 @c13;
-    undefined %r2;
+    TYPE_OF %r2;
     MOV %r3 "string";
     WEQ %r2 %r3;
     MOV %r1 %r2;
     JF %r2 _l2414_;
     MOV %r3 @c3;
-    undefined %r3;
+    TYPE_OF %r3;
     MOV %r4 "string";
     WEQ %r3 %r4;
     LG_AND %r1 %r3;
 LABEL _l2414_:
-    MOV undefined %r1;
     JIF %r1 _l2413_;
     MOV %r4 @c13;
     PUSH %r4;
@@ -31798,7 +31528,6 @@ LABEL _l2414_:
     MOV %r3 $RET;
     MOV @c3 %r3;
     MOV %r2 %r3;
-    LG_OR undefined %r2;
 LABEL _l2413_:
     MOV %r1 @c3;
     PUSH %r1;
@@ -32208,7 +31937,6 @@ func @@f588(r) {
     NEG %r2;
     LG_AND %r0 %r2;
 LABEL _l2440_:
-    MOV null %r0;
     JF %r0 _l2439_;
     MOV %r2 @c4;
     PUSH %r2;
@@ -32216,7 +31944,6 @@ LABEL _l2440_:
     MOV %r3 "push";
     CALL_VAR %r2 %r3 1 false;
     MOV %r1 $RET;
-    LG_AND null %r1;
 LABEL _l2439_:
 }
 func @@f589(n) {
@@ -32286,7 +32013,6 @@ func @@f592() {
     SUB %r3 1;
     MOV @c490 %r3;
     LT %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l2443_;
     MOV_CTX %r4 "arguments";
     PUSH %r4;
@@ -32298,17 +32024,14 @@ func @@f592() {
     MOV %r3 $RET;
     MOV @c492 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l2443_:
     MOV %r1 1;
     MOV %r2 @c490;
     GE %r1 %r2;
-    MOV null %r1;
     JF %r1 _l2444_;
     MOV %r3 @c10;
     MOV @c491 %r3;
     MOV %r2 %r3;
-    LG_AND null %r2;
 LABEL _l2444_:
     MOV $RET %r0;
 }
@@ -32544,7 +32267,6 @@ LABEL _l2457_:
     MOV %r1 @c508;
     MOV %r2 @c10;
     EQ %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l2461_;
     MOV %r4 @c501;
     PUSH %r4;
@@ -32554,7 +32276,6 @@ LABEL _l2457_:
     MOV %r3 $RET;
     MOV @c508 %r3;
     MOV %r2 %r3;
-    LG_AND undefined %r2;
 LABEL _l2461_:
     MOV $RET %r0;
 }
@@ -32566,13 +32287,11 @@ func @@f598() {
     MOV %r0 @c508;
     MOV %r1 @c10;
     NE %r0 %r1;
-    MOV undefined %r0;
     JF %r0 _l2462_;
     MOV %r2 @c508;
     PUSH %r2;
     CALL_REG @c510 1 false;
     MOV %r1 $RET;
-    LG_AND undefined %r1;
 LABEL _l2462_:
     MOV %r0 0;
     MOV @c497 %r0;
@@ -32826,7 +32545,6 @@ func @@f605(r) {
     MOV %r2 @c3;
     SET_KEY %r1 %r2 %r0;
     MOV %r0 @c519;
-    MOV null %r0;
     JF %r0 _l2479_;
     FUNC %r2 @@f644;
     MOV %r5 @c518;
@@ -32835,7 +32553,6 @@ func @@f605(r) {
     MOV %r4 @c3;
     SET_KEY %r3 %r4 %r2;
     MOV %r1 %r2;
-    LG_AND null %r1;
 LABEL _l2479_:
 }
 func @@f606() {
@@ -32929,13 +32646,11 @@ func @@f610(n) {
     MOV %r4 "size";
     MOV_PROP %r2 %r3 %r4;
     EQ %r1 %r2;
-    MOV undefined %r1;
     JF %r1 _l2486_;
     MOV %r3 @c525;
     MOV %r4 "clear";
     CALL_VAR %r3 %r4 0 false;
     MOV %r2 $RET;
-    LG_AND undefined %r2;
 LABEL _l2486_:
     MOV $RET %r0;
 }
@@ -32985,7 +32700,6 @@ func @@f613(n) {
     NEG %r3;
     LG_AND %r1 %r3;
 LABEL _l2490_:
-    MOV undefined %r1;
     JF %r1 _l2489_;
     MOV %r3 @c10;
     PUSH %r3;
@@ -32993,7 +32707,6 @@ LABEL _l2490_:
     MOV %r4 "push";
     CALL_VAR %r3 %r4 1 false;
     MOV %r2 $RET;
-    LG_AND undefined %r2;
 LABEL _l2489_:
     MOV $RET %r0;
 }
@@ -33099,7 +32812,6 @@ func @@f616(t) {
     MOV %r1 $RET;
     MOV @c13 %r1;
     MOV %r1 @c538;
-    MOV null %r1;
     JIF %r1 _l2497_;
     MOV %r3 1;
     MOV %r5 @c13;
@@ -33108,7 +32820,6 @@ func @@f616(t) {
     LT %r3 %r4;
     MOV @c538 %r3;
     MOV %r2 %r3;
-    LG_OR null %r2;
 LABEL _l2497_:
     MOV $RET %r0;
 }
@@ -33197,7 +32908,7 @@ func @@f621(n) {
     MOV %r2 @c17;
     MOV %r3 1;
     MOV_PROP %r1 %r2 %r3;
-    undefined %r1;
+    TYPE_OF %r1;
     WNE %r0 %r1;
     JF %r0 _l2500_;
     MOV %r1 "Expected a function";
@@ -33359,7 +33070,6 @@ func @@f627(e) {
     MOV %r1 $RET;
     MOV @c4 %r1;
     MOV %r1 @c0;
-    MOV null %r1;
     JF %r1 _l2510_;
     MOV %r3 @c0;
     PUSH %r3;
@@ -33367,7 +33077,6 @@ func @@f627(e) {
     PUSH %r3;
     CALL_REG @c91 2 false;
     MOV %r2 $RET;
-    LG_AND null %r2;
 LABEL _l2510_:
     MOV %r1 @c4;
     PUSH %r1;
@@ -33402,12 +33111,10 @@ func @@f629(t, r, e, o, f, l) {
     VAR %r4;
     VAR %r5;
     MOV %r1 @c4;
-    MOV undefined %r1;
     JIF %r1 _l2511_;
     MOV %r3 @c568;
     MOV @c4 %r3;
     MOV %r2 %r3;
-    LG_OR undefined %r2;
 LABEL _l2511_:
     MOV %r2 @c559;
     PUSH %r2;
@@ -33428,7 +33135,6 @@ LABEL _l2511_:
     ADD %r2 %r1;
     MOV @c563 %r2;
     MOV %r1 @c3;
-    MOV null %r1;
     JF %r1 _l2512_;
     MOV %r3 true;
     MOV @c564 %r3;
@@ -33441,10 +33147,8 @@ LABEL _l2511_:
     ADD %r4 %r3;
     MOV @c563 %r4;
     MOV %r2 %r4;
-    LG_AND null %r2;
 LABEL _l2512_:
     MOV %r1 @c566;
-    MOV null %r1;
     JF %r1 _l2513_;
     MOV %r3 true;
     MOV @c565 %r3;
@@ -33457,10 +33161,8 @@ LABEL _l2512_:
     ADD %r4 %r3;
     MOV @c563 %r4;
     MOV %r2 %r4;
-    LG_AND null %r2;
 LABEL _l2513_:
     MOV %r1 @c4;
-    MOV null %r1;
     JF %r1 _l2514_;
     MOV %r3 "'+((__t=(";
     MOV %r5 @c4;
@@ -33471,7 +33173,6 @@ LABEL _l2513_:
     ADD %r4 %r3;
     MOV @c563 %r4;
     MOV %r2 %r4;
-    LG_AND null %r2;
 LABEL _l2514_:
     MOV %r1 @c567;
     MOV %r3 @c13;
@@ -33523,14 +33224,12 @@ func @@f631(t, r) {
     MOV %r2 "call";
     CALL_VAR %r1 %r2 2 false;
     MOV %r0 $RET;
-    MOV null %r0;
     JIF %r0 _l2515_;
     MOV %r2 @c13;
     MOV %r3 @c570;
     MOV %r4 @c3;
     SET_KEY %r3 %r4 %r2;
     MOV %r1 %r2;
-    LG_OR null %r1;
 LABEL _l2515_:
 }
 func @@f632(r) {
@@ -33608,7 +33307,7 @@ LABEL _l2521_:
     PUSH %r4;
     CALL_REG @c125 2 false;
     MOV %r3 $RET;
-    SET_KEY %r2 "size" %r3;
+    SET_KEY %r2 'size' %r3;
     MOV %r3 @c572;
     MOV %r5 0;
     MOV %r7 @c4;
@@ -33621,7 +33320,7 @@ LABEL _l2521_:
 LABEL _l2523_:
     MOV %r4 "";
     ADD %r3 %r4;
-    SET_KEY %r2 "type" %r3;
+    SET_KEY %r2 'type' %r3;
     PUSH %r2;
     MOV %r4 @c4;
     MOV %r3 "__views__";
@@ -33672,9 +33371,9 @@ func @@f634(n) {
     PUSH %r3;
     CALL_REG @c153 2 false;
     MOV %r2 $RET;
-    SET_KEY %r1 "iteratee" %r2;
+    SET_KEY %r1 'iteratee' %r2;
     MOV %r2 @c574;
-    SET_KEY %r1 "type" %r2;
+    SET_KEY %r1 'type' %r2;
     PUSH %r1;
     MOV %r3 @c573;
     MOV %r2 "__iteratees__";
@@ -33810,7 +33509,7 @@ LABEL _l2533_:
     MOV %r1 %r2;
     JF %r2 _l2532_;
     MOV %r3 @c92;
-    undefined %r3;
+    TYPE_OF %r3;
     MOV %r4 "function";
     WEQ %r3 %r4;
     LG_AND %r1 %r3;
@@ -33824,14 +33523,12 @@ LABEL _l2532_:
     WNE %r2 %r3;
     LG_AND %r0 %r2;
 LABEL _l2531_:
-    MOV null %r0;
     JF %r0 _l2530_;
     MOV %r3 false;
     MOV @c95 %r3;
     MOV %r2 %r3;
     MOV @c11 %r2;
     MOV %r1 %r2;
-    LG_AND null %r1;
 LABEL _l2530_:
     VAR @c43;
     ALLOC @c43;
@@ -33893,12 +33590,12 @@ LABEL _l2539_:
     MOV @c2 %r2;
     NEW_OBJ %r2;
     MOV %r3 @c290;
-    SET_KEY %r2 "func" %r3;
+    SET_KEY %r2 'func' %r3;
     NEW_ARR %r3;
     SET_KEY %r3 0 %r4;
-    SET_KEY %r2 "args" %r3;
+    SET_KEY %r2 'args' %r3;
     MOV %r3 @c10;
-    SET_KEY %r2 "thisArg" %r3;
+    SET_KEY %r2 'thisArg' %r3;
     PUSH %r2;
     MOV %r4 @c2;
     MOV %r3 "__actions__";
@@ -34171,11 +33868,11 @@ LABEL _l2560_:
     MOV @c599 $RET;
     NEW_OBJ %r2;
     MOV %r3 @c600;
-    SET_KEY %r2 "func" %r3;
+    SET_KEY %r2 'func' %r3;
     MOV_CTX %r3 "arguments";
-    SET_KEY %r2 "args" %r3;
+    SET_KEY %r2 'args' %r3;
     MOV %r3 @c518;
-    SET_KEY %r2 "thisArg" %r3;
+    SET_KEY %r2 'thisArg' %r3;
     PUSH %r2;
     MOV_THIS %r2;
     MOV %r3 "__actions__";

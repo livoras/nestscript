@@ -81,6 +81,7 @@ const codeToUseAge: { [x in I]: OU[] } = {
   [I.VOID]: [OU.BOTH],
   [I.DEL]: [OU.BOTH],
   [I.NEG]: [OU.BOTH],
+  [I.TYPE_OF]: [OU.BOTH],
   [I.INST_OF]: BOTH_GET,
   [I.IN]: BOTH_GET,
   [I.MOV_THIS]: [OU.SET],
@@ -131,7 +132,12 @@ const optimizeFunction = (func: IParsedFunction): string => {
     const { codeIndex, value, usages } = candidate
     codes[codeIndex] = null
     for (const usage of usages) {
-      codes[usage.codeIndex][usage.position] = value
+      try {
+        codes[usage.codeIndex][usage.position] = value
+      } catch(e) {
+        console.log('----. REG', usage, codes[usage.codeIndex])
+        throw new Error(e)
+      }
     }
   }
 
@@ -171,8 +177,15 @@ const optimizeFunction = (func: IParsedFunction): string => {
         if (j === 0) { return }
         if (isIgnoreOperator(operator)) { return }
         if (!isReg(operant)) { return }
-        const useType = codeToUseAge[I[operator]][j - 1]
-        const isGetOperant = useType === OU.GET
+        let useType
+        let isGetOperant
+        try {
+          useType = codeToUseAge[I[operator]][j - 1]
+          isGetOperant = useType === OU.GET
+        } catch(e) {
+          console.log('ERROR operator --> ', operator)
+          throw new Error(e)
+        }
         if (!isInCandidates(operant)) { return }
         if (isGetOperant) {
           const candidate = candidates.get(operant)!

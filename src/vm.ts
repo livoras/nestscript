@@ -1,5 +1,6 @@
   // tslint:disable: no-bitwise
 import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from './utils'
+import { constants } from 'buffer'
 const raw = require('./raw')
 
 export enum I {
@@ -26,6 +27,7 @@ export enum I {
  VOID, // VOID %r0 void
  DEL, // DEL %r0 %r1 delete
  NEG, // NEG %r0 !
+ TYPE_OF,
 
  IN,
  INST_OF, // instanceof
@@ -355,7 +357,18 @@ export class VirtualMachine {
       const pattern = this.nextOperant()
       const flags = this.nextOperant()
       // console.log(dst, pattern, flags)
-      this.setReg(dst, { value: new RegExp(pattern.value, flags.value) })
+      try {
+        this.setReg(dst, { value: new RegExp(pattern.value, flags.value) })
+      } catch(e) {
+        console.log("================== pattern\n")
+        console.log(pattern.value)
+        console.log("==================\n")
+
+        console.log("=================== value\n")
+        console.log(flags.value)
+        console.log("===================\n")
+        throw new Error(e)
+      }
       break
     }
     case I.NEW_ARR: {
@@ -524,6 +537,10 @@ export class VirtualMachine {
     case I.NEG: {
       // tslint:disable-next-line: no-bitwise
       this.uniaryExpression((val: any): any => !val)
+      break
+    }
+    case I.TYPE_OF: {
+      this.uniaryExpression((val: any): any => typeof val)
       break
     }
     case I.DEL: {

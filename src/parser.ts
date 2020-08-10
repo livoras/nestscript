@@ -1,3 +1,7 @@
+import { runInThisContext } from 'vm'
+
+const fs = require('fs')
+
 const testProgram = `
   GLOBAL G1;
   GLOBAL G2;
@@ -118,6 +122,7 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
   const isEmpyty = (c: string): boolean => /\s/.test(c)
   let j = 0
   let k = 0
+  let isEscape = false
 
   while (i < code.length) {
     // console.log(tokenizingState, '===>', i, code[i])
@@ -151,6 +156,7 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
           currentFunctionInfo.functionName = token
           token = ''
           tokenizingState = TokenizingState.PARAMING
+          console.log(tokenizingState, currentFunctionInfo)
         }
       } else {
         token += c
@@ -171,6 +177,7 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
         token = ''
         if (c === ')') {
           tokenizingState = TokenizingState.PARAMING_ENCLOSING
+          console.log('--- paraming..', tokenizingState, currentFunctionInfo)
         }
       } else {
         token += c
@@ -188,6 +195,8 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
       continue
     }
 
+    // console.log("bodyig --> ", isInString, tokenizingState)
+
     if ((c === '"' || c === "'") && !isInString) {
       oldStringStart = c
       isInString = true
@@ -196,14 +205,28 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
     }
 
     if (isInString) {
-      if (c === oldStringStart) {
+      if (c === '\\') {
+        if (isEscape) {
+          isEscape = false
+        } else {
+          isEscape = true
+        }
+        val += c
+        continue
+      }
+
+      if (c === oldStringStart && !isEscape) {
         val += c
         operants.push(val)
         isInString = false
         val = ''
       } else {
-        val += c
+        if (!isEscape) {
+          val += c
+        } else {
+        }
       }
+      isEscape = false
       continue
     }
 
@@ -240,12 +263,11 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
       funcs.push(currentFunctionInfo)
       tokenizingState = TokenizingState.INIT
       currentFunctionInfo = null
-      console.log('functions ====>', funcs)
+      // console.log('functions ====>', funcs)
       continue
     }
 
-    console.log(operants)
-
+    // console.log(operants)
     val += c
   }
 
@@ -253,25 +275,14 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
 }
 
 const test = (): void => {
-  const funcs = parseAssembler(`
-  func @@main(a, b, c) {
-    MOV a b;
-    PUSH "OBJK";
-    MOV %r0 "func @main(a, b, c) {}";
-  }
-
-  func @@f1(c, d, e) {
-    PUSH a;
-    PUSH c;
-    JMP "OJBK" %r0;
-  }
-  `)
+  const c = fs.readFileSync(__dirname + "/../example/js.nes", 'utf-8')
+  const funcs = parseAssembler(c)
   funcs.forEach((f: IParsedFunction): void => {
     console.log(f, '-->')
   })
 }
 
-// test()
+test()
 // console.log(parseCode(`PUSH "DIE WORLD"`))
 // console.log(parseCode(`PUSH "HELLO WORLD"`))
 // console.log(parseCode('MOV R0 1'))

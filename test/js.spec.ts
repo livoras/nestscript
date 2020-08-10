@@ -722,5 +722,13 @@ describe("misc", (): void => {
     expect(a()).equal("C")
     `)
   })
+
+  it(`return logical`, (): void => {
+    tm(`
+    function pt(n, t, r) {
+      return (t && r, n)
+    }
+    `)
+  })
 })
 // tslint:disable-next-line: max-file-line-count

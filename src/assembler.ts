@@ -91,8 +91,8 @@ export const parseCodeToProgram = (program: string): Buffer => {
   const globalSymbols = {}
   const stringTable: string[] = []
   const stringIndex: any = {}
-  const funcs = parseAssembler(optimizeCode(program))
-  // const funcs = parseAssembler(program) // program
+  // const funcs = parseAssembler(optimizeCode(program))
+  const funcs = parseAssembler(program) // program
     // .trim()
     // .match(/func\s[\s\S]+?\}/g) || []
 

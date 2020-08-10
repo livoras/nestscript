@@ -222,11 +222,18 @@ const parseToCode = (ast: any): void => {
 
   const getRegisterName = (reg: string, currentScope: IScope, scopes: IScope[], isVar: boolean = false): string => {
     const isClosure = (v: VariableType): boolean => v === VariableType.CLOSURE
+    if (reg === 'undefined') {
+      console.log('===========>', currentScope)
+      throw new Error('cannot get register name ' + reg)
+    }
     for (const scope of [currentScope, ...scopes].reverse()) {
       if (
         isClosure(scope.locals[reg]) ||
         isClosure(scope.params[reg])
       ) {
+        if (!scope.closureTable[reg]) {
+          throw new Error(`Cannot found clouse variable ${reg} on closure table`)
+        }
         return scope.closureTable[reg]
       }
     }
@@ -239,7 +246,13 @@ const parseToCode = (ast: any): void => {
     // const lastCode = state.codes[state.codes.length - 1]
     // if (isJump(c) && isJump(lastCode)) { return }
     const operator = ops[0]
+    if (!operator || operator ==='undefined') {
+      throw new Error('Operator cannot be ' + operator)
+    }
     const operants = ops.slice(1)
+    if (operator === 'MOV' && ops[1] === 'undefined') {
+      throw new Error('First operant of MOV cannot be undefined' )
+    }
     // if (ops[0] === 'MOV') {
     //   state.codes.push(createMovCode(ops[1], ops[2], getCurrentScope()))
     // } else {
@@ -427,7 +440,7 @@ const parseToCode = (ast: any): void => {
     Literal: (node: et.Literal, s: any): void => {
       if ((node as any).regex) {
         const { pattern, flags } = (node as any).regex
-        cg('NEW_REG', s.r0, `"${pattern}"`, `"${flags}"`)
+        cg('NEW_REG', s.r0, `"${pattern.replace(/"/g, '\\"')}"`, `"${flags}"`)
         return
       }
 
@@ -552,6 +565,7 @@ const parseToCode = (ast: any): void => {
         '~': 'NOT',
         '!': 'NEG',
         'void': 'VOID',
+        'typeof': 'TYPE_OF',
       }
       const [newReg, freeReg] = newRegisterController()
       const cmd = codesMap[node.operator]
@@ -614,7 +628,10 @@ const parseToCode = (ast: any): void => {
       const leftReg = s.r0 = newReg()
       getValueOfNode(node.left, leftReg, s, c)
       const op = node.operator
-      cg(`MOV`, `${retReg}`, `${leftReg}`)
+      // console.log(node)
+      if (retReg) {
+        cg(`MOV`, `${retReg}`, `${leftReg}`)
+      }
       if (op === '&&') {
         cg(`JF`, `${leftReg}`, `${endLabel}`)
       } else {
@@ -622,7 +639,9 @@ const parseToCode = (ast: any): void => {
       }
       const rightReg = s.r0 = newReg()
       getValueOfNode(node.right, rightReg, s, c)
-      cg(op === '&&' ? `LG_AND` : `LG_OR`, `${retReg}`, `${rightReg}`)
+      if (retReg) {
+        cg(op === '&&' ? `LG_AND` : `LG_OR`, `${retReg}`, `${rightReg}`)
+      }
       cg('LABEL', `${endLabel}:`)
       freeReg()
     },
@@ -788,12 +807,13 @@ const parseToCode = (ast: any): void => {
       const valReg = newReg()
       let key
       if (node.key.type === "Identifier") {
-        key = node.key.name
+        key = `'${node.key.name}'`
       } else if (node.key.type === "Literal") {
-        key = node.key.value
+        key = node.key.raw
       }
       getValueOfNode(node.value, valReg, s, c)
-      cg(`SET_KEY`, `${objReg}`, `"${key}"`, `${valReg}`)
+      cg(`SET_KEY`, `${objReg}`, key, `${valReg}`)
+      // cg(`SET_KEY`, `${objReg}`, `"${key}"`, `${valReg}`)
       freeReg()
     },
 
