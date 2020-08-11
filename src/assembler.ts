@@ -96,7 +96,7 @@ export const parseCodeToProgram = (program: string): Buffer => {
     // .trim()
     // .match(/func\s[\s\S]+?\}/g) || []
 
-  console.log(funcs, '--->')
+  // console.log(funcs, '--->')
   // 1 pass
   const funcsInfo: any[] = []
   let globalSize: number = 0
@@ -212,7 +212,8 @@ export const parseCodeToProgram = (program: string): Buffer => {
           /** 字符串 */
           if (o.match(/^\"[\s\S]*\"$/) || o.match(/^\'[\s\S]*\'$/)) {
             const str = o.replace(/^[\'\"]|[\'\"]$/g, '')
-            const index = stringIndex[str]
+            let index = stringIndex[str]
+            index = typeof index === 'number' ? index : void 0 // 'toString' 不就挂了？
             code[i] = {
               type: IOperatantType.STRING,
               value: index === undefined
@@ -236,6 +237,11 @@ export const parseCodeToProgram = (program: string): Buffer => {
     })
   })
 
+  // console.log('\n\n====================================')
+  // funcsInfo[0].codes.forEach((c: any): void => {
+  //   console.log(I[c[0]], c.slice(1))
+  // })
+  // console.log('====================================\n\n')
   const stream = parseToStream(funcsInfo, stringTable, globalSize)
   return Buffer.from(stream)
 }

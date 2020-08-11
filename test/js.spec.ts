@@ -68,6 +68,17 @@ describe("uinary operators", (): void => {
       expect(a).equal(undefined)
     `)
   })
+  it('undefined variable', (): void => {
+    tm(`
+    var undefined
+    var n = undefined
+    if (n === undefined) {
+      console.log(n)
+    } else {
+      console.log("undefined")
+    }
+    `)
+  })
   it('~a', (): void => {
     tm(`
       const a = 7
@@ -173,6 +184,15 @@ describe("binary operators", (): void => {
     expect(b % a).equal(5)
     expect(a).equal(25)
     expect(b).equal(5)
+    `)
+  })
+
+  it('a++, ++a', (): void => {
+    tm(`
+    let a = 1
+    let b = 1
+    expect(a++).equal(1)
+    expect(++b).equal(2)
     `)
   })
 
@@ -391,6 +411,18 @@ describe('function', (): void => {
     expect(add(3, 5)).equal(8)
     `, ctx)
     expect(ctx.wrapper.run()).equal(3)
+  })
+
+  it(`define function`, (): void => {
+    tm(`
+    const a = baseProperty("hello")
+    console.log(a({ hello: "good" }))
+    function baseProperty(key) {
+      return function(object) {
+        return object == null ? undefined : object[key];
+      };
+    }
+    `)
   })
 
   it(`new vm function as class`, (): void => {
@@ -728,6 +760,54 @@ describe("misc", (): void => {
     function pt(n, t, r) {
       return (t && r, n)
     }
+    `)
+  })
+
+  it('access properties', (): void => {
+    tm(`
+    expect(typeof Function.prototype.toString).equal('function');
+    `, { Function })
+  })
+
+  it(`isObject`, (): void => {
+    tm(`
+      expect(typeof isObject).equal('function')
+      function isObject(value) {
+        console.log('9----------------->!')
+        var type = typeof value;
+        return value != null && (type == 'object' || type == 'function');
+      }
+    `)
+  })
+})
+
+describe("closure", (): void => {
+  it('call function of closure variable', (): void => {
+    tm(`
+    const a = (add) => {
+      return function() {
+        return this.b + add(this.c)
+      }
+    }
+
+    const ret = a((n) => ++n)
+    const num = ret.call({ b: 1, c: 2 })
+    expect(num).equal(4)
+    `)
+  })
+
+  it(`calling function in closure`, (): void => {
+    tm(`
+      const a = () => {
+        const b = (n) => {
+          return isObject(n) ? 'OK' : 'NO OK'
+        }
+        expect(b({})).equal('OK')
+        function isObject(value) {
+          return true
+        }
+      }
+      a()
     `)
   })
 })

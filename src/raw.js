@@ -32,6 +32,7 @@ exports.parseVmFunctionToJsFunction = function parseVmFunctionToJsFunction (func
     } else {
       numArgs = n.numArgs
     }
+    console.log("CALLING ---->", funcInfo)
     vm.closureTable = funcInfo.closureTable
     vm.closureTables.push(funcInfo.closureTable)
     vm.currentThis = this
@@ -74,5 +75,6 @@ exports.parseVmFunctionToJsFunction = function parseVmFunctionToJsFunction (func
     }
   }
   Object.setPrototypeOf(func, Callable.prototype)
+  func.__ip__ = funcInfo.ip
   return func
 }

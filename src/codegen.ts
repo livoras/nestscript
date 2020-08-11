@@ -37,6 +37,7 @@ interface IState {
   functionIndex: number,
   functionTable: any,
   functions: IFunction[],
+  headCodes: (string | (() => string[]))[],
   codes: (string | (() => string[]))[],
   r0: string | null,
   r1: string | null,
@@ -108,6 +109,7 @@ const createNewState = (): IState => {
     functions: [],
     functionTable: {},
     funcName: '',
+    headCodes: [],
     codes: [],
     r0: '', // 寄存器的名字
     r1: '', // 寄存器的名字
@@ -187,6 +189,7 @@ const parseToCode = (ast: any): void => {
   }
 
   const hasVars2 = (name: string, locals: any, params: any, scopes: IScope[], globals: any): boolean => {
+    console.log("GLOBAL -> ", globals, name)
     return locals[name] ||
       params[name] ||
       scopes.some((s: IScope): boolean => s.locals[name] || s.params[name]) ||
@@ -266,13 +269,18 @@ const parseToCode = (ast: any): void => {
     // } else {
     const currentScope = getCurrentScope()
     const scopes = state.scopes
-    console.log(operants, '--->')
+    // console.log(operants, '--->')
     operants.forEach((o: any): void => {
       if (typeof o === 'string') {
         touchRegister(o, currentScope, scopes)
       }
     })
-    return state.codes.push((): string[] => {
+    let codes: any[] = state.codes
+    /** 这里需要提前一些指令，例如变量声明、全局变量、有名函数声明 */
+    if (['VAR', 'GLOBAL', 'ALLOC'].includes(operator) || operator === 'FUNC' && hasVars(operants[0], state)) {
+      codes = state.headCodes
+    }
+    return codes.push((): string[] => {
       // console.log(operator, operants)
       if (typeof operator === 'function') {
         operator = operator()
@@ -299,10 +307,14 @@ const parseToCode = (ast: any): void => {
     //   cg('CALL', id, numArgs, isExpression)
     // } else
     const { locals, params, scopes, globals } = s
+    touchRegister(id, getCurrentScope(), state.scopes)
     cg((): string => {
-      console.log('================================>', locals, params, scopes)
+      // console.log('================================>', locals, params, scopes)
       return hasVars2(id, locals, params, scopes, globals) ? 'CALL_REG' : 'CALL_CTX'
-    }, id, numArgs, isExpression)
+    }, (): string => {
+      const hasName = hasVars2(id, locals, params, scopes, globals)
+      return hasName ? id : `'${id}'`
+    }, numArgs, isExpression)
   }
 
   /**
@@ -335,11 +347,21 @@ const parseToCode = (ast: any): void => {
   const getValueOfNode = (node: any, reg: string, s: IState, c: any): any => {
     if (node.type === 'Identifier') {
       if (reg) {
-        if (hasVars(node.name, s)) {
-          cg(`MOV`, `${ reg }`, `${ node.name }`)
-        } else {
-          cg(`MOV_CTX`, `${ reg }`, `"${node.name}"`)
-        }
+        const { locals, params, scopes, globals } = s
+        const name = node.name
+        cg((): string => {
+          if (hasVars2(name, locals, params, scopes, globals)) {
+            return 'MOV'
+          } else {
+            return 'MOV_CTX'
+          }
+        }, `${ reg }`, (): string => {
+          if (hasVars2(name, locals, params, scopes, globals)) {
+            return name
+          } else {
+            return `'${name}'`
+          }
+        })
       }
     } else {
       s.r0 = reg
@@ -451,9 +473,8 @@ const parseToCode = (ast: any): void => {
         const ret = s.r0 = newRegister()
         c(node.callee, s)
         freeRegister()
-        // callIdentifier(ret, )
-        callIdentifier(ret, node.arguments.length, s, isNewExpression)
-        // cg(`CALL_REG`, ret, node.arguments.length, isNewExpression)
+        /** 这里不能用 callIdentifier */
+        cg(`CALL_REG`, ret, node.arguments.length, isNewExpression)
       }
       if (retReg) {
         cg(`MOV`, retReg, `$RET`)
@@ -943,20 +964,24 @@ const getFunctionDecleration = (func: IFunction): string => {
 
 export const generateAssemblyFromJs = (jsCode: string): string => {
   const ret = codegen.parse(jsCode)
+  let allCodes: any[] = []
 
   const processFunctionAst = (funcBody: et.Node): void => {
     const codeLen = state.codes.length
-    const registersCodes: string[] = []
+    const headCodes: string[] = []
     /** () => a + b，无显式 return 的返回表达式 */
     if (funcBody.type !== 'BlockStatement') {
       state.r0 = '$RET'
     }
     parseToCode(funcBody)
     for (let i = 0; i < state.maxRegister; i++) {
-      registersCodes.push(`VAR %r${i}`)
+      headCodes.push(`VAR %r${i}`)
     }
-    state.codes.splice(codeLen, 0, ...registersCodes)
+    state.codes.splice(codeLen, 0, ...headCodes, ...state.headCodes)
     state.codes.push('}')
+    allCodes = [...allCodes, ...state.codes]
+    state.headCodes = []
+    state.codes = []
   }
 
   state = createNewState()
@@ -989,10 +1014,9 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     state.scopes = funcAst!.scopes
     // console.log(funcAst?.name, funcAst?.scopes)
     processFunctionAst(funcAst?.body.body!)
-    const paramsHead = []
   }
 
-  state.codes = state.codes.map((s: string | (() => string[])): string[] => {
+  allCodes = allCodes.map((s: string | (() => string[])): string[] => {
     const f = (c: string): string => {
       if (c.trim() === '') { return ''}
       if (c.startsWith('func') || c.startsWith('LABEL') || c.startsWith('}')) {
@@ -1006,6 +1030,6 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
       return s().map(f)
     }
   }).reduce((cc: string[], c: string[]): string[] => [...cc, ...c], [])
-  return state.codes.join("")
+  return allCodes.join("")
 // tslint:disable-next-line: max-file-line-count
 }

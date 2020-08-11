@@ -5,7 +5,7 @@ import { use } from 'chai'
 
 export const optimizeCode = (code: string): string => {
   const funcs = parseAssembler(code)
-  console.log(funcs, '?????')
+  // console.log(funcs, '?????')
   return funcs.map(optimizeFunction).join('\n')
 }
 
@@ -135,7 +135,7 @@ const optimizeFunction = (func: IParsedFunction): string => {
       try {
         codes[usage.codeIndex][usage.position] = value
       } catch(e) {
-        console.log('----. REG', usage, codes[usage.codeIndex])
+        // console.log('----. REG', usage, codes[usage.codeIndex])
         throw new Error(e)
       }
     }
@@ -161,7 +161,7 @@ const optimizeFunction = (func: IParsedFunction): string => {
           position: 2,
         })
       }
-      if (!isReg(dst)) { return }
+      if (!isReg(dst) || isReg(value)) { return }
       if (isInCandidates(dst)) {
         processReg(dst)
       }

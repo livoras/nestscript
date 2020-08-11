@@ -138,7 +138,7 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
         token = ''
         tokenizingState = TokenizingState.FUNCTION_NAME
         k++
-        console.log(k, 'coount ')
+        // console.log(k, 'coount ')
         currentFunctionInfo = { functionName: '', params: [], instructions: [] }
         codes = currentFunctionInfo.instructions
       } else {
@@ -157,7 +157,7 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
           currentFunctionInfo.functionName = token
           token = ''
           tokenizingState = TokenizingState.PARAMING
-          console.log(tokenizingState, currentFunctionInfo)
+          // console.log(tokenizingState, currentFunctionInfo)
         }
       } else {
         token += c
@@ -178,7 +178,7 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
         token = ''
         if (c === ')') {
           tokenizingState = TokenizingState.PARAMING_ENCLOSING
-          console.log('--- paraming..', tokenizingState, currentFunctionInfo)
+          // console.log('--- paraming..', tokenizingState, currentFunctionInfo)
         }
       } else {
         token += c
@@ -217,7 +217,7 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
       }
 
       if (c === '"' && isEscape) {
-        console.log('--->', val)
+        // console.log('--->', val)
         val = val.substring(0, val.length - 1) + '"'
         isEscape = false
         continue
@@ -226,7 +226,7 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
       if (c === oldStringStart) {
         val += c
         operants.push(val)
-        console.log("<-----", val)
+        // console.log("<-----", val)
         isInString = false
         val = ''
       } else {
@@ -288,7 +288,7 @@ const test = (): void => {
   })
 }
 
-test()
+// test()
 // console.log(parseCode(`PUSH "DIE WORLD"`))
 // console.log(parseCode(`PUSH "HELLO WORLD"`))
 // console.log(parseCode('MOV R0 1'))

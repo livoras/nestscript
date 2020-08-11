@@ -1,6 +1,5 @@
   // tslint:disable: no-bitwise
 import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from './utils'
-import { constants } from 'buffer'
 const raw = require('./raw')
 
 export enum I {
@@ -68,6 +67,7 @@ class FunctionInfo {
   public getJsFunction(): CallableFunction {
     if (!this.vm) { throw new Error("VirtualMachine is not set!")}
     if (!this.closureTable) { this.closureTable = {} }
+    console.log("closure table -> ", this.closureTable)
     let jsFunc = this.jsFunction
     if (!jsFunc) {
       jsFunc = this.jsFunction = raw.parseVmFunctionToJsFunction(this, this.vm)
@@ -186,6 +186,7 @@ export class VirtualMachine {
 
   public setReg(dst: IOperant, src: { value: any }): void {
     if (dst.type === IOperatantType.CLOSURE_REGISTER) {
+      console.log("SET closure", dst)
       this.heap[this.makeClosureIndex(dst.index)] = src.value
     } else {
       this.stack[dst.index] = src.value
@@ -194,6 +195,7 @@ export class VirtualMachine {
 
   public getReg(operatant: IOperant): any {
     if (operatant.type === IOperatantType.CLOSURE_REGISTER) {
+      console.log("GET closure", operatant)
       return this.heap[this.makeClosureIndex(operatant.index)]
     } else {
       return this.stack[operatant.index]
@@ -260,7 +262,7 @@ export class VirtualMachine {
     case I.MOV: {
       const dst = this.nextOperant()
       const src = this.nextOperant()
-      // console.log('mov', dst, src)
+      // console.log('MOV', dst, src)
       // this.stack[dst.index] = src.value
       this.setReg(dst, src)
       break
@@ -321,7 +323,7 @@ export class VirtualMachine {
       const funcName = this.nextOperant().value
       const numArgs = this.nextOperant().value
       const isNewExpression = this.nextOperant().value
-      console.log(funcName, '--->', o, '--->', numArgs)
+      // console.log(funcName, '--->', o, '--->', numArgs)
       isCallVMFunction = this.callFunction(void 0, o, funcName, numArgs, isNewExpression)
       break
     }
@@ -330,6 +332,7 @@ export class VirtualMachine {
       const f = o.value
       const numArgs = this.nextOperant().value
       const isNewExpression = this.nextOperant().value
+      // console.log(this.closureTable)
       isCallVMFunction = this.callFunction(f, void 0, '', numArgs, isNewExpression)
       break
     }
@@ -337,7 +340,6 @@ export class VirtualMachine {
       const dst = this.nextOperant()
       const propKey = this.nextOperant()
       const src = getByProp(this.ctx, propKey.value)
-      // this.stack[dst.index] = src
       this.setReg(dst, { value: src })
       break
     }
@@ -392,6 +394,7 @@ export class VirtualMachine {
       const funcInfoIndex: number = funcOperant.raw
       const funcInfo = this.functionsTable[funcInfoIndex]
       // TODO
+      // console.log(this.closureTable, '??????????????')
       funcInfo.closureTable = { ...this.closureTable }
       // stack[dst.index] = callback
       this.setReg(dst, { value: funcOperant.value })
@@ -401,9 +404,15 @@ export class VirtualMachine {
     // MOV_PRO R0 R1 "arr.length";
     case I.MOV_PROP: {
       const dst = this.nextOperant()
-      const o = this.nextOperant().value
-      const k = this.nextOperant().value
-      const v = getByProp(o, k)
+      // console.log(this.stack)
+      const o = this.nextOperant()
+      const k = this.nextOperant()
+      // console.log('----------------------')
+      // console.log('o --->', o)
+      // console.log('key -->', k)
+      // console.log('dst --->', dst)
+      // console.log('----------------------')
+      const v = getByProp(o.value, k.value)
       // stack[dst.index] = v
       this.setReg(dst, { value: v })
       break
@@ -648,9 +657,14 @@ export class VirtualMachine {
     const f = func || o[funcName]
     let isCallVMFunction = false
     if ((f instanceof raw.Callable) && !isNewExpression) {
+      // console.log('---> THE IP IS -->', (func as any).__ip__)
       const arg = new raw.NumArgs(numArgs)
       if (o) {
-        o[funcName](arg)
+        if (typeof o[funcName] === 'function') {
+          o[funcName](arg)
+        } else {
+          throw new Error(`The fucking ${funcName} is not a function`)
+        }
       } else {
         f(arg)
       }
@@ -666,9 +680,11 @@ export class VirtualMachine {
             ? new o[funcName](...args)
             : o[funcName](...args)
         } catch(e) {
-          console.error(`Calling function ${funcName} failed.`, o)
+          console.log(`Calling function "${funcName}" failed.`, typeof o, o[funcName], isNewExpression, o)
+          throw e
+          // console.log(o[funcName]())
           // console.error(`Function '${funcName}' is not found.`, o)
-          throw new Error(e)
+          // throw e
         }
       } else {
         stack[0] = isNewExpression
