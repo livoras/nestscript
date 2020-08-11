@@ -186,6 +186,13 @@ const parseToCode = (ast: any): void => {
     return !!s.globals[name]
   }
 
+  const hasVars2 = (name: string, locals: any, params: any, scopes: IScope[], globals: any): boolean => {
+    return locals[name] ||
+      params[name] ||
+      scopes.some((s: IScope): boolean => s.locals[name] || s.params[name]) ||
+      globals[name]
+  }
+
   const getCurrentScope = (): IScope => {
     return state.currentScope!
   }
@@ -222,10 +229,10 @@ const parseToCode = (ast: any): void => {
 
   const getRegisterName = (reg: string, currentScope: IScope, scopes: IScope[], isVar: boolean = false): string => {
     const isClosure = (v: VariableType): boolean => v === VariableType.CLOSURE
-    if (reg === 'undefined') {
-      console.log('===========>', currentScope)
-      throw new Error('cannot get register name ' + reg)
-    }
+    // if (reg === 'undefined') {
+    //   console.log('===========>', currentScope)
+    //   throw new Error('cannot get register name ' + reg)
+    // }
     for (const scope of [currentScope, ...scopes].reverse()) {
       if (
         isClosure(scope.locals[reg]) ||
@@ -241,11 +248,12 @@ const parseToCode = (ast: any): void => {
   }
 
   const cg = (...ops: any[]): any => {
-    // const isJump = (cc: string | (() => string)): boolean => typeof cc === 'string' && /^JMP/.test(cc)
-    // 不要同时跳转两次
-    // const lastCode = state.codes[state.codes.length - 1]
-    // if (isJump(c) && isJump(lastCode)) { return }
-    const operator = ops[0]
+    /** 各种动态生成 */
+    // if (typeof ops[0] === 'function') {
+    //   ops = ops[0]()
+    // }
+
+    let operator = ops[0]
     if (!operator || operator ==='undefined') {
       throw new Error('Operator cannot be ' + operator)
     }
@@ -258,11 +266,26 @@ const parseToCode = (ast: any): void => {
     // } else {
     const currentScope = getCurrentScope()
     const scopes = state.scopes
-    operants.forEach((o: string): void => touchRegister(o, currentScope, scopes))
+    console.log(operants, '--->')
+    operants.forEach((o: any): void => {
+      if (typeof o === 'string') {
+        touchRegister(o, currentScope, scopes)
+      }
+    })
     return state.codes.push((): string[] => {
-      const processedOps = operants.map((o): string => getRegisterName(o, currentScope, scopes, operator === 'VAR'))
+      // console.log(operator, operants)
+      if (typeof operator === 'function') {
+        operator = operator()
+      }
+      const processedOps = operants.map((o): string => {
+        if (typeof o === 'function') {
+          o = o()
+        }
+        return getRegisterName(o, currentScope, scopes, operator === 'VAR')
+      })
       const c = [operator, ...processedOps].join(' ')
       const ret = [c]
+      /** 分配闭包变量，但是参数闭包如何处理呢？ */
       if (operator === 'VAR' && processedOps[0].match(/^@c/)) {
         ret.push(`ALLOC ${processedOps[0]}`)
       }
@@ -272,15 +295,14 @@ const parseToCode = (ast: any): void => {
   }
 
   const callIdentifier = (id: string, numArgs: number, s: IState, isExpression: boolean): void => {
-    if (s.functionTable[id]) {
-      cg('CALL', id, numArgs, isExpression)
-    } else if (hasVars(id, s)) {
-      cg('CALL_REG', id, numArgs, isExpression)
-    } else {
-      // const reg = newRegister()
-      cg('CALL_CTX', `"${id}"`, numArgs, isExpression)
-      // freeRegister()
-    }
+    // if (s.functionTable[id]) {
+    //   cg('CALL', id, numArgs, isExpression)
+    // } else
+    const { locals, params, scopes, globals } = s
+    cg((): string => {
+      console.log('================================>', locals, params, scopes)
+      return hasVars2(id, locals, params, scopes, globals) ? 'CALL_REG' : 'CALL_CTX'
+    }, id, numArgs, isExpression)
   }
 
   /**
@@ -429,7 +451,9 @@ const parseToCode = (ast: any): void => {
         const ret = s.r0 = newRegister()
         c(node.callee, s)
         freeRegister()
-        cg(`CALL_REG`, ret, node.arguments.length, isNewExpression)
+        // callIdentifier(ret, )
+        callIdentifier(ret, node.arguments.length, s, isNewExpression)
+        // cg(`CALL_REG`, ret, node.arguments.length, isNewExpression)
       }
       if (retReg) {
         cg(`MOV`, retReg, `$RET`)
@@ -457,8 +481,9 @@ const parseToCode = (ast: any): void => {
           val = `"${unescape(val)}"`
         }
       }
+      // console.log("==========================================>", s.r0, val)
       if (s.r0) {
-        cg(`MOV`, s.r0, val)
+        cg(`MOV`, s.r0, `${val}`)
       }
     },
 
@@ -768,12 +793,19 @@ const parseToCode = (ast: any): void => {
     UpdateExpression(node: et.UpdateExpression, s: any, c: any): any {
       const op = node.operator
       const [newReg, freeReg] = newRegisterController()
+      const retReg = s.r0
       const reg = newReg()
       getValueOfNode(node.argument, reg, s, c)
+      if (retReg && !node.prefix) {
+        cg(`MOV ${retReg} ${reg}`)
+      }
       if (op === '++') {
         cg(`ADD`, `${reg}`, `1`)
       } else if (op === '--') {
         cg(`SUB`, `${reg}`, `1`)
+      }
+      if (retReg && node.prefix) {
+        cg(`MOV ${retReg} ${reg}`)
       }
       setValueToNode(node.argument, reg, s, c)
       freeReg()
@@ -798,8 +830,8 @@ const parseToCode = (ast: any): void => {
         if (!el) {
           return
         }
-        const valReg = s.r0 = newRegister()
-        c(el, s)
+        const valReg = newRegister()
+        getValueOfNode(el, valReg, s, c)
         cg(`SET_KEY`, `${reg}`, `${i}`, `${valReg}`)
         freeRegister()
       })
@@ -824,8 +856,11 @@ const parseToCode = (ast: any): void => {
 
     ReturnStatement(node: et.ReturnStatement, s: any, c: any): any {
       const reg = s.r0 = newRegister()
-      c(node.argument, s)
-      cg(`MOV`, `$RET`, `${reg}`)
+      if (node.argument) {
+        c(node.argument, s)
+        cg(`MOV`, `$RET`, `${reg}`)
+      }
+      cg('RET')
       freeRegister()
     },
 
@@ -895,10 +930,6 @@ const parseToCode = (ast: any): void => {
       popLoopLabels()
       freeReg()
     },
-
-    SwitchCase(node: et.SwitchCase, s: any, c: any): any {
-
-    },
   })
 
   state.maxRegister = maxRegister
@@ -941,15 +972,29 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
       return o
     }, {})
     state.locals = {}
-    state.currentScope = { params: state.params, locals: state.locals }
+    const currentScope: IScope = state.currentScope = { params: state.params, locals: state.locals }
     state.codes.push(getFunctionDecleration(funcAst!))
+    state.codes.push((): string[] => {
+      const paramClosureDeclarations = Object.keys(currentScope.params).reduce((o: any, param: string): any => {
+        if (currentScope.params[param] === VariableType.CLOSURE) {
+          const closureName = currentScope.closureTable[param]
+          if (!closureName) { throw new Error(`Parameter ${param} is closure but not allow name`) }
+          o.push(`ALLOC ${closureName}`)
+          o.push(`MOV ${closureName} ${param}`)
+        }
+        return o
+      }, [])
+      return paramClosureDeclarations.length > 0 ? paramClosureDeclarations : []
+    })
     state.scopes = funcAst!.scopes
     // console.log(funcAst?.name, funcAst?.scopes)
     processFunctionAst(funcAst?.body.body!)
+    const paramsHead = []
   }
 
   state.codes = state.codes.map((s: string | (() => string[])): string[] => {
     const f = (c: string): string => {
+      if (c.trim() === '') { return ''}
       if (c.startsWith('func') || c.startsWith('LABEL') || c.startsWith('}')) {
         return c + '\n'
       }
