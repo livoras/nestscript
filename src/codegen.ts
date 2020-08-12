@@ -14,9 +14,9 @@ const enum VariableType {
 }
 
 interface IScope {
-  params: any,
-  locals: any,
-  closureTable?: any,
+  params: Map<string, any>,
+  locals: Map<string, any>,
+  closureTable?: Map<string, any>,
   closureCounter?: number // 只有最外层的函数有
 }
 
@@ -30,8 +30,8 @@ interface IFunction {
 interface IState {
   tmpVariableName: string,
   globals: any,
-  locals: any,
-  params: any,
+  locals: Map<string, any>,
+  params: Map<string, any>,
   scopes: IScope[],
   isGlobal: boolean,
   labelIndex: number,
@@ -88,6 +88,32 @@ class Codegen {
   }
 }
 
+const getVariablesByFunctionAstBody = (ast: any): Map<string, any> => {
+  const locals = new Map()
+  walk.recursive(ast, locals, {
+    /** 要处理 (global, local) * (function, other) 的情况 */
+    VariableDeclarator: (node: et.VariableDeclarator, s: any, c: any): void => {
+      // console.log(node)
+      // let funcName = ''
+      if (node.id.type === 'Identifier') {
+        locals.set(node.id.name, VariableType.VARIABLE)
+      } else {
+        throw new Error("Unprocessed node.id.type " + node.id.type + " " + node.id)
+      }
+    },
+
+    FunctionDeclaration(node: et.FunctionDeclaration, s: any, c: any): any {
+      if (node.id) {
+        locals.set(node.id.name, VariableType.VARIABLE)
+      }
+    },
+  })
+  return locals
+}
+
+const isNumber = (n: any): boolean => typeof n === 'number'
+const isString = (n: any): boolean => typeof n === 'string'
+
 const codegen = new Codegen()
 let state: IState
 const createNewState = (): IState => {
@@ -95,14 +121,14 @@ const createNewState = (): IState => {
     tmpVariableName: '',
     isGlobal: true,
     globals: {},
-    locals: {},
+    locals: new Map(),
     currentScope: {
-      params: {},
-      locals: {},
-      closureTable: {},
+      params: new Map(),
+      locals: new Map(),
+      closureTable: new Map(),
       closureCounter: 0,
     },
-    params: {},
+    params: new Map(),
     scopes: [],
     labelIndex: 0,
     functionIndex: 0,
@@ -174,25 +200,17 @@ const parseToCode = (ast: any): void => {
   }
 
   const hasLocalOrParam = (name: string, s: IState): boolean => {
-    return s.locals[name] || s.params[name]
+    return s.locals.get(name) || s.params.get(name)
   }
 
   const hasVars = (name: string, s: any): boolean => {
     if (hasLocalOrParam(name, s)) { return true }
     for (const scope of [...state.scopes]) {
-      if (scope.locals[name] || scope.params[name]) {
+      if (scope.locals.get(name) || scope.params.get(name)) {
         return true
       }
     }
-    return !!s.globals[name]
-  }
-
-  const hasVars2 = (name: string, locals: any, params: any, scopes: IScope[], globals: any): boolean => {
-    console.log("GLOBAL -> ", globals, name)
-    return locals[name] ||
-      params[name] ||
-      scopes.some((s: IScope): boolean => s.locals[name] || s.params[name]) ||
-      globals[name]
+    return !!s.globals.get(name)
   }
 
   const getCurrentScope = (): IScope => {
@@ -201,28 +219,28 @@ const parseToCode = (ast: any): void => {
 
   const allocateClosure = (root: IScope, scope: IScope, reg: string): void => {
     if (!scope.closureTable) {
-      scope.closureTable = {}
+      scope.closureTable = new Map()
     }
-    if (!scope.closureTable[reg]) {
+    if (!scope.closureTable.get(reg)) {
       if (root.closureCounter === void 0) {
         throw new Error("Root scope closure counter cannot be 0.")
       } else {
-        scope.closureTable[reg] = `@c${root.closureCounter++}`
+        scope.closureTable.set(reg, `@c${root.closureCounter++}`)
       }
     }
   }
 
   const touchRegister = (reg: string, currentScope: IScope, scopes: IScope[]): void => {
     /** 这个变量当前 scope 有了就不管了 */
-    if (currentScope.locals[reg] || currentScope.params[reg]) { return }
+    if (currentScope.locals.get(reg) || currentScope.params.get(reg)) { return }
     for (const scope of [...scopes].reverse()) {
-      if (scope.locals[reg]) {
-        scope.locals[reg] = VariableType.CLOSURE
+      if (scope.locals.get(reg)) {
+        scope.locals.set(reg, VariableType.CLOSURE)
         allocateClosure(scopes[0], scope, reg)
         return
       }
-      if (scope.params[reg]) {
-        scope.params[reg] = VariableType.CLOSURE
+      if (scope.params.get(reg)) {
+        scope.params.set(reg, VariableType.CLOSURE)
         allocateClosure(scopes[0], scope, reg)
         return
       }
@@ -237,13 +255,13 @@ const parseToCode = (ast: any): void => {
     // }
     for (const scope of [currentScope, ...scopes].reverse()) {
       if (
-        isClosure(scope.locals[reg]) ||
-        isClosure(scope.params[reg])
+        isClosure(scope.locals.get(reg)) ||
+        isClosure(scope.params.get(reg))
       ) {
-        if (!scope.closureTable[reg]) {
+        if (!scope.closureTable?.get(reg)) {
           throw new Error(`Cannot found clouse variable ${reg} on closure table`)
         }
-        return scope.closureTable[reg]
+        return scope.closureTable.get(reg)
       }
     }
     return reg
@@ -313,15 +331,12 @@ const parseToCode = (ast: any): void => {
     // if (s.functionTable[id]) {
     //   cg('CALL', id, numArgs, isExpression)
     // } else
-    const { locals, params, scopes, globals } = s
     touchRegister(id, getCurrentScope(), state.scopes)
-    cg((): string => {
-      // console.log('================================>', locals, params, scopes)
-      return hasVars2(id, locals, params, scopes, globals) ? 'CALL_REG' : 'CALL_CTX'
-    }, (): string => {
-      const hasName = hasVars2(id, locals, params, scopes, globals)
-      return hasName ? id : `'${id}'`
-    }, numArgs, isExpression)
+    if (hasVars(id, s)) {
+      cg(`CALL_REG`, id, numArgs, isExpression)
+    } else {
+      cg(`CALL_CTX`, `'${id}'`, numArgs, isExpression)
+    }
   }
 
   /**
@@ -354,21 +369,11 @@ const parseToCode = (ast: any): void => {
   const getValueOfNode = (node: any, reg: string, s: IState, c: any): any => {
     if (node.type === 'Identifier') {
       if (reg) {
-        const { locals, params, scopes, globals } = s
-        const name = node.name
-        cg((): string => {
-          if (hasVars2(name, locals, params, scopes, globals)) {
-            return 'MOV'
-          } else {
-            return 'MOV_CTX'
-          }
-        }, `${ reg }`, (): string => {
-          if (hasVars2(name, locals, params, scopes, globals)) {
-            return name
-          } else {
-            return `'${name}'`
-          }
-        })
+        if (hasVars(node.name, s)) {
+          cg(`MOV`, `${ reg }`, `${ node.name }`, )
+        } else {
+          cg(`MOV_CTX`, `${ reg }`, `"${node.name}"`)
+        }
       }
     } else {
       s.r0 = reg
@@ -379,10 +384,10 @@ const parseToCode = (ast: any): void => {
   const declareVariable = (s: IState, name: string): void => {
     if (state.isGlobal) {
       cg(`GLOBAL`, name)
-      s.globals[name] = VariableType.VARIABLE
+      s.globals.set(name, VariableType.VARIABLE)
     } else {
       cg(`VAR`, `${name}`)
-      s.locals[name] = VariableType.VARIABLE
+      s.locals.set(name, VariableType.VARIABLE)
     }
   }
 
@@ -398,6 +403,12 @@ const parseToCode = (ast: any): void => {
    * 表达式结果处理原则：所有没有向下一层传递 s.r0 的都要处理 s.r0
    */
   walk.recursive(ast, state, {
+    Identifier: (node: et.Identifier, s: any, c: any): void => {
+      if (s.r0) {
+        getValueOfNode(node, s.r0, s, c)
+      }
+    },
+
     VariableDeclaration: (node: et.VariableDeclaration, s: any, c: any): void => {
       // console.log("VARIABLE...", node)
       node.declarations.forEach((n: any): void => c(n, state))
@@ -988,6 +999,7 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
   }
 
   state = createNewState()
+  state.globals = getVariablesByFunctionAstBody(ret)
   state.codes.push('func @@main() {', 0)
   processFunctionAst(ret)
 
@@ -996,16 +1008,16 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     state.maxRegister = 0
     const funcAst = state.functions.shift()
     state.params = funcAst!.body.params.reduce((o, param): any => {
-      o[(param as et.Identifier).name] = VariableType.VARIABLE
+      o.set((param as et.Identifier).name, VariableType.VARIABLE)
       return o
-    }, {})
-    state.locals = {}
+    }, new Map())
+    state.locals = getVariablesByFunctionAstBody(funcAst?.body.body)
     const currentScope: IScope = state.currentScope = { params: state.params, locals: state.locals }
     state.codes.push(getFunctionDecleration(funcAst!), 0)
     state.codes.push((): string[] => {
-      const paramClosureDeclarations = Object.keys(currentScope.params).reduce((o: any, param: string): any => {
-        if (currentScope.params[param] === VariableType.CLOSURE) {
-          const closureName = currentScope.closureTable[param]
+      const paramClosureDeclarations = [...currentScope.params.keys()].reduce((o: any, param: string): any => {
+        if (currentScope.params.get(param) === VariableType.CLOSURE) {
+          const closureName = currentScope.closureTable?.get(param)
           if (!closureName) { throw new Error(`Parameter ${param} is closure but not allow name`) }
           o.push(`ALLOC ${closureName}`)
           o.push(`MOV ${closureName} ${param}`)
