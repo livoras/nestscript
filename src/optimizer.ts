@@ -1,12 +1,12 @@
 import { Certificate, createDecipher, createDiffieHellman } from 'crypto'
-import { parseCode } from './parser'
+import { parseCode, parseAssembler, IParsedFunction } from './parser'
 import { I } from './vm'
 import { use } from 'chai'
 
 export const optimizeCode = (code: string): string => {
-  return (code.trim().match(/func[\s\S]+?\}/g) || [])
-    .map(optimizeFunction)
-    .join('\n')
+  const funcs = parseAssembler(code)
+  // console.log(funcs, '?????')
+  return funcs.map(optimizeFunction).join('\n')
 }
 
 const enum OU {
@@ -47,6 +47,7 @@ const codeToUseAge: { [x in I]: OU[] } = {
   [I.XOR]: BOTH_GET,
   [I.SHL]: BOTH_GET,
   [I.SHR]: BOTH_GET,
+  [I.ZSHR]: BOTH_GET,
   [I.JMP]: [OU.GET],
   [I.JE]: THREE_GET,
   [I.JNE]: THREE_GET,
@@ -80,6 +81,7 @@ const codeToUseAge: { [x in I]: OU[] } = {
   [I.VOID]: [OU.BOTH],
   [I.DEL]: [OU.BOTH],
   [I.NEG]: [OU.BOTH],
+  [I.TYPE_OF]: [OU.BOTH],
   [I.INST_OF]: BOTH_GET,
   [I.IN]: BOTH_GET,
   [I.MOV_THIS]: [OU.SET],
@@ -106,11 +108,8 @@ interface ICandidate {
   usages: { codeIndex: number, position: number }[],
 }
 
-const optimizeFunction = (funcString: string): string => {
-  funcString = funcString.trim()
-  const cap = funcString.match(/^(func[\s\S]+?\{)([\s\S]+?)\}$/)
-  const head = cap![1]
-  let codes: any[] = parseCode(cap![2])
+const optimizeFunction = (func: IParsedFunction): string => {
+  let codes: any[] = func.instructions
   const candidates: Map<string, ICandidate> = new Map()
   const isInCandidates = (reg: string): boolean => candidates.has(reg)
   const isReg = (s: string): boolean => s.startsWith('%')
@@ -133,7 +132,12 @@ const optimizeFunction = (funcString: string): string => {
     const { codeIndex, value, usages } = candidate
     codes[codeIndex] = null
     for (const usage of usages) {
-      codes[usage.codeIndex][usage.position] = value
+      try {
+        codes[usage.codeIndex][usage.position] = value
+      } catch(e) {
+        // console.log('----. REG', usage, codes[usage.codeIndex])
+        throw new Error(e)
+      }
     }
   }
 
@@ -157,7 +161,7 @@ const optimizeFunction = (funcString: string): string => {
           position: 2,
         })
       }
-      if (!isReg(dst)) { return }
+      if (!isReg(dst) || isReg(value)) { return }
       if (isInCandidates(dst)) {
         processReg(dst)
       }
@@ -173,8 +177,15 @@ const optimizeFunction = (funcString: string): string => {
         if (j === 0) { return }
         if (isIgnoreOperator(operator)) { return }
         if (!isReg(operant)) { return }
-        const useType = codeToUseAge[I[operator]][j - 1]
-        const isGetOperant = useType === OU.GET
+        let useType
+        let isGetOperant
+        try {
+          useType = codeToUseAge[I[operator]][j - 1]
+          isGetOperant = useType === OU.GET
+        } catch(e) {
+          console.log('ERROR operator --> ', operator)
+          throw new Error(e)
+        }
         if (!isInCandidates(operant)) { return }
         if (isGetOperant) {
           const candidate = candidates.get(operant)!
@@ -204,7 +215,7 @@ const optimizeFunction = (funcString: string): string => {
     return '  ' + c.join(' ') + ';\n'
   }).join('')
   const ret = `
-${head}
+func ${func.functionName} (${func.params.join(', ')}) {
 ${codeString}
 }
 `

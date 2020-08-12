@@ -6013,7 +6013,7 @@
      */
     function getRawTag(value) {
       console.log("RUNNING GET W")
-      console.log('getRawTag', 1, symToStringTag)
+      console.log('getRawTag', 1, hasOwnProperty)
       var isOwn = hasOwnProperty.call(value, symToStringTag),
           tag = value[symToStringTag];
 

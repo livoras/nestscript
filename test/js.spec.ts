@@ -68,6 +68,17 @@ describe("uinary operators", (): void => {
       expect(a).equal(undefined)
     `)
   })
+  it('undefined variable', (): void => {
+    tm(`
+    var undefined
+    var n = undefined
+    if (n === undefined) {
+      console.log(n)
+    } else {
+      console.log("undefined")
+    }
+    `)
+  })
   it('~a', (): void => {
     tm(`
       const a = 7
@@ -173,6 +184,15 @@ describe("binary operators", (): void => {
     expect(b % a).equal(5)
     expect(a).equal(25)
     expect(b).equal(5)
+    `)
+  })
+
+  it('a++, ++a', (): void => {
+    tm(`
+    let a = 1
+    let b = 1
+    expect(a++).equal(1)
+    expect(++b).equal(2)
     `)
   })
 
@@ -328,6 +348,7 @@ describe('function', (): void => {
   it('call function of virual machine from raw js with proper this', (): void => {
     tm(`
     wrapper.sub = function (a, b) {
+      this && 1
       console.log(this, a - b + this.a, 'this is the result')
       return a - b + this.a + this.c
     }
@@ -390,6 +411,18 @@ describe('function', (): void => {
     expect(add(3, 5)).equal(8)
     `, ctx)
     expect(ctx.wrapper.run()).equal(3)
+  })
+
+  it(`define function`, (): void => {
+    tm(`
+    const a = baseProperty("hello")
+    console.log(a({ hello: "good" }))
+    function baseProperty(key) {
+      return function(object) {
+        return object == null ? undefined : object[key];
+      };
+    }
+    `)
   })
 
   it(`new vm function as class`, (): void => {
@@ -684,5 +717,121 @@ describe("continue and break", (): void => {
 
 })
 
-// describe('try and catch', (): void => {
-// })
+describe('switch case and break', (): void => {
+  const spy = makeSpy()
+  it('switch case', (): void => {
+    tm(`
+    let i = 2
+    switch(i) {
+      case 0:
+        console.log('ok')
+        spy(1)
+        break
+      case 2:
+        console.log(2)
+        spy('ok')
+      case 3:
+        console.log(3)
+        break
+      default:
+        spy('default')
+        console.log("NOTHING")
+    }
+    expect(spy).on.nth(1).be.called.with('ok')
+    `, { spy })
+  })
+})
+
+describe("misc", (): void => {
+  it('return sequence', (): void => {
+    tm(`
+    const a = () => {
+      return (
+        a ? "A" : "B",
+        "C"
+      );
+    }
+    expect(a()).equal("C")
+    `)
+  })
+
+  it(`return logical`, (): void => {
+    tm(`
+    function pt(n, t, r) {
+      return (t && r, n)
+    }
+    `)
+  })
+
+  it('access properties', (): void => {
+    tm(`
+    expect(typeof Function.prototype.toString).equal('function');
+    `, { Function })
+  })
+
+  it(`isObject`, (): void => {
+    tm(`
+      expect(typeof isObject).equal('function')
+      function isObject(value) {
+        console.log('9----------------->!')
+        var type = typeof value;
+        return value != null && (type == 'object' || type == 'function');
+      }
+    `)
+  })
+})
+
+describe("closure", (): void => {
+  it('call function of closure variable', (): void => {
+    tm(`
+    const a = (add) => {
+      return function() {
+        return this.b + add(this.c)
+      }
+    }
+
+    const ret = a((n) => ++n)
+    const num = ret.call({ b: 1, c: 2 })
+    expect(num).equal(4)
+    `)
+  })
+
+  it(`calling function in closure`, (): void => {
+    tm(`
+      const a = () => {
+        const b = (n) => {
+          return isObject(n) ? 'OK' : 'NO OK'
+        }
+        expect(b({})).equal('OK')
+        function isObject(value) {
+          return true
+        }
+      }
+      a()
+    `)
+  })
+
+  it(`same name argument`, (): void => {
+    tm(`
+    (() => {
+      // var name = 'jerry'
+      const a = (name) => name
+      expect(a('lucy')).equal('lucy')
+    })()
+    `)
+  })
+
+  it(`?`, (): void => {
+    tm(`
+      (() => {
+        const hasOwnProperty = () => {}
+        const getRawTag = () => {
+          expect(typeof hasOwnProperty).equal('function')
+          hasOwnProperty.call({})
+        }
+        getRawTag()
+      })()
+    `)
+  })
+})
+// tslint:disable-next-line: max-file-line-count

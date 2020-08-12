@@ -5,6 +5,7 @@
 const acorn = require("acorn")
 const walk = require("acorn-walk")
 import * as et from "estree"
+import { CategoriesPriorityQueue } from './utils'
 
 const enum VariableType {
   FUNCTION = 1,
@@ -13,9 +14,9 @@ const enum VariableType {
 }
 
 interface IScope {
-  params: any,
-  locals: any,
-  closureTable?: any,
+  params: Map<string, any>,
+  locals: Map<string, any>,
+  closureTable?: Map<string, any>,
   closureCounter?: number // 只有最外层的函数有
 }
 
@@ -29,15 +30,15 @@ interface IFunction {
 interface IState {
   tmpVariableName: string,
   globals: any,
-  locals: any,
-  params: any,
+  locals: Map<string, any>,
+  params: Map<string, any>,
   scopes: IScope[],
   isGlobal: boolean,
   labelIndex: number,
   functionIndex: number,
   functionTable: any,
   functions: IFunction[],
-  codes: (string | (() => string[]))[],
+  codes: CategoriesPriorityQueue<string | (() => string[])>,
   r0: string | null,
   r1: string | null,
   r2: string | null,
@@ -76,6 +77,7 @@ const codeMap = {
   '^': 'XOR',
   '<<': 'SHL',
   '>>': 'SHR',
+  '>>>': 'ZSHR',
   "in": "IN",
   'instanceof': 'INST_OF',
 }
@@ -86,6 +88,32 @@ class Codegen {
   }
 }
 
+const getVariablesByFunctionAstBody = (ast: any): Map<string, any> => {
+  const locals = new Map()
+  walk.recursive(ast, locals, {
+    /** 要处理 (global, local) * (function, other) 的情况 */
+    VariableDeclarator: (node: et.VariableDeclarator, s: any, c: any): void => {
+      // console.log(node)
+      // let funcName = ''
+      if (node.id.type === 'Identifier') {
+        locals.set(node.id.name, VariableType.VARIABLE)
+      } else {
+        throw new Error("Unprocessed node.id.type " + node.id.type + " " + node.id)
+      }
+    },
+
+    FunctionDeclaration(node: et.FunctionDeclaration, s: any, c: any): any {
+      if (node.id) {
+        locals.set(node.id.name, VariableType.VARIABLE)
+      }
+    },
+  })
+  return locals
+}
+
+const isNumber = (n: any): boolean => typeof n === 'number'
+const isString = (n: any): boolean => typeof n === 'string'
+
 const codegen = new Codegen()
 let state: IState
 const createNewState = (): IState => {
@@ -93,21 +121,21 @@ const createNewState = (): IState => {
     tmpVariableName: '',
     isGlobal: true,
     globals: {},
-    locals: {},
+    locals: new Map(),
     currentScope: {
-      params: {},
-      locals: {},
-      closureTable: {},
+      params: new Map(),
+      locals: new Map(),
+      closureTable: new Map(),
       closureCounter: 0,
     },
-    params: {},
+    params: new Map(),
     scopes: [],
     labelIndex: 0,
     functionIndex: 0,
     functions: [],
     functionTable: {},
     funcName: '',
-    codes: [],
+    codes: new CategoriesPriorityQueue(),
     r0: '', // 寄存器的名字
     r1: '', // 寄存器的名字
     r2: '', //
@@ -172,17 +200,17 @@ const parseToCode = (ast: any): void => {
   }
 
   const hasLocalOrParam = (name: string, s: IState): boolean => {
-    return s.locals[name] || s.params[name]
+    return s.locals.get(name) || s.params.get(name)
   }
 
   const hasVars = (name: string, s: any): boolean => {
     if (hasLocalOrParam(name, s)) { return true }
     for (const scope of [...state.scopes]) {
-      if (scope.locals[name] || scope.params[name]) {
+      if (scope.locals.get(name) || scope.params.get(name)) {
         return true
       }
     }
-    return !!s.globals[name]
+    return !!s.globals.get(name)
   }
 
   const getCurrentScope = (): IScope => {
@@ -191,28 +219,28 @@ const parseToCode = (ast: any): void => {
 
   const allocateClosure = (root: IScope, scope: IScope, reg: string): void => {
     if (!scope.closureTable) {
-      scope.closureTable = {}
+      scope.closureTable = new Map()
     }
-    if (!scope.closureTable[reg]) {
+    if (!scope.closureTable.get(reg)) {
       if (root.closureCounter === void 0) {
         throw new Error("Root scope closure counter cannot be 0.")
       } else {
-        scope.closureTable[reg] = `@c${root.closureCounter++}`
+        scope.closureTable.set(reg, `@c${root.closureCounter++}`)
       }
     }
   }
 
   const touchRegister = (reg: string, currentScope: IScope, scopes: IScope[]): void => {
     /** 这个变量当前 scope 有了就不管了 */
-    if (currentScope.locals[reg] || currentScope.params[reg]) { return }
+    if (currentScope.locals.get(reg) || currentScope.params.get(reg)) { return }
     for (const scope of [...scopes].reverse()) {
-      if (scope.locals[reg]) {
-        scope.locals[reg] = VariableType.CLOSURE
+      if (scope.locals.get(reg)) {
+        scope.locals.set(reg, VariableType.CLOSURE)
         allocateClosure(scopes[0], scope, reg)
         return
       }
-      if (scope.params[reg]) {
-        scope.params[reg] = VariableType.CLOSURE
+      if (scope.params.get(reg)) {
+        scope.params.set(reg, VariableType.CLOSURE)
         allocateClosure(scopes[0], scope, reg)
         return
       }
@@ -221,51 +249,93 @@ const parseToCode = (ast: any): void => {
 
   const getRegisterName = (reg: string, currentScope: IScope, scopes: IScope[], isVar: boolean = false): string => {
     const isClosure = (v: VariableType): boolean => v === VariableType.CLOSURE
+    // if (reg === 'undefined') {
+    //   console.log('===========>', currentScope)
+    //   throw new Error('cannot get register name ' + reg)
+    // }
     for (const scope of [currentScope, ...scopes].reverse()) {
       if (
-        isClosure(scope.locals[reg]) ||
-        isClosure(scope.params[reg])
+        isClosure(scope.locals.get(reg)) ||
+        isClosure(scope.params.get(reg))
       ) {
-        return scope.closureTable[reg]
+        if (!scope.closureTable?.get(reg)) {
+          throw new Error(`Cannot found clouse variable ${reg} on closure table`)
+        }
+        return scope.closureTable.get(reg)
       }
     }
     return reg
   }
 
   const cg = (...ops: any[]): any => {
-    // const isJump = (cc: string | (() => string)): boolean => typeof cc === 'string' && /^JMP/.test(cc)
-    // 不要同时跳转两次
-    // const lastCode = state.codes[state.codes.length - 1]
-    // if (isJump(c) && isJump(lastCode)) { return }
-    const operator = ops[0]
+    /** 各种动态生成 */
+    // if (typeof ops[0] === 'function') {
+    //   ops = ops[0]()
+    // }
+
+    let operator = ops[0]
+    if (!operator || operator ==='undefined') {
+      throw new Error('Operator cannot be ' + operator)
+    }
     const operants = ops.slice(1)
+    if (operator === 'MOV' && ops[1] === 'undefined') {
+      throw new Error('First operant of MOV cannot be undefined' )
+    }
     // if (ops[0] === 'MOV') {
     //   state.codes.push(createMovCode(ops[1], ops[2], getCurrentScope()))
     // } else {
     const currentScope = getCurrentScope()
     const scopes = state.scopes
-    operants.forEach((o: string): void => touchRegister(o, currentScope, scopes))
+    // console.log(operants, '--->')
+    operants.forEach((o: any): void => {
+      if (typeof o === 'string') {
+        touchRegister(o, currentScope, scopes)
+      }
+    })
+    /** 这里需要提前一些指令，例如变量声明、全局变量、有名函数声明 */
+    let priority
+    if ('VAR' === operator) {
+      priority = 1
+    } else if ('GLOBA' === operator) {
+      priority = 2
+    } else if ('ALLOC' === operator) {
+      priority = 3
+    } else if ('FUNC' === operator && hasVars(operants[0], state)) {
+      priority = 4
+    } else {
+      priority = 100
+    }
     return state.codes.push((): string[] => {
-      const processedOps = operants.map((o): string => getRegisterName(o, currentScope, scopes, operator === 'VAR'))
+      // console.log(operator, operants)
+      if (typeof operator === 'function') {
+        operator = operator()
+      }
+      const processedOps = operants.map((o): string => {
+        if (typeof o === 'function') {
+          o = o()
+        }
+        return getRegisterName(o, currentScope, scopes, operator === 'VAR')
+      })
       const c = [operator, ...processedOps].join(' ')
       const ret = [c]
+      /** 分配闭包变量，但是参数闭包如何处理呢？ */
       if (operator === 'VAR' && processedOps[0].match(/^@c/)) {
         ret.push(`ALLOC ${processedOps[0]}`)
       }
       return ret
-    })
+    }, priority)
     // }
   }
 
   const callIdentifier = (id: string, numArgs: number, s: IState, isExpression: boolean): void => {
-    if (s.functionTable[id]) {
-      cg('CALL', id, numArgs, isExpression)
-    } else if (hasVars(id, s)) {
-      cg('CALL_REG', id, numArgs, isExpression)
+    // if (s.functionTable[id]) {
+    //   cg('CALL', id, numArgs, isExpression)
+    // } else
+    touchRegister(id, getCurrentScope(), state.scopes)
+    if (hasVars(id, s)) {
+      cg(`CALL_REG`, id, numArgs, isExpression)
     } else {
-      // const reg = newRegister()
-      cg('CALL_CTX', `"${id}"`, numArgs, isExpression)
-      // freeRegister()
+      cg(`CALL_CTX`, `'${id}'`, numArgs, isExpression)
     }
   }
 
@@ -300,7 +370,7 @@ const parseToCode = (ast: any): void => {
     if (node.type === 'Identifier') {
       if (reg) {
         if (hasVars(node.name, s)) {
-          cg(`MOV`, `${ reg }`, `${ node.name }`)
+          cg(`MOV`, `${ reg }`, `${ node.name }`, )
         } else {
           cg(`MOV_CTX`, `${ reg }`, `"${node.name}"`)
         }
@@ -314,10 +384,10 @@ const parseToCode = (ast: any): void => {
   const declareVariable = (s: IState, name: string): void => {
     if (state.isGlobal) {
       cg(`GLOBAL`, name)
-      s.globals[name] = VariableType.VARIABLE
+      s.globals.set(name, VariableType.VARIABLE)
     } else {
       cg(`VAR`, `${name}`)
-      s.locals[name] = VariableType.VARIABLE
+      s.locals.set(name, VariableType.VARIABLE)
     }
   }
 
@@ -333,6 +403,12 @@ const parseToCode = (ast: any): void => {
    * 表达式结果处理原则：所有没有向下一层传递 s.r0 的都要处理 s.r0
    */
   walk.recursive(ast, state, {
+    Identifier: (node: et.Identifier, s: any, c: any): void => {
+      if (s.r0) {
+        getValueOfNode(node, s.r0, s, c)
+      }
+    },
+
     VariableDeclaration: (node: et.VariableDeclaration, s: any, c: any): void => {
       // console.log("VARIABLE...", node)
       node.declarations.forEach((n: any): void => c(n, state))
@@ -415,6 +491,7 @@ const parseToCode = (ast: any): void => {
         const ret = s.r0 = newRegister()
         c(node.callee, s)
         freeRegister()
+        /** 这里不能用 callIdentifier */
         cg(`CALL_REG`, ret, node.arguments.length, isNewExpression)
       }
       if (retReg) {
@@ -424,9 +501,11 @@ const parseToCode = (ast: any): void => {
     },
 
     Literal: (node: et.Literal, s: any): void => {
+      const unescape = (ss: string): string => ss.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+
       if ((node as any).regex) {
         const { pattern, flags } = (node as any).regex
-        cg('NEW_REG', s.r0, `"${pattern}"`, `"${flags}"`)
+        cg('NEW_REG', s.r0, `"${unescape(pattern)}"`, `"${flags}"`)
         return
       }
 
@@ -436,10 +515,14 @@ const parseToCode = (ast: any): void => {
       } else if (node.value === false) {
         val = false
       } else {
-        val = node.raw
+        val = node.value
+        if (typeof val === 'string') {
+          val = `"${unescape(val)}"`
+        }
       }
+      // console.log("==========================================>", s.r0, val)
       if (s.r0) {
-        cg(`MOV`, s.r0, val)
+        cg(`MOV`, s.r0, `${val}`)
       }
     },
 
@@ -551,6 +634,7 @@ const parseToCode = (ast: any): void => {
         '~': 'NOT',
         '!': 'NEG',
         'void': 'VOID',
+        'typeof': 'TYPE_OF',
       }
       const [newReg, freeReg] = newRegisterController()
       const cmd = codesMap[node.operator]
@@ -613,7 +697,10 @@ const parseToCode = (ast: any): void => {
       const leftReg = s.r0 = newReg()
       getValueOfNode(node.left, leftReg, s, c)
       const op = node.operator
-      cg(`MOV`, `${retReg}`, `${leftReg}`)
+      // console.log(node)
+      if (retReg) {
+        cg(`MOV`, `${retReg}`, `${leftReg}`)
+      }
       if (op === '&&') {
         cg(`JF`, `${leftReg}`, `${endLabel}`)
       } else {
@@ -621,7 +708,9 @@ const parseToCode = (ast: any): void => {
       }
       const rightReg = s.r0 = newReg()
       getValueOfNode(node.right, rightReg, s, c)
-      cg(op === '&&' ? `LG_AND` : `LG_OR`, `${retReg}`, `${rightReg}`)
+      if (retReg) {
+        cg(op === '&&' ? `LG_AND` : `LG_OR`, `${retReg}`, `${rightReg}`)
+      }
       cg('LABEL', `${endLabel}:`)
       freeReg()
     },
@@ -634,9 +723,6 @@ const parseToCode = (ast: any): void => {
 
       let labels: BlockLabel
       if (s.jsLabel) {
-        console.log('=============================')
-        console.log(s.jsLabel)
-        console.log('=============================')
         if (!blockEndLabels.has(s.jsLabel)) {
           throw new Error('If has `jsLabel`, label information should be set')
         }
@@ -657,6 +743,7 @@ const parseToCode = (ast: any): void => {
       pushLoopLabels(labels)
       // init
       if (node.init) {
+        // console.log('--- INTI -->', node.init)
         c(node.init, s)
       }
 
@@ -710,7 +797,9 @@ const parseToCode = (ast: any): void => {
         return
       }
 
+      // console.log(loopLabels)
       const labels = getCurrentLoopLabel()
+      // console.log(node)
       if (!labels) {
         throw new Error("Not available labels, cannot use `break` here.")
       }
@@ -743,12 +832,19 @@ const parseToCode = (ast: any): void => {
     UpdateExpression(node: et.UpdateExpression, s: any, c: any): any {
       const op = node.operator
       const [newReg, freeReg] = newRegisterController()
+      const retReg = s.r0
       const reg = newReg()
       getValueOfNode(node.argument, reg, s, c)
+      if (retReg && !node.prefix) {
+        cg(`MOV ${retReg} ${reg}`)
+      }
       if (op === '++') {
         cg(`ADD`, `${reg}`, `1`)
       } else if (op === '--') {
         cg(`SUB`, `${reg}`, `1`)
+      }
+      if (retReg && node.prefix) {
+        cg(`MOV ${retReg} ${reg}`)
       }
       setValueToNode(node.argument, reg, s, c)
       freeReg()
@@ -773,8 +869,8 @@ const parseToCode = (ast: any): void => {
         if (!el) {
           return
         }
-        const valReg = s.r0 = newRegister()
-        c(el, s)
+        const valReg = newRegister()
+        getValueOfNode(el, valReg, s, c)
         cg(`SET_KEY`, `${reg}`, `${i}`, `${valReg}`)
         freeRegister()
       })
@@ -787,20 +883,35 @@ const parseToCode = (ast: any): void => {
       const valReg = newReg()
       let key
       if (node.key.type === "Identifier") {
-        key = node.key.name
+        key = `'${node.key.name}'`
       } else if (node.key.type === "Literal") {
-        key = node.key.value
+        key = node.key.raw
       }
       getValueOfNode(node.value, valReg, s, c)
-      cg(`SET_KEY`, `${objReg}`, `"${key}"`, `${valReg}`)
+      cg(`SET_KEY`, `${objReg}`, key, `${valReg}`)
+      // cg(`SET_KEY`, `${objReg}`, `"${key}"`, `${valReg}`)
       freeReg()
     },
 
     ReturnStatement(node: et.ReturnStatement, s: any, c: any): any {
       const reg = s.r0 = newRegister()
-      c(node.argument, s)
-      cg(`MOV`, `$RET`, `${reg}`)
+      if (node.argument) {
+        c(node.argument, s)
+        cg(`MOV`, `$RET`, `${reg}`)
+      }
+      cg('RET')
       freeRegister()
+    },
+
+    SequenceExpression(node: et.SequenceExpression, s: any, c: any): any {
+      const r0 = s.r0
+      delete s.r0
+      node.expressions.forEach((n, i): void => {
+        if (i === node.expressions.length - 1) {
+          s.r0 = r0
+        }
+        c(n, s)
+      })
     },
 
     ThisExpression(node: et.ThisExpression, s: any, c: any): any {
@@ -831,6 +942,33 @@ const parseToCode = (ast: any): void => {
       blockEndLabels.delete(labelName)
       cg(`LABEL ${endLabel}:`)
     },
+
+    SwitchStatement(node: et.SwitchStatement, s: any, c: any): any {
+      const [newReg, freeReg] = newRegisterController()
+      const discriminantReg = newReg()
+      getValueOfNode(node.discriminant, discriminantReg, s, c)
+      const switchEndLabel = newLabelName()
+      const label: BlockLabel = { endLabel: switchEndLabel }
+      pushLoopLabels(label)
+      node.cases.forEach((cs: et.SwitchCase): void => {
+        const startLabel = newLabelName()
+        const endLabel = newLabelName()
+        if (cs.test) {
+          const testReg = newReg()
+          getValueOfNode(cs.test, testReg, s, c)
+          cg(`JE ${discriminantReg} ${testReg} ${startLabel}`)
+          cg(`JMP ${endLabel}`)
+        }
+        cg(`LABEL ${startLabel}:`)
+        cs.consequent.forEach((n: any): void => {
+          c(n, s)
+        })
+        cg(`LABEL ${endLabel}:`)
+      })
+      cg(`LABEL ${switchEndLabel}:`)
+      popLoopLabels()
+      freeReg()
+    },
   })
 
   state.maxRegister = maxRegister
@@ -844,24 +982,25 @@ const getFunctionDecleration = (func: IFunction): string => {
 
 export const generateAssemblyFromJs = (jsCode: string): string => {
   const ret = codegen.parse(jsCode)
+  let allCodes: any[] = []
 
   const processFunctionAst = (funcBody: et.Node): void => {
-    const codeLen = state.codes.length
-    const registersCodes: string[] = []
     /** () => a + b，无显式 return 的返回表达式 */
     if (funcBody.type !== 'BlockStatement') {
       state.r0 = '$RET'
     }
     parseToCode(funcBody)
     for (let i = 0; i < state.maxRegister; i++) {
-      registersCodes.push(`VAR %r${i}`)
+      state.codes.push(`VAR %r${i}`, 1)
     }
-    state.codes.splice(codeLen, 0, ...registersCodes)
     state.codes.push('}')
+    allCodes = [...allCodes, ...state.codes]
+    state.codes.clear()
   }
 
   state = createNewState()
-  state.codes.push('func @@main() {')
+  state.globals = getVariablesByFunctionAstBody(ret)
+  state.codes.push('func @@main() {', 0)
   processFunctionAst(ret)
 
   while (state.functions.length > 0) {
@@ -869,19 +1008,32 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     state.maxRegister = 0
     const funcAst = state.functions.shift()
     state.params = funcAst!.body.params.reduce((o, param): any => {
-      o[(param as et.Identifier).name] = VariableType.VARIABLE
+      o.set((param as et.Identifier).name, VariableType.VARIABLE)
       return o
-    }, {})
-    state.locals = {}
-    state.currentScope = { params: state.params, locals: state.locals }
-    state.codes.push(getFunctionDecleration(funcAst!))
+    }, new Map())
+    state.locals = getVariablesByFunctionAstBody(funcAst?.body.body)
+    const currentScope: IScope = state.currentScope = { params: state.params, locals: state.locals }
+    state.codes.push(getFunctionDecleration(funcAst!), 0)
+    state.codes.push((): string[] => {
+      const paramClosureDeclarations = [...currentScope.params.keys()].reduce((o: any, param: string): any => {
+        if (currentScope.params.get(param) === VariableType.CLOSURE) {
+          const closureName = currentScope.closureTable?.get(param)
+          if (!closureName) { throw new Error(`Parameter ${param} is closure but not allow name`) }
+          o.push(`ALLOC ${closureName}`)
+          o.push(`MOV ${closureName} ${param}`)
+        }
+        return o
+      }, [])
+      return paramClosureDeclarations.length > 0 ? paramClosureDeclarations : []
+    })
     state.scopes = funcAst!.scopes
     // console.log(funcAst?.name, funcAst?.scopes)
     processFunctionAst(funcAst?.body.body!)
   }
 
-  state.codes = state.codes.map((s: string | (() => string[])): string[] => {
+  allCodes = allCodes.map((s: string | (() => string[])): string[] => {
     const f = (c: string): string => {
+      if (c.trim() === '') { return ''}
       if (c.startsWith('func') || c.startsWith('LABEL') || c.startsWith('}')) {
         return c + '\n'
       }
@@ -893,6 +1045,6 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
       return s().map(f)
     }
   }).reduce((cc: string[], c: string[]): string[] => [...cc, ...c], [])
-  return state.codes.join("")
+  return allCodes.join("")
 // tslint:disable-next-line: max-file-line-count
 }

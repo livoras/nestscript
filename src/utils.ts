@@ -7,8 +7,6 @@
 // console.log(a, b, c[0])
 
 import { IOperatantType, I } from './vm'
-import { constants } from 'buffer'
-import { type } from 'os'
 
 // const d = new Float64Array(b.slice(8))
 // a[1] = 0.03
@@ -47,8 +45,13 @@ export const stringToArrayBuffer = (str: string): ArrayBuffer => {
   return buffer
 }
 
-export const getByProp = (obj: any, prop: string): any =>
-  String(prop).split('.').reduce((o: any, p: string): any => o[p], obj)
+export const getByProp = (obj: any, prop: any): any => {
+  if (typeof prop === 'string') {
+    return String(prop).split('.').reduce((o: any, p: string): any => o[p], obj)
+  } else {
+    return obj[prop]
+  }
+}
 
 // const u = { name: { age: "TOMY" } }
 // console.time("check")
@@ -254,4 +257,29 @@ const testCases = (): void => {
   }
 }
 
-// testCases()
+export class CategoriesPriorityQueue<T = any> {
+  public categories: { [x in number]: T[] } = {}
+  constructor() {}
+
+  public push(item: T, p: number = 100): void {
+    const list: T[] = this.categories[p] || []
+    list.push(item)
+    this.categories[p] = list
+  }
+
+  public clear(): void {
+    this.categories = {}
+  }
+
+  *[Symbol.iterator] (): IterableIterator<T> {
+    const ll: T[][] = Object
+      .entries(this.categories)
+      .sort(([x], [y]): number => Number(x) - Number[y])
+      .map(([_, list]): any => list)
+    for (const l of ll) {
+      for (const i of l) {
+        yield i
+      }
+    }
+  }
+}

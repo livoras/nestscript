@@ -111,6 +111,18 @@ func main() {
 * * *
 
 ## Change Log
+## 2020-08-12
+* fix 闭包问题
+* 继续编译 lodash：发现没有 try catch 的实现
+
+## 2020-08-11
+* 继续编译 lodash，发现了运行时闭包声明顺序导致无法获取闭包的 bug
+
+## 2020-08-10
+* 编译 lodash 成功(运行失败)
+* 给函数参数增加闭包声明
+* UpdateExpression 的前后缀表达存储
+
 ## 2020-08-06
 * 完成 label 语法：循环、block label
 
