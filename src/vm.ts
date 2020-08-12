@@ -67,7 +67,7 @@ class FunctionInfo {
   public getJsFunction(): CallableFunction {
     if (!this.vm) { throw new Error("VirtualMachine is not set!")}
     if (!this.closureTable) { this.closureTable = {} }
-    console.log("closure table -> ", this.closureTable)
+    // console.log("closure table -> ", this.closureTable)
     let jsFunc = this.jsFunction
     if (!jsFunc) {
       jsFunc = this.jsFunction = raw.parseVmFunctionToJsFunction(this, this.vm)
@@ -186,7 +186,7 @@ export class VirtualMachine {
 
   public setReg(dst: IOperant, src: { value: any }): void {
     if (dst.type === IOperatantType.CLOSURE_REGISTER) {
-      console.log("SET closure", dst)
+      // console.log("SET closure", dst)
       this.heap[this.makeClosureIndex(dst.index)] = src.value
     } else {
       this.stack[dst.index] = src.value
@@ -195,7 +195,7 @@ export class VirtualMachine {
 
   public getReg(operatant: IOperant): any {
     if (operatant.type === IOperatantType.CLOSURE_REGISTER) {
-      console.log("GET closure", operatant)
+      // console.log("GET closure", operatant)
       return this.heap[this.makeClosureIndex(operatant.index)]
     } else {
       return this.stack[operatant.index]

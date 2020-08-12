@@ -34,6 +34,8 @@ export default class Run extends Command {
       RegExp,
       Object,
       TypeError,
+      ArrayBuffer,
+      DataView,
       console,
       Date,
     })

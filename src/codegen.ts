@@ -5,6 +5,7 @@
 const acorn = require("acorn")
 const walk = require("acorn-walk")
 import * as et from "estree"
+import { CategoriesPriorityQueue } from './utils'
 
 const enum VariableType {
   FUNCTION = 1,
@@ -37,8 +38,7 @@ interface IState {
   functionIndex: number,
   functionTable: any,
   functions: IFunction[],
-  headCodes: (string | (() => string[]))[],
-  codes: (string | (() => string[]))[],
+  codes: CategoriesPriorityQueue<string | (() => string[])>,
   r0: string | null,
   r1: string | null,
   r2: string | null,
@@ -109,8 +109,7 @@ const createNewState = (): IState => {
     functions: [],
     functionTable: {},
     funcName: '',
-    headCodes: [],
-    codes: [],
+    codes: new CategoriesPriorityQueue(),
     r0: '', // 寄存器的名字
     r1: '', // 寄存器的名字
     r2: '', //
@@ -275,12 +274,20 @@ const parseToCode = (ast: any): void => {
         touchRegister(o, currentScope, scopes)
       }
     })
-    let codes: any[] = state.codes
     /** 这里需要提前一些指令，例如变量声明、全局变量、有名函数声明 */
-    if (['VAR', 'GLOBAL', 'ALLOC'].includes(operator) || operator === 'FUNC' && hasVars(operants[0], state)) {
-      codes = state.headCodes
+    let priority
+    if ('VAR' === operator) {
+      priority = 1
+    } else if ('GLOBA' === operator) {
+      priority = 2
+    } else if ('ALLOC' === operator) {
+      priority = 3
+    } else if ('FUNC' === operator && hasVars(operants[0], state)) {
+      priority = 4
+    } else {
+      priority = 100
     }
-    return codes.push((): string[] => {
+    return state.codes.push((): string[] => {
       // console.log(operator, operants)
       if (typeof operator === 'function') {
         operator = operator()
@@ -298,7 +305,7 @@ const parseToCode = (ast: any): void => {
         ret.push(`ALLOC ${processedOps[0]}`)
       }
       return ret
-    })
+    }, priority)
     // }
   }
 
@@ -967,25 +974,21 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
   let allCodes: any[] = []
 
   const processFunctionAst = (funcBody: et.Node): void => {
-    const codeLen = state.codes.length
-    const headCodes: string[] = []
     /** () => a + b，无显式 return 的返回表达式 */
     if (funcBody.type !== 'BlockStatement') {
       state.r0 = '$RET'
     }
     parseToCode(funcBody)
     for (let i = 0; i < state.maxRegister; i++) {
-      headCodes.push(`VAR %r${i}`)
+      state.codes.push(`VAR %r${i}`, 1)
     }
-    state.codes.splice(codeLen, 0, ...headCodes, ...state.headCodes)
     state.codes.push('}')
     allCodes = [...allCodes, ...state.codes]
-    state.headCodes = []
-    state.codes = []
+    state.codes.clear()
   }
 
   state = createNewState()
-  state.codes.push('func @@main() {')
+  state.codes.push('func @@main() {', 0)
   processFunctionAst(ret)
 
   while (state.functions.length > 0) {
@@ -998,7 +1001,7 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     }, {})
     state.locals = {}
     const currentScope: IScope = state.currentScope = { params: state.params, locals: state.locals }
-    state.codes.push(getFunctionDecleration(funcAst!))
+    state.codes.push(getFunctionDecleration(funcAst!), 0)
     state.codes.push((): string[] => {
       const paramClosureDeclarations = Object.keys(currentScope.params).reduce((o: any, param: string): any => {
         if (currentScope.params[param] === VariableType.CLOSURE) {

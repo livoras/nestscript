@@ -810,5 +810,28 @@ describe("closure", (): void => {
       a()
     `)
   })
+
+  it(`same name argument`, (): void => {
+    tm(`
+    (() => {
+      // var name = 'jerry'
+      const a = (name) => name
+      expect(a('lucy')).equal('lucy')
+    })()
+    `)
+  })
+
+  it(`?`, (): void => {
+    tm(`
+      (() => {
+        const hasOwnProperty = () => {}
+        const getRawTag = () => {
+          expect(typeof hasOwnProperty).equal('function')
+          hasOwnProperty.call({})
+        }
+        getRawTag()
+      })()
+    `)
+  })
 })
 // tslint:disable-next-line: max-file-line-count

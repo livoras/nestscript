@@ -1,55 +1,30 @@
 func @@main() {
-    GLOBAL a;
-    FUNC a @@f0;
-    CALL_REG a 0 false;
+    VAR %r0;
+    FUNC %r0 @@f0;
+    CALL_REG %r0 0 false;
+    MOV $RET $RET;
 }
 func @@f0() {
-    VAR %r0;
-    VAR %r1;
-    VAR b;
-    FUNC b @@f1;
     VAR @c0;
     ALLOC @c0;
-    FUNC @c0 @@f2;
-    MOV %r0 "~~~~~~~~~~~`";
-    PUSH %r0;
-    CALL_REG @c0 0 false;
-    MOV %r0 $RET;
-    PUSH %r0;
-    MOV %r0 @c0;
-    PUSH %r0;
-    MOV_CTX %r0 'console';
-    MOV %r1 "log";
-    CALL_VAR %r0 %r1 3 false;
-    CALL_REG b 0 false;
+    VAR getRawTag;
+    FUNC @c0 @@f1;
+    FUNC getRawTag @@f2;
+    CALL_REG getRawTag 0 false;
 }
-func @@f1(n) {
+func @@f1() {
+}
+func @@f2() {
     VAR %r0;
     VAR %r1;
-    VAR %r2;
-    MOV %r0 "---?";
-    PUSH %r0;
     MOV %r0 @c0;
     PUSH %r0;
-    MOV_CTX %r0 'console';
+    MOV_CTX %r0 "console";
     MOV %r1 "log";
-    CALL_VAR %r0 %r1 2 false;
-    MOV %r2 n;
-    PUSH %r2;
-    CALL_REG @c0 1 false;
-    MOV %r1 $RET;
-    JF %r1 _l0_;
-    MOV %r0 "OK";
-    JMP _l1_;
-LABEL _l0_:
-    MOV %r0 "NO OK";
-LABEL _l1_:
-    MOV $RET %r0;
-    RET;
-}
-func @@f2(value) {
-    VAR %r0;
-    MOV %r0 true;
-    MOV $RET %r0;
-    RET;
+    CALL_VAR %r0 %r1 1 false;
+    NEW_OBJ %r0;
+    PUSH %r0;
+    MOV %r0 @c0;
+    MOV %r1 "call";
+    CALL_VAR %r0 %r1 1 false;
 }
