@@ -3952,7 +3952,9 @@
      * @returns {Function} Returns the new function.
      */
     function baseRest(func, start) {
-      return setToString(overRest(func, start, identity), func + '');
+      const o = overRest(func, start, identity)
+      console.log('func 1 ----------->', o)
+      return setToString(o, func + '');
     }
 
     /**
@@ -4041,12 +4043,14 @@
      * @returns {Function} Returns `func`.
      */
     var baseSetToString = !defineProperty ? identity : function(func, string) {
+      console.log("BSSE--->", func)
       return defineProperty(func, 'toString', {
         'configurable': true,
         'enumerable': false,
         'value': constant(string),
         'writable': true
       });
+      console.log("BSSE--->feile")
     };
 
     /**
@@ -6688,6 +6692,7 @@
      */
     function setWrapToString(wrapper, reference, bitmask) {
       var source = (reference + '');
+      console.log('wrapper -> ', wrapper)
       return setToString(wrapper, insertWrapDetails(source, updateWrapDetails(getWrapDetails(source), bitmask)));
     }
 
@@ -6716,6 +6721,7 @@
         } else {
           count = 0;
         }
+        console.log('~~~~~~~~~~~~~~~~~~~~~~short out', arguments)
         return func.apply(undefined, arguments);
       };
     }

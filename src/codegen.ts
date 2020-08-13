@@ -327,6 +327,11 @@ const parseToCode = (ast: any): void => {
     // }
   }
 
+  /** 生成 label */
+  const lg = (label: string): string => {
+    return cg(`LABEL ${label}:`)
+  }
+
   const callIdentifier = (id: string, numArgs: number, s: IState, isExpression: boolean): void => {
     // if (s.functionTable[id]) {
     //   cg('CALL', id, numArgs, isExpression)
@@ -968,6 +973,38 @@ const parseToCode = (ast: any): void => {
       cg(`LABEL ${switchEndLabel}:`)
       popLoopLabels()
       freeReg()
+    },
+
+    TryStatement(node: et.TryStatement, s: any, c: any): any {
+      const catchLabel: string = newLabelName()
+      const finalLabel: string = newLabelName()
+
+      const endLabel = node.handler ? catchLabel : finalLabel
+      cg('TRY', endLabel, finalLabel)
+      c(node.block, s)
+      cg('TRY_END')
+
+      if (node.handler) {
+        const handler = node.handler
+        lg(catchLabel)
+        if (handler.param){
+          // TODO
+        }
+        c(handler, s)
+      }
+
+      lg(finalLabel)
+      if (node.finalizer) {
+        const finalizer = node.finalizer
+        c(finalizer, s)
+      }
+    },
+
+    ThrowStatement(node: et.ThrowStatement, s: any, c: any): any {
+      const reg = newRegister()
+      getValueOfNode(node.argument, reg, s, c)
+      cg('THROW', reg)
+      freeRegister()
     },
   })
 
