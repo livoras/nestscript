@@ -1,5 +1,6 @@
   // tslint:disable: no-bitwise
 import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from './utils'
+import { stat } from 'fs'
 const raw = require('./raw')
 
 export enum I {
@@ -34,6 +35,9 @@ export enum I {
 
  // try catch
  TRY, TRY_END, THROW,
+
+ // arguments
+ MOV_ARGS,
 }
 
 class VMRunTimeError extends Error {
@@ -254,6 +258,7 @@ export class VirtualMachine {
       this.fp = stack[fp]
       this.ip = stack[fp - 1]
       // 减去参数数量，减去三个 fp ip numArgs args
+      // console.log("args --- .leng", stack[fp -2], stack, stack[fp])
       this.sp = fp - stack[fp - 2] - 4
       // 清空上一帧
       this.stack.splice(this.sp + 1)
@@ -604,6 +609,12 @@ export class VirtualMachine {
     }
     case I.TRY_END: {
       throw new VMRunTimeError('Should not has `TRY_END` here.')
+      break
+    }
+    case I.MOV_ARGS: {
+      const dst = this.nextOperant()
+      // console.log(this.stack[this.fp - 2], '--->')
+      this.setReg(dst, { value: this.stack[this.fp - 3] })
       break
     }
     default:

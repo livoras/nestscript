@@ -367,6 +367,18 @@ describe('function', (): void => {
     })
   })
 
+  it(`arguments`, (): void => {
+    tm(`
+    function kk(a, b, c) {
+      expect(arguments.length).equal(2)
+      expect(arguments[0]).equal(1)
+      expect(arguments[1]).equal(2)
+      expect(arguments[2]).equal(void 555)
+    }
+    kk(1, 2)
+    `)
+  })
+
   it('call function of vm from vm with proper this', (): void => {
     tm(`
     const wrapper = {

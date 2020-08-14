@@ -377,7 +377,11 @@ const parseToCode = (ast: any): void => {
         if (hasVars(node.name, s)) {
           cg(`MOV`, `${ reg }`, `${ node.name }`, )
         } else {
-          cg(`MOV_CTX`, `${ reg }`, `"${node.name}"`)
+          if (node.name === 'arguments') {
+            cg(`MOV_ARGS`, `${ reg }`)
+          } else {
+            cg(`MOV_CTX`, `${ reg }`, `"${node.name}"`)
+          }
         }
       }
     } else {

@@ -111,6 +111,9 @@ func main() {
 * * *
 
 ## Change Log
+## 2020-08-14
+* `arguments` 参数支持
+
 ## 2020-08-12
 * fix 闭包问题
 * 继续编译 lodash：发现没有 try catch 的实现
