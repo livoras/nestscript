@@ -131,11 +131,11 @@ export const parseCodeToProgram = (program: string): Buffer => {
           if (i === 0) { return }
 
           if (
+            (op === 'TRY' && (i === 1 || i === 2)) ||
             ['JMP'].includes(op) ||
             (['JE', 'JNE', 'JG', 'JL', 'JGE', 'JLE'].includes(op) && i === 3) ||
             (['JF', 'JIF'].includes(op) && i === 2)
           ) {
-            // console.log('----->', op, funcInfo.labels, code[i])
             code[i] = {
               type: IOperatantType.ADDRESS,
               value: funcInfo.labels[code[i]],
@@ -399,7 +399,7 @@ const parseFunction = (func: IParsedFunction): IFuncInfo => {
   const codes = body.filter((stat: string[]): boolean => stat[0] !== 'VAR' && stat[0] !== 'GLOBAL')
   const symbols: any = {}
   args.forEach((arg: string, i: number): void => {
-    symbols[arg] = -3 - i
+    symbols[arg] = -4 - i
   })
   let j = 0
   vars.forEach((v: string[], i: number): void => {

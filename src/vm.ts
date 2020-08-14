@@ -1,5 +1,6 @@
   // tslint:disable: no-bitwise
 import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from './utils'
+import { stat } from 'fs'
 const raw = require('./raw')
 
 export enum I {
@@ -31,6 +32,18 @@ export enum I {
  IN,
  INST_OF, // instanceof
  MOV_THIS, // moving this to resgister
+
+ // try catch
+ TRY, TRY_END, THROW,
+
+ // arguments
+ MOV_ARGS,
+}
+
+class VMRunTimeError extends Error {
+  constructor(public error: any) {
+    super(error)
+  }
 }
 
 export const enum IOperatantType {
@@ -49,6 +62,7 @@ export const enum IOperatantType {
   UNDEFINED = 11 << 4,
 }
 
+// tslint:disable-next-line: max-classes-per-file
 class FunctionInfo {
   public vm?: VirtualMachine
   constructor(
@@ -65,7 +79,7 @@ class FunctionInfo {
   }
 
   public getJsFunction(): CallableFunction {
-    if (!this.vm) { throw new Error("VirtualMachine is not set!")}
+    if (!this.vm) { throw new VMRunTimeError("VirtualMachine is not set!")}
     if (!this.closureTable) { this.closureTable = {} }
     // console.log("closure table -> ", this.closureTable)
     let jsFunc = this.jsFunction
@@ -243,8 +257,9 @@ export class VirtualMachine {
       const fp = this.fp
       this.fp = stack[fp]
       this.ip = stack[fp - 1]
-      // 减去参数数量，减去三个 fp ip numArgs
-      this.sp = fp - stack[fp - 2] - 3
+      // 减去参数数量，减去三个 fp ip numArgs args
+      // console.log("args --- .leng", stack[fp -2], stack, stack[fp])
+      this.sp = fp - stack[fp - 2] - 4
       // 清空上一帧
       this.stack.splice(this.sp + 1)
       this.closureTables.pop()
@@ -370,7 +385,7 @@ export class VirtualMachine {
         console.log("=================== value\n")
         console.log(flags.value)
         console.log("===================\n")
-        throw new Error(e)
+        throw new VMRunTimeError(e)
       }
       break
     }
@@ -563,9 +578,48 @@ export class VirtualMachine {
       this.setReg(this.nextOperant(), { value: this.currentThis })
       break
     }
+    case I.TRY: {
+      const catchAddress = this.nextOperant()
+      const endAddress = this.nextOperant()
+      while (true) {
+        try {
+          const o = this.fetchAndExecute()[0]
+          if (o === I.TRY_END) {
+            this.ip = endAddress.value
+            break
+          }
+        } catch(e) {
+          if (e instanceof VMRunTimeError) {
+            throw e
+          }
+          this.ip = catchAddress.value
+          break
+          // } else {
+          //   throw e
+          // }
+        }
+      }
+      break
+    }
+    case I.THROW: {
+      const err = this.nextOperant()
+      throw err.value
+      // throw new VMRunTimeError(err)
+      break
+    }
+    case I.TRY_END: {
+      throw new VMRunTimeError('Should not has `TRY_END` here.')
+      break
+    }
+    case I.MOV_ARGS: {
+      const dst = this.nextOperant()
+      // console.log(this.stack[this.fp - 2], '--->')
+      this.setReg(dst, { value: this.stack[this.fp - 3] })
+      break
+    }
     default:
       console.log(this.ip)
-      throw new Error("Unknow command " + op + " " + I[op],)
+      throw new VMRunTimeError("Unknow command " + op + " " + I[op],)
     }
 
     return [op, isCallVMFunction]
@@ -619,7 +673,7 @@ export class VirtualMachine {
     case IOperatantType.UNDEFINED:
       return void 0
     default:
-      throw new Error("Unknown operant " + valueType)
+      throw new VMRunTimeError("Unknown operant " + valueType)
     }
   }
 
@@ -663,7 +717,7 @@ export class VirtualMachine {
         if (typeof o[funcName] === 'function') {
           o[funcName](arg)
         } else {
-          throw new Error(`The fucking ${funcName} is not a function`)
+          throw new VMRunTimeError(`The fucking ${funcName} is not a function`)
         }
       } else {
         f(arg)
@@ -681,7 +735,7 @@ export class VirtualMachine {
             : o[funcName](...args)
         } catch(e) {
           console.log(`Calling function "${funcName}" failed.`, typeof o, o[funcName], isNewExpression, o)
-          throw e
+          throw new VMRunTimeError(e)
           // console.log(o[funcName]())
           // console.error(`Function '${funcName}' is not found.`, o)
           // throw e

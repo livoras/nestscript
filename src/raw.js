@@ -25,12 +25,19 @@ exports.parseVmFunctionToJsFunction = function parseVmFunctionToJsFunction (func
     const n = args[0]
     const isCalledFromJs = !(n instanceof NumArgs)
     let numArgs = 0
+    let arguments = []
     if (isCalledFromJs) {
       args.reverse()
       args.forEach((arg) => vm.push(arg))
       numArgs = args.length
+      arguments = [...args]
     } else {
       numArgs = n.numArgs
+      arguments = []
+      for (let i = 0; i < numArgs; i++) {
+        arguments.push(vm.stack[vm.sp - i])
+        // console.log(arguments, '--->')
+      }
     }
     // console.log("CALLING ---->", funcInfo)
     vm.closureTable = funcInfo.closureTable
@@ -42,17 +49,19 @@ exports.parseVmFunctionToJsFunction = function parseVmFunctionToJsFunction (func
       stack[0] = undefined
     }
     // console.log('call', funcInfo, numArgs)
-    //            | R3      |
-    //            | R2      |
-    //            | R1      |
-    //            | R0      |
-    //      sp -> | fp      | # for restoring old fp
-    //            | ip      | # for restoring old ip
-    //            | numArgs | # for restoring old sp: old sp = current sp - numArgs - 3
-    //            | arg1    |
-    //            | arg2    |
-    //            | arg3    |
-    //  old sp -> | ....    |
+    //            | R3        |
+    //            | R2        |
+    //            | R1        |
+    //            | R0        |
+    //      sp -> | fp        | # for restoring old fp
+    //            | ip        | # for restoring old ip
+    //            | numArgs   | # for restoring old sp: old sp = current sp - numArgs - 3
+    //            | arguments | # for store arguments for js `arguments` keyword
+    //            | arg1      |
+    //            | arg2      |
+    //            | arg3      |
+    //  old sp -> | ....      |
+    stack[++vm.sp] = arguments
     stack[++vm.sp] = numArgs
     stack[++vm.sp] = vm.ip
     stack[++vm.sp] = vm.fp

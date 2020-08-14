@@ -2,7 +2,6 @@ import { createVMFromJavaScript } from '../src/js'
 import { expect } from 'chai'
 import { createOperantBuffer, getOperatantByBuffer } from '../src/utils'
 import { IOperatantType } from '../src/vm'
-import { time } from 'console'
 const chai = require('chai')
 const spies = require('chai-spies')
 
@@ -11,7 +10,7 @@ chai.use(spies)
 const makeSpy = (): any => chai.spy((): void => {})
 
 const tm = (codes: string, ctx: any = {}): void => {
-  const c = { expect, Date, console, ...ctx }
+  const c = { expect, Date, console, ...ctx, Error }
   const vm = createVMFromJavaScript(codes, c)
   vm.run()
 }
@@ -366,6 +365,18 @@ describe('function', (): void => {
         },
       },
     })
+  })
+
+  it(`arguments`, (): void => {
+    tm(`
+    function kk(a, b, c) {
+      expect(arguments.length).equal(2)
+      expect(arguments[0]).equal(1)
+      expect(arguments[1]).equal(2)
+      expect(arguments[2]).equal(void 555)
+    }
+    kk(1, 2)
+    `)
   })
 
   it('call function of vm from vm with proper this', (): void => {
@@ -831,6 +842,21 @@ describe("closure", (): void => {
         }
         getRawTag()
       })()
+    `)
+  })
+})
+
+describe('error handling', (): void => {
+  it('normal try', (): void => {
+    tm(`
+    let e = 1
+    try {
+      k.a()
+      // throw new Error('ojbk')
+    } catch(e) {
+      // expect(typeof e).equal('object')
+    }
+    expect(e).equal(1)
     `)
   })
 })

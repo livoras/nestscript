@@ -86,6 +86,9 @@ const codeToUseAge: { [x in I]: OU[] } = {
   [I.IN]: BOTH_GET,
   [I.MOV_THIS]: [OU.SET],
   [I.NEW_REG]: [OU.SET, OU.GET, OU.GET],
+  [I.TRY]: [OU.GET],
+  [I.TRY_END]: [],
+  [I.THROW]: [OU.GET],
 }
 
 const IGNORE_INS = [
