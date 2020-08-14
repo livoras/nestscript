@@ -399,7 +399,7 @@ const parseFunction = (func: IParsedFunction): IFuncInfo => {
   const codes = body.filter((stat: string[]): boolean => stat[0] !== 'VAR' && stat[0] !== 'GLOBAL')
   const symbols: any = {}
   args.forEach((arg: string, i: number): void => {
-    symbols[arg] = -3 - i
+    symbols[arg] = -4 - i
   })
   let j = 0
   vars.forEach((v: string[], i: number): void => {

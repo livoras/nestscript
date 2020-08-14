@@ -42,17 +42,19 @@ exports.parseVmFunctionToJsFunction = function parseVmFunctionToJsFunction (func
       stack[0] = undefined
     }
     // console.log('call', funcInfo, numArgs)
-    //            | R3      |
-    //            | R2      |
-    //            | R1      |
-    //            | R0      |
-    //      sp -> | fp      | # for restoring old fp
-    //            | ip      | # for restoring old ip
-    //            | numArgs | # for restoring old sp: old sp = current sp - numArgs - 3
-    //            | arg1    |
-    //            | arg2    |
-    //            | arg3    |
-    //  old sp -> | ....    |
+    //            | R3        |
+    //            | R2        |
+    //            | R1        |
+    //            | R0        |
+    //      sp -> | fp        | # for restoring old fp
+    //            | ip        | # for restoring old ip
+    //            | arguments | # for store arguments for js `arguments` keyword
+    //            | numArgs   | # for restoring old sp: old sp = current sp - numArgs - 3
+    //            | arg1      |
+    //            | arg2      |
+    //            | arg3      |
+    //  old sp -> | ....      |
+    stack[++vm.sp] = args
     stack[++vm.sp] = numArgs
     stack[++vm.sp] = vm.ip
     stack[++vm.sp] = vm.fp

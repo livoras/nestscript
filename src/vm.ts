@@ -253,8 +253,8 @@ export class VirtualMachine {
       const fp = this.fp
       this.fp = stack[fp]
       this.ip = stack[fp - 1]
-      // 减去参数数量，减去三个 fp ip numArgs
-      this.sp = fp - stack[fp - 2] - 3
+      // 减去参数数量，减去三个 fp ip numArgs args
+      this.sp = fp - stack[fp - 2] - 4
       // 清空上一帧
       this.stack.splice(this.sp + 1)
       this.closureTables.pop()
