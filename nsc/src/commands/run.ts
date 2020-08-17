@@ -2,7 +2,7 @@ import { Command, flags } from '@oclif/command'
 import path = require("path")
 import fs = require("fs")
 import { parseCodeToProgram } from "nestscript"
-import { VirtualMachine, createVMFromArrayBuffer } from "nestscript/src/vm"
+import { VirtualMachine, createVMFromArrayBuffer } from "nestscript/src/vm/vm"
 
 export default class Run extends Command {
   static description = 'describe the command here'

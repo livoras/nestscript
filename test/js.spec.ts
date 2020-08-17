@@ -1,7 +1,7 @@
 import { createVMFromJavaScript } from '../src/js'
 import { expect } from 'chai'
 import { createOperantBuffer, getOperatantByBuffer } from '../src/utils'
-import { IOperatantType } from '../src/vm'
+import { IOperatantType } from '../src/vm/vm'
 const chai = require('chai')
 const spies = require('chai-spies')
 

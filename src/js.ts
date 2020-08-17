@@ -1,4 +1,4 @@
-import { VirtualMachine, createVMFromArrayBuffer } from './vm'
+import { VirtualMachine, createVMFromArrayBuffer } from './vm/vm'
 import { generateAssemblyFromJs } from './codegen'
 import { parseCodeToProgram } from './assembler'
 

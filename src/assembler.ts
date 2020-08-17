@@ -1,4 +1,4 @@
-import { I, IOperatantType } from './vm'
+import { I, IOperatantType } from './vm/vm'
 import { getByteLengthFromInt32, concatBuffer, stringToArrayBuffer, createOperantBuffer, getOperatantByBuffer, getOperantName } from './utils'
 import { parseCode, parseAssembler, IParsedFunction } from './parser'
 import { optimizeCode } from './optimizer'

@@ -6,7 +6,7 @@
 // const c = new Float64Array(b)
 // console.log(a, b, c[0])
 
-import { IOperatantType, I } from './vm'
+import { IOperatantType, I } from './vm/vm'
 
 // const d = new Float64Array(b.slice(8))
 // a[1] = 0.03

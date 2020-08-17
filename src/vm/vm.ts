@@ -1,5 +1,5 @@
   // tslint:disable: no-bitwise
-import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from './utils'
+import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from '../utils'
 import { stat } from 'fs'
 const raw = require('./raw')
 
