@@ -242,7 +242,7 @@ export class VirtualMachine {
       // console.log('stack -> ', this.stack)
       // console.log('heap -> ', this.heap)
       // console.log('closures -> ', this.closureTables)
-      // this.isRunning = false
+      this.isRunning = false
       // this.closureTables = []
       // this.init()
       break
