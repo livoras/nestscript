@@ -241,10 +241,10 @@ export class VirtualMachine {
       console.log('exit stack size -> ', stack.length)
       // console.log('stack -> ', this.stack)
       // console.log('heap -> ', this.heap)
-      console.log('closures -> ', this.closureTables)
-      this.isRunning = false
-      this.closureTables = []
-      this.init()
+      // console.log('closures -> ', this.closureTables)
+      // this.isRunning = false
+      // this.closureTables = []
+      // this.init()
       break
     }
     // case I.CALL: {
