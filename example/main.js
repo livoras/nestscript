@@ -15416,8 +15416,11 @@
     function constant(value) {
       console.log('constant .....', typeof value, consCount++)
       return function() {
-        console.log("ASSSSSSSS", typeof value)
-        return value;
+        console.log("///////////////////")
+        return 'ojbk'
+        // throw new Error('fuck')
+        // console.log("ASSSSSSSS", typeof value)
+        // return value;
       };
     }
 

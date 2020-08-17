@@ -230,7 +230,7 @@ export class VirtualMachine {
     const op = this.nextOperator()
     // 用来判断是否嵌套调用 vm 函数
     let isCallVMFunction = false
-    // console.log(op, I[op])
+    console.log(op, I[op])
     // tslint:disable-next-line: max-switch-cases
     switch (op) {
     case I.PUSH: {
@@ -399,6 +399,7 @@ export class VirtualMachine {
       const o = this.nextOperant().value
       const key = this.nextOperant().value
       const value = this.nextOperant().value
+      console.log(o, key, value)
       o[key] = value
       break
     }
@@ -735,7 +736,9 @@ export class VirtualMachine {
             : o[funcName](...args)
         } catch(e) {
           console.log(`Calling function "${funcName}" failed.`, typeof o, o[funcName], isNewExpression, o)
+          // if (!(e instanceof VMRunTimeError)) {
           throw new VMRunTimeError(e)
+          // }
           // console.log(o[funcName]())
           // console.error(`Function '${funcName}' is not found.`, o)
           // throw e

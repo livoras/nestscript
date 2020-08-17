@@ -16342,8 +16342,8 @@ func @@f223(operator, defaultValue) {
 func @@f224(arrayFunc) {
     VAR %r0;
     VAR %r1;
-    ALLOC @c704;
-    MOV @c704 arrayFunc;
+    ALLOC @c703;
+    MOV @c703 arrayFunc;
     FUNC %r1 @@f617;
     PUSH %r1;
     CALL_REG @c241 1 false;
@@ -30835,14 +30835,12 @@ func @@f529(source) {
 func @@f530(value) {
     VAR %r0;
     VAR %r1;
-    ALLOC @c671;
-    MOV @c671 value;
     MOV %r1 @c456;
     MOV %r0 %r1;
     ADD %r1 1;
     MOV @c456 %r1;
     PUSH %r0;
-    MOV %r0 @c671;
+    MOV %r0 value;
     TYPE_OF %r0;
     PUSH %r0;
     MOV %r0 "constant .....";
@@ -30947,20 +30945,20 @@ func @@f535(path, srcValue) {
 }
 func @@f536(path, args) {
     VAR %r0;
-    ALLOC @c673;
-    MOV @c673 path;
     ALLOC @c672;
-    MOV @c672 args;
+    MOV @c672 path;
+    ALLOC @c671;
+    MOV @c671 args;
     FUNC %r0 @@f665;
     MOV $RET %r0;
     RET;
 }
 func @@f537(object, args) {
     VAR %r0;
-    ALLOC @c675;
-    MOV @c675 object;
     ALLOC @c674;
-    MOV @c674 args;
+    MOV @c674 object;
+    ALLOC @c673;
+    MOV @c673 args;
     FUNC %r0 @@f666;
     MOV $RET %r0;
     RET;
@@ -30970,8 +30968,8 @@ func @@f538(object, source, options) {
     VAR methodNames;
     VAR @c345;
     ALLOC @c345;
-    VAR @c678;
-    ALLOC @c678;
+    VAR @c677;
+    ALLOC @c677;
     VAR %r0;
     VAR %r1;
     VAR %r2;
@@ -30981,17 +30979,17 @@ func @@f538(object, source, options) {
     VAR %r6;
     VAR %r7;
     VAR %r8;
-    ALLOC @c677;
-    MOV @c677 object;
     ALLOC @c676;
-    MOV @c676 source;
-    MOV %r0 @c676;
+    MOV @c676 object;
+    ALLOC @c675;
+    MOV @c675 source;
+    MOV %r0 @c675;
     PUSH %r0;
     CALL_REG @c103 1 false;
     MOV props $RET;
     MOV %r0 props;
     PUSH %r0;
-    MOV %r0 @c676;
+    MOV %r0 @c675;
     PUSH %r0;
     CALL_REG @c407 2 false;
     MOV methodNames $RET;
@@ -31000,7 +30998,7 @@ func @@f538(object, source, options) {
     WEQ %r1 %r2;
     MOV %r0 %r1;
     JF %r1 _l2326_;
-    MOV %r4 @c676;
+    MOV %r4 @c675;
     PUSH %r4;
     CALL_REG @c112 1 false;
     MOV %r3 $RET;
@@ -31023,18 +31021,18 @@ LABEL _l2327_:
     LG_AND %r0 %r2;
 LABEL _l2326_:
     JF %r0 _l2324_;
-    MOV %r1 @c676;
+    MOV %r1 @c675;
     MOV options %r1;
-    MOV %r1 @c677;
-    MOV @c676 %r1;
+    MOV %r1 @c676;
+    MOV @c675 %r1;
     MOV_THIS %r1;
-    MOV @c677 %r1;
-    MOV %r3 @c676;
+    MOV @c676 %r1;
+    MOV %r3 @c675;
     PUSH %r3;
     CALL_REG @c103 1 false;
     MOV %r2 $RET;
     PUSH %r2;
-    MOV %r2 @c676;
+    MOV %r2 @c675;
     PUSH %r2;
     CALL_REG @c407 2 false;
     MOV %r1 $RET;
@@ -31063,16 +31061,16 @@ LABEL _l2330_:
     NEG %r1;
     LG_OR @c345 %r1;
 LABEL _l2329_:
-    MOV %r0 @c677;
+    MOV %r0 @c676;
     PUSH %r0;
     CALL_REG @c173 1 false;
-    MOV @c678 $RET;
+    MOV @c677 $RET;
     FUNC %r0 @@f667;
     PUSH %r0;
     MOV %r0 methodNames;
     PUSH %r0;
     CALL_REG @c45 2 false;
-    MOV %r0 @c677;
+    MOV %r0 @c676;
     MOV $RET %r0;
     RET;
 }
@@ -31103,13 +31101,13 @@ func @@f540() {
 func @@f541(n) {
     VAR %r0;
     VAR %r1;
-    ALLOC @c679;
-    MOV @c679 n;
-    MOV %r1 @c679;
+    ALLOC @c678;
+    MOV @c678 n;
+    MOV %r1 @c678;
     PUSH %r1;
     CALL_REG @c140 1 false;
     MOV %r0 $RET;
-    MOV @c679 %r0;
+    MOV @c678 %r0;
     FUNC %r1 @@f668;
     PUSH %r1;
     CALL_REG @c238 1 false;
@@ -31146,8 +31144,8 @@ LABEL _l2334_:
 }
 func @@f543(object) {
     VAR %r0;
-    ALLOC @c680;
-    MOV @c680 object;
+    ALLOC @c679;
+    MOV @c679 object;
     FUNC %r0 @@f669;
     MOV $RET %r0;
     RET;
@@ -31580,16 +31578,16 @@ LABEL _l2362_:
     RET;
 }
 func @@f564() {
-    VAR @c681;
-    ALLOC @c681;
+    VAR @c680;
+    ALLOC @c680;
     VAR %r0;
-    NEW_OBJ @c681;
+    NEW_OBJ @c680;
     FUNC %r0 @@f670;
     PUSH %r0;
     MOV %r0 @c277;
     PUSH %r0;
     CALL_REG @c156 2 false;
-    MOV %r0 @c681;
+    MOV %r0 @c680;
     MOV $RET %r0;
     RET;
 }
@@ -31610,46 +31608,46 @@ func @@f566(methodName, index) {
     VAR %r1;
     VAR %r2;
     VAR %r3;
-    ALLOC @c683;
-    MOV @c683 methodName;
     ALLOC @c682;
-    MOV @c682 index;
+    MOV @c682 methodName;
+    ALLOC @c681;
+    MOV @c681 index;
     FUNC %r0 @@f671;
     MOV %r3 @c70;
     MOV %r2 "prototype";
     MOV_PROP %r1 %r3 %r2;
-    MOV %r2 @c683;
+    MOV %r2 @c682;
     SET_KEY %r1 %r2 %r0;
     FUNC %r0 @@f672;
     MOV %r3 @c70;
     MOV %r2 "prototype";
     MOV_PROP %r1 %r3 %r2;
-    MOV %r2 @c683;
+    MOV %r2 @c682;
     MOV %r3 "Right";
     ADD %r2 %r3;
     SET_KEY %r1 %r2 %r0;
 }
 func @@f567(methodName, index) {
+    VAR @c683;
+    ALLOC @c683;
     VAR @c684;
     ALLOC @c684;
-    VAR @c685;
-    ALLOC @c685;
     VAR %r0;
     VAR %r1;
     VAR %r2;
     VAR %r3;
-    MOV @c684 index;
+    MOV @c683 index;
     MOV %r0 1;
-    ADD @c684 %r0;
-    MOV %r0 @c684;
+    ADD @c683 %r0;
+    MOV %r0 @c683;
     MOV %r1 @c80;
     WEQ %r0 %r1;
-    MOV @c685 %r0;
+    MOV @c684 %r0;
     JIF %r0 _l2364_;
-    MOV %r1 @c684;
+    MOV %r1 @c683;
     MOV %r2 @c465;
     WEQ %r1 %r2;
-    LG_OR @c685 %r1;
+    LG_OR @c684 %r1;
 LABEL _l2364_:
     FUNC %r0 @@f673;
     MOV %r3 @c70;
@@ -31659,13 +31657,13 @@ LABEL _l2364_:
     SET_KEY %r1 %r2 %r0;
 }
 func @@f568(methodName, index) {
-    VAR @c686;
-    ALLOC @c686;
+    VAR @c685;
+    ALLOC @c685;
     VAR %r0;
     VAR %r1;
     VAR %r2;
     VAR %r3;
-    MOV @c686 "take";
+    MOV @c685 "take";
     MOV %r1 index;
     JF %r1 _l2365_;
     MOV %r0 "Right";
@@ -31673,7 +31671,7 @@ func @@f568(methodName, index) {
 LABEL _l2365_:
     MOV %r0 "";
 LABEL _l2366_:
-    ADD @c686 %r0;
+    ADD @c685 %r0;
     FUNC %r0 @@f674;
     MOV %r3 @c70;
     MOV %r2 "prototype";
@@ -31682,13 +31680,13 @@ LABEL _l2366_:
     SET_KEY %r1 %r2 %r0;
 }
 func @@f569(methodName, index) {
-    VAR @c687;
-    ALLOC @c687;
+    VAR @c686;
+    ALLOC @c686;
     VAR %r0;
     VAR %r1;
     VAR %r2;
     VAR %r3;
-    MOV @c687 "drop";
+    MOV @c686 "drop";
     MOV %r1 index;
     JF %r1 _l2367_;
     MOV %r0 "";
@@ -31696,7 +31694,7 @@ func @@f569(methodName, index) {
 LABEL _l2367_:
     MOV %r0 "Right";
 LABEL _l2368_:
-    ADD @c687 %r0;
+    ADD @c686 %r0;
     FUNC %r0 @@f675;
     MOV %r3 @c70;
     MOV %r2 "prototype";
@@ -31757,11 +31755,11 @@ func @@f573(path, args) {
     VAR %r0;
     VAR %r1;
     VAR %r2;
-    ALLOC @c689;
-    MOV @c689 path;
     ALLOC @c688;
-    MOV @c688 args;
-    MOV %r0 @c689;
+    MOV @c688 path;
+    ALLOC @c687;
+    MOV @c687 args;
+    MOV %r0 @c688;
     TYPE_OF %r0;
     MOV %r1 "function";
     WEQ %r0 %r1;
@@ -31946,36 +31944,36 @@ func @@f577() {
     RET;
 }
 func @@f578(func, methodName) {
-    VAR @c691;
-    ALLOC @c691;
     VAR @c690;
     ALLOC @c690;
-    VAR @c708;
-    ALLOC @c708;
-    VAR @c692;
-    ALLOC @c692;
+    VAR @c689;
+    ALLOC @c689;
+    VAR @c707;
+    ALLOC @c707;
+    VAR @c691;
+    ALLOC @c691;
     VAR %r0;
     VAR %r1;
     VAR %r2;
     VAR %r3;
     VAR %r4;
     VAR %r5;
-    ALLOC @c693;
-    MOV @c693 func;
+    ALLOC @c692;
+    MOV @c692 func;
     MOV %r0 methodName;
     PUSH %r0;
     NEW_REG %r0 "^(?:filter|find|map|reject)|While$" "";
     MOV %r1 "test";
     CALL_VAR %r0 %r1 1 false;
-    MOV @c691 $RET;
+    MOV @c690 $RET;
     MOV %r0 methodName;
     PUSH %r0;
     NEW_REG %r0 "^(?:head|last)$" "";
     MOV %r1 "test";
     CALL_VAR %r0 %r1 1 false;
-    MOV @c690 $RET;
+    MOV @c689 $RET;
     MOV %r0 @c277;
-    MOV %r2 @c690;
+    MOV %r2 @c689;
     JF %r2 _l2381_;
     MOV %r1 "take";
     MOV %r4 methodName;
@@ -31991,9 +31989,9 @@ LABEL _l2383_:
 LABEL _l2381_:
     MOV %r1 methodName;
 LABEL _l2382_:
-    MOV_PROP @c708 %r0 %r1;
-    MOV %r0 @c690;
-    MOV @c692 %r0;
+    MOV_PROP @c707 %r0 %r1;
+    MOV %r0 @c689;
+    MOV @c691 %r0;
     JIF %r0 _l2384_;
     MOV %r2 methodName;
     PUSH %r2;
@@ -32001,9 +31999,9 @@ LABEL _l2382_:
     MOV %r3 "test";
     CALL_VAR %r2 %r3 1 false;
     MOV %r1 $RET;
-    LG_OR @c692 %r1;
+    LG_OR @c691 %r1;
 LABEL _l2384_:
-    MOV %r0 @c708;
+    MOV %r0 @c707;
     NEG %r0;
     JF %r0 _l2385_;
     RET;
@@ -32018,19 +32016,19 @@ LABEL _l2386_:
     SET_KEY %r1 %r2 %r0;
 }
 func @@f579(methodName) {
-    VAR @c695;
-    ALLOC @c695;
-    VAR @c696;
-    ALLOC @c696;
     VAR @c694;
     ALLOC @c694;
+    VAR @c695;
+    ALLOC @c695;
+    VAR @c693;
+    ALLOC @c693;
     VAR %r0;
     VAR %r1;
     VAR %r2;
     VAR %r3;
     MOV %r0 @c466;
     MOV %r1 methodName;
-    MOV_PROP @c695 %r0 %r1;
+    MOV_PROP @c694 %r0 %r1;
     MOV %r1 methodName;
     PUSH %r1;
     NEW_REG %r1 "^(?:push|sort|unshift)$" "";
@@ -32038,17 +32036,17 @@ func @@f579(methodName) {
     CALL_VAR %r1 %r2 1 false;
     MOV %r0 $RET;
     JF %r0 _l2387_;
-    MOV @c696 "tap";
+    MOV @c695 "tap";
     JMP _l2388_;
 LABEL _l2387_:
-    MOV @c696 "thru";
+    MOV @c695 "thru";
 LABEL _l2388_:
     MOV %r0 methodName;
     PUSH %r0;
     NEW_REG %r0 "^(?:pop|shift)$" "";
     MOV %r1 "test";
     CALL_VAR %r0 %r1 1 false;
-    MOV @c694 $RET;
+    MOV @c693 $RET;
     FUNC %r0 @@f678;
     MOV %r3 @c277;
     MOV %r2 "prototype";
@@ -32511,8 +32509,8 @@ func @@f597(value, key, collection) {
     VAR %r0;
     VAR %r1;
     VAR %r2;
-    ALLOC @c697;
-    MOV @c697 value;
+    ALLOC @c696;
+    MOV @c696 value;
     FUNC %r0 @@f679;
     PUSH %r0;
     MOV %r0 @c504;
@@ -32527,7 +32525,7 @@ func @@f597(value, key, collection) {
     MOV %r1 %r2;
     MOV @c505 %r2;
     SET_KEY %r0 'index' %r1;
-    MOV %r1 @c697;
+    MOV %r1 @c696;
     SET_KEY %r0 'value' %r1;
     MOV $RET %r0;
     RET;
@@ -33481,8 +33479,8 @@ LABEL _l2494_:
     RET;
 }
 func @@f612(collection, predicate, fromIndex) {
-    VAR @c698;
-    ALLOC @c698;
+    VAR @c697;
+    ALLOC @c697;
     VAR @c278;
     ALLOC @c278;
     VAR index;
@@ -33496,7 +33494,7 @@ func @@f612(collection, predicate, fromIndex) {
     MOV %r0 collection;
     PUSH %r0;
     CALL_REG @c66 1 false;
-    MOV @c698 $RET;
+    MOV @c697 $RET;
     MOV %r1 collection;
     PUSH %r1;
     CALL_REG @c188 1 false;
@@ -33532,7 +33530,7 @@ LABEL _l2498_:
     MINUS %r2;
     GT %r1 %r2;
     JF %r1 _l2499_;
-    MOV %r2 @c698;
+    MOV %r2 @c697;
     MOV %r4 @c278;
     JF %r4 _l2501_;
     MOV %r5 collection;
@@ -33550,13 +33548,13 @@ LABEL _l2500_:
     RET;
 }
 func @@f613(funcs) {
-    VAR @c701;
-    ALLOC @c701;
+    VAR @c700;
+    ALLOC @c700;
     VAR index;
     VAR prereq;
     VAR func;
-    VAR @c700;
-    ALLOC @c700;
+    VAR @c699;
+    ALLOC @c699;
     VAR funcName;
     VAR data;
     VAR %r0;
@@ -33569,12 +33567,12 @@ func @@f613(funcs) {
     VAR %r7;
     VAR %r8;
     VAR %r9;
-    ALLOC @c702;
-    MOV @c702 funcs;
-    MOV %r0 @c702;
+    ALLOC @c701;
+    MOV @c701 funcs;
+    MOV %r0 @c701;
     MOV %r1 "length";
-    MOV_PROP @c701 %r0 %r1;
-    MOV index @c701;
+    MOV_PROP @c700 %r0 %r1;
+    MOV index @c700;
     MOV %r2 @c71;
     MOV %r3 "prototype";
     MOV_PROP %r0 %r2 %r3;
@@ -33582,7 +33580,7 @@ func @@f613(funcs) {
     MOV_PROP prereq %r0 %r1;
     MOV %r0 @c538;
     JF %r0 _l2502_;
-    MOV %r1 @c702;
+    MOV %r1 @c701;
     MOV %r2 "reverse";
     CALL_VAR %r1 %r2 0 false;
     JMP _l2503_;
@@ -33595,7 +33593,7 @@ LABEL _l2504_:
     MOV index %r1;
     JF %r0 _l2505_;
 LABEL _l2507_:
-    MOV %r1 @c702;
+    MOV %r1 @c701;
     MOV %r2 index;
     MOV_PROP func %r1 %r2;
     MOV %r1 func;
@@ -33614,7 +33612,7 @@ LABEL _l2509_:
     MOV %r3 prereq;
     MOV %r2 %r3;
     JF %r3 _l2513_;
-    MOV %r4 @c700;
+    MOV %r4 @c699;
     NEG %r4;
     LG_AND %r2 %r4;
 LABEL _l2513_:
@@ -33634,18 +33632,18 @@ LABEL _l2512_:
     NEW_ARR %r2;
     PUSH %r2;
     CALL_REG @c71 2 true;
-    MOV @c700 $RET;
+    MOV @c699 $RET;
     JMP _l2511_;
 LABEL _l2510_:
 LABEL _l2511_:
     JMP _l2504_;
 LABEL _l2505_:
-    MOV %r1 @c700;
+    MOV %r1 @c699;
     JF %r1 _l2514_;
     MOV %r0 index;
     JMP _l2515_;
 LABEL _l2514_:
-    MOV %r0 @c701;
+    MOV %r0 @c700;
 LABEL _l2515_:
     MOV index %r0;
 LABEL _l2516_:
@@ -33653,11 +33651,11 @@ LABEL _l2516_:
     ADD %r2 1;
     MOV %r0 %r2;
     MOV index %r2;
-    MOV %r1 @c701;
+    MOV %r1 @c700;
     LT %r0 %r1;
     JF %r0 _l2517_;
 LABEL _l2519_:
-    MOV %r2 @c702;
+    MOV %r2 @c701;
     MOV %r3 index;
     MOV_PROP %r1 %r2 %r3;
     MOV func %r1;
@@ -33727,9 +33725,9 @@ LABEL _l2524_:
     MOV %r5 3;
     MOV_PROP %r3 %r4 %r5;
     PUSH %r3;
-    MOV %r3 @c700;
+    MOV %r3 @c699;
     PUSH %r3;
-    MOV %r5 @c700;
+    MOV %r5 @c699;
     MOV %r5 data;
     MOV %r4 0;
     MOV_PROP %r6 %r5 %r4;
@@ -33740,7 +33738,7 @@ LABEL _l2524_:
     MOV %r4 "apply";
     CALL_VAR %r3 %r4 2 false;
     MOV %r2 $RET;
-    MOV @c700 %r2;
+    MOV @c699 %r2;
     JMP _l2523_;
 LABEL _l2522_:
     MOV %r6 func;
@@ -33757,7 +33755,7 @@ LABEL _l2522_:
     LG_AND %r3 %r5;
 LABEL _l2529_:
     JF %r3 _l2528_;
-    MOV %r4 @c700;
+    MOV %r4 @c699;
     MOV %r5 funcName;
     CALL_VAR %r4 %r5 0 false;
     MOV %r2 $RET;
@@ -33765,11 +33763,11 @@ LABEL _l2529_:
 LABEL _l2528_:
     MOV %r4 func;
     PUSH %r4;
-    MOV %r4 @c700;
+    MOV %r4 @c699;
     MOV %r5 "thru";
     CALL_VAR %r4 %r5 1 false;
     MOV %r2 $RET;
-    MOV @c700 %r2;
+    MOV @c699 %r2;
 LABEL _l2523_:
     JMP _l2516_;
 LABEL _l2517_:
@@ -34132,19 +34130,19 @@ func @@f617(iteratees) {
     VAR %r0;
     VAR %r1;
     VAR %r2;
-    ALLOC @c703;
-    MOV @c703 iteratees;
+    ALLOC @c702;
+    MOV @c702 iteratees;
     CALL_REG @c199 0 false;
     MOV %r2 $RET;
     PUSH %r2;
     CALL_REG @c35 1 false;
     MOV %r1 $RET;
     PUSH %r1;
-    MOV %r1 @c703;
+    MOV %r1 @c702;
     PUSH %r1;
     CALL_REG @c10 2 false;
     MOV %r0 $RET;
-    MOV @c703 %r0;
+    MOV @c702 %r0;
     FUNC %r1 @@f682;
     PUSH %r1;
     CALL_REG @c238 1 false;
@@ -36014,24 +36012,21 @@ LABEL _l2699_:
 func @@f664() {
     VAR %r0;
     VAR %r1;
-    MOV %r0 @c671;
-    TYPE_OF %r0;
-    PUSH %r0;
-    MOV %r0 "ASSSSSSSS";
+    MOV %r0 "///////////////////";
     PUSH %r0;
     MOV_CTX %r0 "console";
     MOV %r1 "log";
-    CALL_VAR %r0 %r1 2 false;
-    MOV %r0 @c671;
+    CALL_VAR %r0 %r1 1 false;
+    MOV %r0 "ojbk";
     MOV $RET %r0;
     RET;
 }
 func @@f665(object) {
     VAR %r0;
     VAR %r1;
-    MOV %r1 @c672;
+    MOV %r1 @c671;
     PUSH %r1;
-    MOV %r1 @c673;
+    MOV %r1 @c672;
     PUSH %r1;
     MOV %r1 object;
     PUSH %r1;
@@ -36043,11 +36038,11 @@ func @@f665(object) {
 func @@f666(path) {
     VAR %r0;
     VAR %r1;
-    MOV %r1 @c674;
+    MOV %r1 @c673;
     PUSH %r1;
     MOV %r1 path;
     PUSH %r1;
-    MOV %r1 @c675;
+    MOV %r1 @c674;
     PUSH %r1;
     CALL_REG @c610 3 false;
     MOV %r0 $RET;
@@ -36055,24 +36050,24 @@ func @@f666(path) {
     RET;
 }
 func @@f667(methodName) {
-    VAR @c706;
-    ALLOC @c706;
+    VAR @c705;
+    ALLOC @c705;
     VAR %r0;
     VAR %r1;
     VAR %r2;
     VAR %r3;
     VAR %r4;
-    MOV %r0 @c676;
+    MOV %r0 @c675;
     MOV %r1 methodName;
-    MOV_PROP @c706 %r0 %r1;
-    MOV %r0 @c706;
-    MOV %r1 @c677;
+    MOV_PROP @c705 %r0 %r1;
+    MOV %r0 @c705;
+    MOV %r1 @c676;
     MOV %r2 methodName;
     SET_KEY %r1 %r2 %r0;
-    MOV %r0 @c678;
+    MOV %r0 @c677;
     JF %r0 _l2704_;
     FUNC %r1 @@f683;
-    MOV %r4 @c677;
+    MOV %r4 @c676;
     MOV %r3 "prototype";
     MOV_PROP %r2 %r4 %r3;
     MOV %r3 methodName;
@@ -36084,7 +36079,7 @@ LABEL _l2705_:
 func @@f668(args) {
     VAR %r0;
     VAR %r1;
-    MOV %r1 @c679;
+    MOV %r1 @c678;
     PUSH %r1;
     MOV %r1 args;
     PUSH %r1;
@@ -36097,7 +36092,7 @@ func @@f669(path) {
     VAR %r0;
     VAR %r1;
     VAR %r2;
-    MOV %r1 @c680;
+    MOV %r1 @c679;
     MOV %r2 null;
     WEQ %r1 %r2;
     JF %r1 _l2706_;
@@ -36106,7 +36101,7 @@ func @@f669(path) {
 LABEL _l2706_:
     MOV %r2 path;
     PUSH %r2;
-    MOV %r2 @c680;
+    MOV %r2 @c679;
     PUSH %r2;
     CALL_REG @c203 2 false;
     MOV %r0 $RET;
@@ -36132,7 +36127,7 @@ func @@f670(func, methodName) {
     NEG %r0;
     JF %r0 _l2708_;
     MOV %r1 func;
-    MOV %r2 @c681;
+    MOV %r2 @c680;
     MOV %r3 methodName;
     SET_KEY %r2 %r3 %r1;
     JMP _l2709_;
@@ -36172,7 +36167,7 @@ LABEL _l2711_:
     MOV_PROP %r1 %r2 %r3;
     MOV %r0 %r1;
     JF %r1 _l2714_;
-    MOV %r2 @c682;
+    MOV %r2 @c681;
     NEG %r2;
     LG_AND %r0 %r2;
 LABEL _l2714_:
@@ -36213,7 +36208,7 @@ LABEL _l2715_:
     CALL_REG @c77 2 false;
     MOV %r2 $RET;
     SET_KEY %r1 'size' %r2;
-    MOV %r2 @c683;
+    MOV %r2 @c682;
     MOV %r6 result;
     MOV %r7 "__dir__";
     MOV_PROP %r4 %r6 %r7;
@@ -36251,7 +36246,7 @@ func @@f672(n) {
     MOV %r6 "reverse";
     CALL_VAR %r5 %r6 0 false;
     MOV %r3 $RET;
-    MOV %r4 @c683;
+    MOV %r4 @c682;
     CALL_VAR %r3 %r4 1 false;
     MOV %r1 $RET;
     MOV %r2 "reverse";
@@ -36278,7 +36273,7 @@ func @@f673(iteratee) {
     CALL_REG @c199 2 false;
     MOV %r1 $RET;
     SET_KEY %r0 'iteratee' %r1;
-    MOV %r1 @c684;
+    MOV %r1 @c683;
     SET_KEY %r0 'type' %r1;
     PUSH %r0;
     MOV %r2 result;
@@ -36291,7 +36286,7 @@ func @@f673(iteratee) {
     MOV_PROP %r1 %r2 %r3;
     MOV %r0 %r1;
     JIF %r1 _l2718_;
-    MOV %r2 @c685;
+    MOV %r2 @c684;
     LG_OR %r0 %r2;
 LABEL _l2718_:
     MOV %r1 result;
@@ -36312,7 +36307,7 @@ func @@f674() {
     MOV %r5 1;
     PUSH %r5;
     MOV_THIS %r5;
-    MOV %r6 @c686;
+    MOV %r6 @c685;
     CALL_VAR %r5 %r6 1 false;
     MOV %r3 $RET;
     MOV %r4 "value";
@@ -36341,7 +36336,7 @@ LABEL _l2719_:
     MOV %r2 1;
     PUSH %r2;
     MOV_THIS %r2;
-    MOV %r3 @c687;
+    MOV %r3 @c686;
     CALL_VAR %r2 %r3 1 false;
     MOV %r0 $RET;
 LABEL _l2720_:
@@ -36351,9 +36346,9 @@ LABEL _l2720_:
 func @@f676(value) {
     VAR %r0;
     VAR %r1;
-    MOV %r1 @c688;
+    MOV %r1 @c687;
     PUSH %r1;
-    MOV %r1 @c689;
+    MOV %r1 @c688;
     PUSH %r1;
     MOV %r1 value;
     PUSH %r1;
@@ -36364,15 +36359,15 @@ func @@f676(value) {
 }
 func @@f677() {
     VAR value;
-    VAR @c707;
-    ALLOC @c707;
+    VAR @c706;
+    ALLOC @c706;
     VAR isLazy;
     VAR @c278;
     ALLOC @c278;
     VAR useLazy;
     VAR interceptor;
-    VAR @c709;
-    ALLOC @c709;
+    VAR @c708;
+    ALLOC @c708;
     VAR isHybrid;
     VAR isUnwrapped;
     VAR onlyLazy;
@@ -36388,19 +36383,19 @@ func @@f677() {
     MOV_THIS %r0;
     MOV %r1 "__wrapped__";
     MOV_PROP value %r0 %r1;
-    MOV %r0 @c690;
+    MOV %r0 @c689;
     JF %r0 _l2721_;
-    NEW_ARR @c707;
+    NEW_ARR @c706;
     MOV %r1 1;
-    SET_KEY @c707 0 %r1;
+    SET_KEY @c706 0 %r1;
     JMP _l2722_;
 LABEL _l2721_:
-    MOV_ARGS @c707;
+    MOV_ARGS @c706;
 LABEL _l2722_:
     MOV isLazy value;
     MOV %r0 @c70;
     INST_OF isLazy %r0;
-    MOV %r0 @c707;
+    MOV %r0 @c706;
     MOV %r1 0;
     MOV_PROP @c278 %r0 %r1;
     MOV %r0 isLazy;
@@ -36415,7 +36410,7 @@ LABEL _l2723_:
     MOV %r3 useLazy;
     MOV %r2 %r3;
     JF %r3 _l2728_;
-    MOV %r4 @c691;
+    MOV %r4 @c690;
     LG_AND %r2 %r4;
 LABEL _l2728_:
     MOV %r1 %r2;
@@ -36445,7 +36440,7 @@ LABEL _l2724_:
 LABEL _l2725_:
     MOV_THIS %r0;
     MOV %r1 "__chain__";
-    MOV_PROP @c709 %r0 %r1;
+    MOV_PROP @c708 %r0 %r1;
     MOV_THIS %r2;
     MOV %r3 "__actions__";
     MOV_PROP %r0 %r2 %r3;
@@ -36453,10 +36448,10 @@ LABEL _l2725_:
     MOV_PROP isHybrid %r0 %r1;
     NEG isHybrid;
     NEG isHybrid;
-    MOV %r0 @c692;
+    MOV %r0 @c691;
     MOV isUnwrapped %r0;
     JF %r0 _l2729_;
-    MOV %r1 @c709;
+    MOV %r1 @c708;
     NEG %r1;
     LG_AND isUnwrapped %r1;
 LABEL _l2729_:
@@ -36467,7 +36462,7 @@ LABEL _l2729_:
     NEG %r1;
     LG_AND onlyLazy %r1;
 LABEL _l2730_:
-    MOV %r1 @c692;
+    MOV %r1 @c691;
     NEG %r1;
     MOV %r0 %r1;
     JF %r1 _l2733_;
@@ -36485,11 +36480,11 @@ LABEL _l2734_:
     CALL_REG @c70 1 true;
     MOV %r1 $RET;
     MOV value %r1;
-    MOV %r1 @c707;
+    MOV %r1 @c706;
     PUSH %r1;
     MOV %r1 value;
     PUSH %r1;
-    MOV %r1 @c693;
+    MOV %r1 @c692;
     MOV %r2 "apply";
     CALL_VAR %r1 %r2 2 false;
     MOV result $RET;
@@ -36508,7 +36503,7 @@ LABEL _l2734_:
     MOV_PROP %r1 %r3 %r2;
     MOV %r2 "push";
     CALL_VAR %r1 %r2 1 false;
-    MOV %r2 @c709;
+    MOV %r2 @c708;
     PUSH %r2;
     MOV %r2 result;
     PUSH %r2;
@@ -36526,11 +36521,11 @@ LABEL _l2732_:
     LG_AND %r0 %r2;
 LABEL _l2737_:
     JF %r0 _l2735_;
-    MOV %r2 @c707;
+    MOV %r2 @c706;
     PUSH %r2;
     MOV_THIS %r2;
     PUSH %r2;
-    MOV %r2 @c693;
+    MOV %r2 @c692;
     MOV %r3 "apply";
     CALL_VAR %r2 %r3 2 false;
     MOV %r1 $RET;
@@ -36548,7 +36543,7 @@ LABEL _l2736_:
     MOV result %r0;
     MOV %r1 isUnwrapped;
     JF %r1 _l2738_;
-    MOV %r2 @c690;
+    MOV %r2 @c689;
     JF %r2 _l2740_;
     MOV %r5 result;
     MOV %r6 "value";
@@ -36570,16 +36565,16 @@ LABEL _l2739_:
     RET;
 }
 func @@f678() {
-    VAR @c710;
-    ALLOC @c710;
+    VAR @c709;
+    ALLOC @c709;
     VAR value;
     VAR %r0;
     VAR %r1;
     VAR %r2;
     VAR %r3;
     VAR %r4;
-    MOV @c710 arguments;
-    MOV %r1 @c694;
+    MOV @c709 arguments;
+    MOV %r1 @c693;
     MOV %r0 %r1;
     JF %r1 _l2743_;
     MOV_THIS %r3;
@@ -36593,7 +36588,7 @@ LABEL _l2743_:
     MOV %r2 "value";
     CALL_VAR %r1 %r2 0 false;
     MOV value $RET;
-    MOV %r2 @c710;
+    MOV %r2 @c709;
     PUSH %r2;
     MOV %r4 value;
     PUSH %r4;
@@ -36605,7 +36600,7 @@ LABEL _l2743_:
 LABEL _l2744_:
     NEW_ARR %r2;
     PUSH %r2;
-    MOV %r2 @c695;
+    MOV %r2 @c694;
     MOV %r3 "apply";
     CALL_VAR %r2 %r3 2 false;
     MOV %r1 $RET;
@@ -36617,7 +36612,7 @@ LABEL _l2742_:
     FUNC %r1 @@f685;
     PUSH %r1;
     MOV_THIS %r1;
-    MOV %r2 @c696;
+    MOV %r2 @c695;
     CALL_VAR %r1 %r2 1 false;
     MOV %r0 $RET;
     MOV $RET %r0;
@@ -36626,7 +36621,7 @@ LABEL _l2742_:
 func @@f679(iteratee) {
     VAR %r0;
     VAR %r1;
-    MOV %r1 @c697;
+    MOV %r1 @c696;
     PUSH %r1;
     CALL_REG @c278 1 false;
     MOV %r0 $RET;
@@ -36638,15 +36633,15 @@ func @@f680(key) {
     VAR %r1;
     VAR %r2;
     VAR %r3;
-    MOV %r1 @c698;
+    MOV %r1 @c697;
     PUSH %r1;
     MOV %r1 key;
     PUSH %r1;
-    MOV %r2 @c698;
+    MOV %r2 @c697;
     MOV %r3 key;
     MOV_PROP %r1 %r2 %r3;
     PUSH %r1;
-    CALL_REG @c699 3 false;
+    CALL_REG @c698 3 false;
     MOV %r0 $RET;
     MOV $RET %r0;
     RET;
@@ -36667,7 +36662,7 @@ func @@f681() {
     MOV %r0 args;
     MOV %r1 0;
     MOV_PROP value %r0 %r1;
-    MOV %r2 @c700;
+    MOV %r2 @c699;
     MOV %r1 %r2;
     JF %r2 _l2748_;
     MOV %r5 args;
@@ -36688,7 +36683,7 @@ LABEL _l2747_:
     JF %r0 _l2745_;
     MOV %r4 value;
     PUSH %r4;
-    MOV %r4 @c700;
+    MOV %r4 @c699;
     MOV %r5 "plant";
     CALL_VAR %r4 %r5 1 false;
     MOV %r2 $RET;
@@ -36701,13 +36696,13 @@ LABEL _l2747_:
 LABEL _l2745_:
 LABEL _l2746_:
     MOV index 0;
-    MOV %r0 @c701;
+    MOV %r0 @c700;
     JF %r0 _l2749_;
     MOV %r1 args;
     PUSH %r1;
     MOV_THIS %r1;
     PUSH %r1;
-    MOV %r3 @c702;
+    MOV %r3 @c701;
     MOV %r2 index;
     MOV_PROP %r1 %r3 %r2;
     MOV %r2 "apply";
@@ -36722,7 +36717,7 @@ LABEL _l2751_:
     ADD %r2 1;
     MOV %r0 %r2;
     MOV index %r2;
-    MOV %r1 @c701;
+    MOV %r1 @c700;
     LT %r0 %r1;
     JF %r0 _l2752_;
 LABEL _l2754_:
@@ -36730,7 +36725,7 @@ LABEL _l2754_:
     PUSH %r2;
     MOV_THIS %r2;
     PUSH %r2;
-    MOV %r4 @c702;
+    MOV %r4 @c701;
     MOV %r3 index;
     MOV_PROP %r2 %r4 %r3;
     MOV %r3 "call";
@@ -36744,18 +36739,18 @@ LABEL _l2752_:
     RET;
 }
 func @@f682(args) {
-    VAR @c712;
-    ALLOC @c712;
+    VAR @c711;
+    ALLOC @c711;
     VAR %r0;
     VAR %r1;
-    ALLOC @c711;
-    MOV @c711 args;
+    ALLOC @c710;
+    MOV @c710 args;
     MOV_THIS thisArg;
     FUNC %r1 @@f686;
     PUSH %r1;
-    MOV %r1 @c703;
+    MOV %r1 @c702;
     PUSH %r1;
-    CALL_REG @c704 2 false;
+    CALL_REG @c703 2 false;
     MOV %r0 $RET;
     MOV $RET %r0;
     RET;
@@ -36773,7 +36768,7 @@ func @@f683() {
     MOV_THIS %r0;
     MOV %r1 "__chain__";
     MOV_PROP chainAll %r0 %r1;
-    MOV %r1 @c705;
+    MOV %r1 @c704;
     MOV %r0 %r1;
     JIF %r1 _l2757_;
     MOV %r2 chainAll;
@@ -36784,7 +36779,7 @@ LABEL _l2757_:
     MOV %r3 "__wrapped__";
     MOV_PROP %r1 %r2 %r3;
     PUSH %r1;
-    CALL_REG @c677 1 false;
+    CALL_REG @c676 1 false;
     MOV result $RET;
     MOV_THIS %r3;
     MOV %r4 "__actions__";
@@ -36797,11 +36792,11 @@ LABEL _l2757_:
     SET_KEY %r2 %r3 %r1;
     MOV actions %r1;
     NEW_OBJ %r1;
-    MOV %r2 @c706;
+    MOV %r2 @c705;
     SET_KEY %r1 'func' %r2;
     MOV_ARGS %r2;
     SET_KEY %r1 'args' %r2;
-    MOV %r2 @c677;
+    MOV %r2 @c676;
     SET_KEY %r1 'thisArg' %r2;
     PUSH %r1;
     MOV %r1 actions;
@@ -36829,9 +36824,9 @@ LABEL _l2756_:
     CALL_REG @c144 2 false;
     MOV %r1 $RET;
     PUSH %r1;
-    MOV %r1 @c677;
+    MOV %r1 @c676;
     PUSH %r1;
-    MOV %r1 @c706;
+    MOV %r1 @c705;
     MOV %r2 "apply";
     CALL_VAR %r1 %r2 2 false;
     MOV %r0 $RET;
@@ -36844,7 +36839,7 @@ func @@f684(value) {
     VAR %r1;
     VAR %r2;
     VAR %r3;
-    MOV %r1 @c707;
+    MOV %r1 @c706;
     PUSH %r1;
     NEW_ARR %r1;
     MOV %r2 value;
@@ -36855,14 +36850,14 @@ func @@f684(value) {
     PUSH %r0;
     MOV %r0 @c277;
     PUSH %r0;
-    MOV %r0 @c708;
+    MOV %r0 @c707;
     MOV %r1 "apply";
     CALL_VAR %r0 %r1 2 false;
     MOV result $RET;
-    MOV %r2 @c690;
+    MOV %r2 @c689;
     MOV %r1 %r2;
     JF %r2 _l2760_;
-    MOV %r3 @c709;
+    MOV %r3 @c708;
     LG_AND %r1 %r3;
 LABEL _l2760_:
     JF %r1 _l2758_;
@@ -36881,7 +36876,7 @@ func @@f685(value) {
     VAR %r1;
     VAR %r2;
     VAR %r3;
-    MOV %r1 @c710;
+    MOV %r1 @c709;
     PUSH %r1;
     MOV %r3 value;
     PUSH %r3;
@@ -36894,7 +36889,7 @@ LABEL _l2761_:
     NEW_ARR %r1;
 LABEL _l2762_:
     PUSH %r1;
-    MOV %r1 @c695;
+    MOV %r1 @c694;
     MOV %r2 "apply";
     CALL_VAR %r1 %r2 2 false;
     MOV %r0 $RET;
@@ -36904,9 +36899,9 @@ LABEL _l2762_:
 func @@f686(iteratee) {
     VAR %r0;
     VAR %r1;
-    MOV %r1 @c711;
+    MOV %r1 @c710;
     PUSH %r1;
-    MOV %r1 @c712;
+    MOV %r1 @c711;
     PUSH %r1;
     MOV %r1 @c278;
     PUSH %r1;

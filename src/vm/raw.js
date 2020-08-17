@@ -84,6 +84,5 @@ exports.parseVmFunctionToJsFunction = function parseVmFunctionToJsFunction (func
     }
   }
   Object.setPrototypeOf(func, Callable.prototype)
-  func.__ip__ = funcInfo.ip
   return func
 }
