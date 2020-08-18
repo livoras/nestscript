@@ -1,7 +1,7 @@
 import { createVMFromJavaScript } from '../src/js'
 import { expect } from 'chai'
 import { createOperantBuffer, getOperatantByBuffer } from '../src/utils'
-import { IOperatantType } from '../src/vm'
+import { IOperatantType } from '../src/vm/vm'
 const chai = require('chai')
 const spies = require('chai-spies')
 
@@ -471,6 +471,31 @@ describe('function', (): void => {
     ).deep.equal(
       [IOperatantType.REGISTER, 100, 1],
     )
+  })
+
+  it('immediatly run function', (): void => {
+    tm(`
+    (function () {
+      const a = [1 ,2 ,3]
+      function sayHi() {
+        console.log('hi')
+      }
+      sayHi()
+    })()
+    `)
+  })
+
+  it('return new function', (): void => {
+    tm(`
+    const newFunc = () => {
+      return (a, b) => {
+        return a + b
+      }
+    }
+    const a = newFunc()
+    const b = newFunc()
+    expect(a).not.equal(b)
+    `)
   })
 })
 

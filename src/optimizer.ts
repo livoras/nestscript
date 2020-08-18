@@ -1,6 +1,6 @@
 import { Certificate, createDecipher, createDiffieHellman } from 'crypto'
 import { parseCode, parseAssembler, IParsedFunction } from './parser'
-import { I } from './vm'
+import { I } from './vm/vm'
 import { use } from 'chai'
 
 export const optimizeCode = (code: string): string => {

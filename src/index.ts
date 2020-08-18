@@ -1,3 +1,3 @@
 export * from "./assembler"
-export * from "./vm"
+export * from "./vm/vm"
 export * from "./codegen"
