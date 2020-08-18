@@ -10,3 +10,7 @@ js:
 	 ./nsc/bin/run codegen ./example/main.js ./example/js.nes
 	 ./nsc/bin/run compile ./example/js.nes ./example/main
 	 make run
+lodash:
+	 ./nsc/bin/run codegen ./example/lodash.min.js ./example/lodash.nes
+	 ./nsc/bin/run compile ./example/lodash.nes ./example/main
+	 make run

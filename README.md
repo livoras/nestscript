@@ -105,12 +105,18 @@ func main() {
 - [x] `null`, `undefined` keyword
 - [x] 正则表达式
 - [x] label 语法
-- `try catch`
+- [ ] `try catch`
+  - [x] try catch block
+  - [ ] error 对象获取
+- [ ] ForInStatement
   
 
 * * *
 
 ## Change Log
+## 2020-08-14
+* 编译 lodash 成功
+
 ## 2020-08-14
 * `arguments` 参数支持
 

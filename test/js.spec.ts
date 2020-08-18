@@ -453,6 +453,21 @@ describe('function', (): void => {
     `)
   })
 
+  it(`new function with contructor running method`, (): void => {
+    tm(`
+      function Locale(config) {
+          if (config != null) {
+              this.set(config);
+          }
+      }
+      const proto = Locale.prototype
+      proto.set = function (config) {
+        expect(this instanceof Locale).equal(true)
+      }
+      const l = new Locale()
+    `)
+  })
+
   it(`operatant type transfer`, (): void => {
     expect(
       getOperatantByBuffer(createOperantBuffer(IOperatantType.NUMBER, -3368)),
