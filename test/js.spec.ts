@@ -472,6 +472,31 @@ describe('function', (): void => {
       [IOperatantType.REGISTER, 100, 1],
     )
   })
+
+  it('immediatly run function', (): void => {
+    tm(`
+    (function () {
+      const a = [1 ,2 ,3]
+      function sayHi() {
+        console.log('hi')
+      }
+      sayHi()
+    })()
+    `)
+  })
+
+  it('return new function', (): void => {
+    tm(`
+    const newFunc = () => {
+      return (a, b) => {
+        return a + b
+      }
+    }
+    const a = newFunc()
+    const b = newFunc()
+    expect(a).not.equal(b)
+    `)
+  })
 })
 
 describe('loop', (): void => {

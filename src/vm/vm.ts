@@ -1,7 +1,5 @@
-  // tslint:disable: no-bitwise
+// tslint:disable: no-bitwise
 import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from '../utils'
-import { stat } from 'fs'
-const raw = require('./raw')
 
 export enum I {
  MOV, ADD, SUB, MUL, DIV, MOD,
@@ -81,19 +79,17 @@ class FunctionInfo {
   public getJsFunction(): CallableFunction {
     if (!this.vm) { throw new VMRunTimeError("VirtualMachine is not set!")}
     if (!this.closureTable) { this.closureTable = {} }
-    // console.log("closure table -> ", this.closureTable)
-    let jsFunc = this.jsFunction
-    if (!jsFunc) {
-      jsFunc = this.jsFunction = raw.parseVmFunctionToJsFunction(this, this.vm)
-    }
-    return jsFunc as CallableFunction
+    // let jsFunc = this.jsFunction
+    // if (!jsFunc) {
+    //   jsFunc = this.jsFunction = parseVmFunctionToJsFunction(this, this.vm)
+    // }
+    this.jsFunction = parseVmFunctionToJsFunction(this, this.vm)
+    return this.jsFunction as CallableFunction
   }
 
 }
 
 type CallableFunction = (...args: any[]) => any
-
-raw.setInstructionsCode(I)
 
 export interface IOperant {
   type: IOperatantType,
@@ -195,7 +191,9 @@ export class VirtualMachine {
     this.ip = this.functionsTable[this.entryFunctionIndex].ip
     console.log("start stack", this.stack)
     this.isRunning = true
-    while (this.isRunning) { this.fetchAndExecute() }
+    while (this.isRunning) {
+      this.fetchAndExecute()
+    }
   }
 
   public setReg(dst: IOperant, src: { value: any }): void {
@@ -226,11 +224,14 @@ export class VirtualMachine {
 
   // tslint:disable-next-line: no-big-function cognitive-complexity
   public fetchAndExecute(): [I, boolean] {
+    if (!this.isRunning) {
+      throw new Error('try to run again...')
+    }
     const stack = this.stack
     const op = this.nextOperator()
     // 用来判断是否嵌套调用 vm 函数
     let isCallVMFunction = false
-    console.log(op, I[op])
+    // console.log(op, I[op])
     // tslint:disable-next-line: max-switch-cases
     switch (op) {
     case I.PUSH: {
@@ -399,7 +400,7 @@ export class VirtualMachine {
       const o = this.nextOperant().value
       const key = this.nextOperant().value
       const value = this.nextOperant().value
-      console.log(o, key, value)
+      // console.log(o, key, value)
       o[key] = value
       break
     }
@@ -420,16 +421,9 @@ export class VirtualMachine {
     // MOV_PRO R0 R1 "arr.length";
     case I.MOV_PROP: {
       const dst = this.nextOperant()
-      // console.log(this.stack)
       const o = this.nextOperant()
       const k = this.nextOperant()
-      // console.log('----------------------')
-      // console.log('o --->', o)
-      // console.log('key -->', k)
-      // console.log('dst --->', dst)
-      // console.log('----------------------')
       const v = getByProp(o.value, k.value)
-      // stack[dst.index] = v
       this.setReg(dst, { value: v })
       break
     }
@@ -711,9 +705,9 @@ export class VirtualMachine {
     const stack = this.stack
     const f = func || o[funcName]
     let isCallVMFunction = false
-    if ((f instanceof raw.Callable) && !isNewExpression) {
+    if ((f instanceof Callable) && !isNewExpression) {
       // console.log('---> THE IP IS -->', (func as any).__ip__)
-      const arg = new raw.NumArgs(numArgs)
+      const arg = new NumArgs(numArgs)
       if (o) {
         if (typeof o[funcName] === 'function') {
           o[funcName](arg)
@@ -735,7 +729,8 @@ export class VirtualMachine {
             ? new o[funcName](...args)
             : o[funcName](...args)
         } catch(e) {
-          console.log(`Calling function "${funcName}" failed.`, typeof o, o[funcName], isNewExpression, o)
+          console.log(`Calling function "${funcName}" failed.`, typeof o)
+          // console.trace(e)
           // if (!(e instanceof VMRunTimeError)) {
           throw new VMRunTimeError(e)
           // }
@@ -809,3 +804,93 @@ const parseFunctionTable = (buffer: ArrayBuffer): FunctionInfo[] => {
 }
 
 export { createVMFromArrayBuffer }
+
+// https://hackernoon.com/creating-callable-objects-in-javascript-d21l3te1
+// tslint:disable-next-line: max-classes-per-file
+class Callable extends Function {
+  constructor() {
+    super()
+  }
+}
+
+exports.Callable = Callable
+
+
+// tslint:disable-next-line: max-classes-per-file
+class NumArgs {
+  constructor(public numArgs: number) {
+  }
+}
+
+exports.NumArgs = NumArgs
+
+// tslint:disable-next-line: cognitive-complexity
+function parseVmFunctionToJsFunction (
+  funcInfo: FunctionInfo, vm: VirtualMachine): any {
+  const func = function (this: any, ...args: any[]): any {
+    vm.isRunning = true
+    const n = args[0]
+    const isCalledFromJs = !(n instanceof NumArgs)
+    let numArgs = 0
+    let allArgs = []
+    if (isCalledFromJs) {
+      args.reverse()
+      args.forEach((arg: any): void => vm.push(arg))
+      numArgs = args.length
+      allArgs = [...args]
+    } else {
+      numArgs = n.numArgs
+      allArgs = []
+      for (let i = 0; i < numArgs; i++) {
+        allArgs.push(vm.stack[vm.sp - i])
+        // console.log(arguments, '--->')
+      }
+    }
+    // console.log("CALLING ---->", funcInfo)
+    vm.closureTable = funcInfo.closureTable
+    vm.closureTables.push(funcInfo.closureTable)
+    vm.currentThis = this
+    vm.allThis.push(this)
+    const stack = vm.stack
+    if (isCalledFromJs) {
+      stack[0] = undefined
+    }
+    // console.log('call', funcInfo, numArgs)
+    //            | R3        |
+    //            | R2        |
+    //            | R1        |
+    //            | R0        |
+    //      sp -> | fp        | # for restoring old fp
+    //            | ip        | # for restoring old ip
+    //            | numArgs   | # for restoring old sp: old sp = current sp - numArgs - 3
+    //            | arguments | # for store arguments for js `arguments` keyword
+    //            | arg1      |
+    //            | arg2      |
+    //            | arg3      |
+    //  old sp -> | ....      |
+    stack[++vm.sp] = allArgs
+    stack[++vm.sp] = numArgs
+    stack[++vm.sp] = vm.ip
+    stack[++vm.sp] = vm.fp
+    // set to new ip and fp
+    vm.ip = funcInfo.ip
+    vm.fp = vm.sp
+    vm.sp += funcInfo.localSize
+    if (isCalledFromJs) {
+      /** 嵌套 vm 函数调 vm 函数，需要知道嵌套多少层，等到当前层完结再返回 */
+      let callCount = 1
+      while (callCount > 0 && vm.isRunning) {
+        const [op, isCallVMFunction] = vm.fetchAndExecute()
+        if (isCallVMFunction) {
+          callCount++
+        } else if (op === I.RET) {
+          callCount--
+        }
+      }
+      return stack[0]
+    }
+  }
+  Object.setPrototypeOf(func, Callable.prototype)
+  return func
+}
+// tslint:disable-next-line: max-file-line-count
