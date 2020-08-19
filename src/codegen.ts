@@ -56,6 +56,7 @@ interface BlockLabel {
   startLabel?: string,
   endLabel?: string,
   updateLabel?: string,
+  isForIn?: boolean,
 }
 
 const codeMap = {
@@ -805,7 +806,7 @@ const parseToCode = (ast: any): void => {
       const startLabel = newLabelName()
       const endLabel = newLabelName()
       getValueOfNode(right, rightReg, s, c)
-      pushLoopLabels({ startLabel, endLabel, updateLabel: startLabel })
+      pushLoopLabels({ startLabel, endLabel, updateLabel: startLabel, isForIn: true })
       cg('FORIN', leftReg, rightReg, startLabel, endLabel)
       lg(startLabel)
       c(node.body, s)
@@ -839,6 +840,10 @@ const parseToCode = (ast: any): void => {
       if (!labels) {
         throw new Error("Not available labels, cannot use `break` here.")
       }
+      if (labels.isForIn) {
+        cg('BREAK_FORIN')
+        return
+      }
       const endLabel = labels.endLabel
       // cg(`JMP ${endLabel} (break)`)
       cg(`JMP`, `${endLabel}`)
@@ -859,6 +864,10 @@ const parseToCode = (ast: any): void => {
       const labels = getCurrentLoopLabel()
       if (!labels) {
         throw new Error("Not available labels, cannot use `continue` here.")
+      }
+      if (labels.isForIn) {
+        cg('CONT_FORIN')
+        return
       }
       const { startLabel, updateLabel } = labels
       // cg(`JMP ${endLabel} (break)`)

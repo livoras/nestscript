@@ -778,10 +778,17 @@ describe("continue and break", (): void => {
     const b = { name2: 'jerry', age2: 12, title2: 'student' }
     const list2 = []
     for (i in b) {
-      if (b === 'title2') { break }
+      if (i === 'title2') { break }
       list2.push(i)
     }
     expect(list2).to.be.deep.equal(['name2', 'age2'])
+
+    const list3 = []
+    for (i in b) {
+      if (i === 'name2') { continue }
+      list3.push(i)
+    }
+    expect(list3).to.be.deep.equal(['age2', 'title2'])
     `)
   })
 

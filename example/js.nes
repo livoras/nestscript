@@ -42,6 +42,14 @@ LABEL _l1_:
     FORIN i %r0 _l2_ _l3_;
 LABEL _l2_:
     MOV %r1 i;
+    MOV %r2 "name2";
+    EQ %r1 %r2;
+    JF %r1 _l4_;
+    CONT_FORIN;
+    JMP _l5_;
+LABEL _l4_:
+LABEL _l5_:
+    MOV %r1 i;
     PUSH %r1;
     MOV %r1 list2;
     MOV %r2 "push";

@@ -108,12 +108,15 @@ func main() {
 - [ ] `try catch`
   - [x] try catch block
   - [ ] error 对象获取
-- [ ] ForInStatement
+- [x] ForInStatement
   
 
 * * *
 
 ## Change Log
+## 2020-08-19
+* ForInStatement
+
 ## 2020-08-14
 * 编译 lodash 成功
 
