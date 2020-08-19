@@ -134,7 +134,8 @@ export const parseCodeToProgram = (program: string): Buffer => {
             (op === 'TRY' && (i === 1 || i === 2)) ||
             ['JMP'].includes(op) ||
             (['JE', 'JNE', 'JG', 'JL', 'JGE', 'JLE'].includes(op) && i === 3) ||
-            (['JF', 'JIF'].includes(op) && i === 2)
+            (['JF', 'JIF'].includes(op) && i === 2) ||
+            (op === 'FORIN' && (i === 3 || i === 4))
           ) {
             code[i] = {
               type: IOperatantType.ADDRESS,

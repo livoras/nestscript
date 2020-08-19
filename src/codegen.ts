@@ -788,6 +788,33 @@ const parseToCode = (ast: any): void => {
       freeReg()
     },
 
+    ForInStatement(node: et.ForInStatement, s: any, c: any): any {
+      const left = node.left
+      const right = node.right
+      const [newReg, freeReg] = newRegisterController()
+      let leftReg
+      if (left.type === 'Identifier') {
+        leftReg = left.name
+      } else if (left.type === 'VariableDeclaration') {
+        leftReg = (left.declarations[0].id as et.Identifier).name
+        declareVariable(s, leftReg)
+      } else {
+        throw new Error('Cannot process for in statement left type ' + left.type)
+      }
+      const rightReg = newReg()
+      const startLabel = newLabelName()
+      const endLabel = newLabelName()
+      getValueOfNode(right, rightReg, s, c)
+      pushLoopLabels({ startLabel, endLabel, updateLabel: startLabel })
+      cg('FORIN', leftReg, rightReg, startLabel, endLabel)
+      lg(startLabel)
+      c(node.body, s)
+      cg('FORIN_END')
+      lg(endLabel)
+      freeReg()
+      popLoopLabels()
+    },
+
     WhileStatement(node: et.WhileStatement, s: any, c: any): any {
       this.ForStatement(node, s, c)
     },
@@ -942,6 +969,7 @@ const parseToCode = (ast: any): void => {
       blockEndLabels.set(labelName, { endLabel })
       if (
         node.body.type === 'ForStatement' ||
+        node.body.type === 'ForInStatement' ||
         node.body.type === 'WhileStatement' ||
         node.body.type === 'DoWhileStatement'
       ) {

@@ -36,6 +36,8 @@ export enum I {
 
  // arguments
  MOV_ARGS,
+
+ FORIN, FORIN_END,
 }
 
 class VMRunTimeError extends Error {
@@ -603,13 +605,37 @@ export class VirtualMachine {
       break
     }
     case I.TRY_END: {
-      throw new VMRunTimeError('Should not has `TRY_END` here.')
+      // throw new VMRunTimeError('Should not has `TRY_END` here.')
       break
     }
     case I.MOV_ARGS: {
       const dst = this.nextOperant()
       // console.log(this.stack[this.fp - 2], '--->')
       this.setReg(dst, { value: this.stack[this.fp - 3] })
+      break
+    }
+    case I.FORIN: {
+      const dst = this.nextOperant()
+      const target = this.nextOperant()
+      const startAddress = this.nextOperant()
+      const endAddress = this.nextOperant()
+      console.log(dst, target, startAddress, endAddress)
+      // tslint:disable-next-line: forin
+      for (const i in target.value) {
+        this.setReg(dst, { value: i })
+        while (true) {
+          const o = this.fetchAndExecute()[0]
+          if (o === I.FORIN_END) {
+            this.ip = startAddress.value
+            break
+          }
+        }
+      }
+      this.ip = endAddress.value
+      break
+    }
+    case I.FORIN_END: {
+      // throw new VMRunTimeError('Should not has `TRY_END` here.')
       break
     }
     default:

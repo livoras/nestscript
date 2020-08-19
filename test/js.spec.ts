@@ -766,6 +766,25 @@ describe("continue and break", (): void => {
     `, { spy })
   })
 
+  it(`for in statement`, (): void => {
+    tm(`
+    const a = { name: 'jerry', age: 12, title: 'student' }
+    const list = []
+    for (var i in a) {
+      list.push(i)
+    }
+    expect(list).to.be.deep.equal(['name', 'age', 'title'])
+
+    const b = { name2: 'jerry', age2: 12, title2: 'student' }
+    const list2 = []
+    for (i in b) {
+      if (b === 'title2') { break }
+      list2.push(i)
+    }
+    expect(list2).to.be.deep.equal(['name2', 'age2'])
+    `)
+  })
+
 })
 
 describe('switch case and break', (): void => {
