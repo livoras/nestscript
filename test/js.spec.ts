@@ -299,6 +299,29 @@ describe('conditional expression and if else expression', (): void => {
     `)
 
   })
+
+  it(`if else and nested if else`, (): void => {
+    const spy = makeSpy()
+    tm(`
+    function test(a, b) {
+      if (a) {
+        if (b) {
+          spy()
+        } else {
+          throw new Error('error')
+        }
+        spy()
+        if (!b) {
+          throw new Error('error')
+        } else {
+          spy()
+        }
+      }
+    }
+    test(true, true)
+    expect(spy).to.be.called.exactly(3)
+    `, { spy, Error })
+  })
 })
 
 describe('class', (): void => {

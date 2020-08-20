@@ -37,6 +37,7 @@ export default class Run extends Command {
       ArrayBuffer,
       DataView,
       Error,
+      Math,
       console,
       Date,
     })

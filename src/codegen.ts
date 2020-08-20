@@ -666,33 +666,34 @@ const parseToCode = (ast: any): void => {
       freeReg()
     },
 
-    IfStatement(node: et.IfStatement, s: any, c: any): void {
+    IfStatement(node: any, s: any, c: any): void {
       const [newReg, freeReg] = newRegisterController()
       const retReg = s.r0
+      const endLabel = newLabelName()
 
-      const testReg = newReg()
-      const nextLabel = newLabelName()
-      const hasEndLabel = !!s.endLabel
-      const endLabel = s.endLabel || newLabelName()
-      s.endLabel = endLabel
+      while (node && (node.type === 'IfStatement' || node.type === 'ConditionalExpression')) {
+        const testReg = newReg()
+        const nextLabel = newLabelName()
 
-      s.r0 = testReg
-      c(node.test, s)
+        s.r0 = testReg
+        c(node.test, s)
 
-      cg(`JF`, testReg, nextLabel)
-      getValueOfNode(node.consequent, retReg, s, c)
-      cg(`JMP`, endLabel)
+        cg(`JF`, testReg, nextLabel)
+        getValueOfNode(node.consequent, retReg, s, c)
+        cg(`JMP`, endLabel)
 
-      cg(`LABEL`, `${ nextLabel }:`)
-      if (node.alternate) {
-        getValueOfNode(node.alternate, retReg, s, c)
+        cg(`LABEL`, `${ nextLabel }:`)
+        node = node.alternate
+        // if (node.alternate) {
+        //   getValueOfNode(node.alternate, retReg, s, c)
+        // }
       }
 
-      if (!hasEndLabel) {
-        cg(`LABEL`, `${ endLabel }:`)
-        delete s.endLabel
+      if (node) {
+        getValueOfNode(node, retReg, s, c)
       }
 
+      cg(`LABEL`, `${ endLabel }:`)
       freeReg()
     },
 

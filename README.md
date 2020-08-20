@@ -115,6 +115,10 @@ func main() {
 
 ## Change Log
 ## 2020-08-19
+* 编译 moment.js 成功
+* fix if else 语句的顺序问题
+
+## 2020-08-19
 * ForInStatement
 
 ## 2020-08-14
