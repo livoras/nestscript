@@ -1,19 +1,14 @@
-function test(a, b) {
-  if (a) {
-    if (b) {
-      console.log("ok")
-    } else {
-      console.log('not ok')
+(() => {
+    var n = 1
+    const a = () => {
+      var n = 2
+      return b = () => {
+        console.log('b', n)
+      }
     }
-
-    console.log('------------>')
-
-    if (!b) {
-      console.log("not ok")
-    } else {
-      console.log('ok')
+    const c = () => {
+      console.log('c', n)
     }
-  }
-}
-
-test(true, true)
+    a()()
+    c()
+})()

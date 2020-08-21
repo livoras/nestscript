@@ -33,6 +33,7 @@ export default class Run extends Command {
       Function,
       RegExp,
       Object,
+      String,
       TypeError,
       ArrayBuffer,
       DataView,

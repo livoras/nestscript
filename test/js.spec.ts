@@ -1,25 +1,11 @@
-import { createVMFromJavaScript } from '../src/js'
-import { expect } from 'chai'
 import { createOperantBuffer, getOperatantByBuffer } from '../src/utils'
 import { IOperatantType } from '../src/vm/vm'
+import { expect } from 'chai'
+import { tm, makeSpy } from './utils'
 const chai = require('chai')
 const spies = require('chai-spies')
 
 chai.use(spies)
-
-const makeSpy = (): any => chai.spy((): void => {})
-
-const tm = (codes: string, ctx: any = {}): void => {
-  const c = { expect, Date, console, ...ctx, Error }
-  const vm = createVMFromJavaScript(codes, c)
-  vm.run()
-}
-
-// const tm = (codes: string, ctx): void => {
-//   return t(`
-//     ${codes}
-//   `)
-// }
 
 describe('variable scope', (): void => {
   it('outer variable should not be overwritter', (): void => {
@@ -873,7 +859,6 @@ describe("misc", (): void => {
     tm(`
       expect(typeof isObject).equal('function')
       function isObject(value) {
-        console.log('9----------------->!')
         var type = typeof value;
         return value != null && (type == 'object' || type == 'function');
       }
@@ -931,6 +916,28 @@ describe("closure", (): void => {
         }
         getRawTag()
       })()
+    `)
+  })
+
+  it(`shallowed variable`, (): void => {
+    tm(`
+    (() => {
+      var n = 1
+      var i = 101
+      const a = () => {
+        console.log(i)
+        var n = 2
+        return b = (i) => {
+          expect(i).equal(102)
+          expect(n).equal(2)
+        }
+      }
+      const c = () => {
+        expect(n).equal(1)
+      }
+      a()(102)
+      c()
+    })()
     `)
   })
 })

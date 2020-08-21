@@ -93,6 +93,7 @@ const codeToUseAge: { [x in I]: OU[] } = {
   [I.FORIN_END]: [],
   [I.BREAK_FORIN]: [],
   [I.CONT_FORIN]: [],
+  [I.MOV_ARGS]: [OU.GET],
 }
 
 const IGNORE_INS = [

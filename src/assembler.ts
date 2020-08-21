@@ -322,11 +322,11 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
     addressCandidates.forEach(({ codeIndex, bufferIndex, addressByteLen }, i): void => {
       const address = codeAddress[codeIndex]
       const buf = new Uint8Array(Int32Array.from([address]).buffer)
-      console.log(i, '=====================================')
-      console.log('codeIndex -> ', codeIndex)
-      console.log('address -> ', address)
-      console.log('bufferIndex -> ', bufferIndex)
-      console.log('addressBytenLen -> ', addressByteLen)
+      // console.log(i, '=====================================')
+      // console.log('codeIndex -> ', codeIndex)
+      // console.log('address -> ', address)
+      // console.log('bufferIndex -> ', bufferIndex)
+      // console.log('addressBytenLen -> ', addressByteLen)
       const functionBuffer = new Uint8Array(currentFuncBuffer)
       functionBuffer.set(buf.slice(0, addressByteLen), bufferIndex)
     })
@@ -428,7 +428,7 @@ const parseFunction = (func: IParsedFunction): IFuncInfo => {
       codesWithoutLabel.push(code)
     }
   })
-  console.log('===>', funcName, codesWithoutLabel, labels)
+  // console.log('===>', funcName, codesWithoutLabel, labels)
 
   return {
     name: funcName,

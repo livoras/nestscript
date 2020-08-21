@@ -341,7 +341,6 @@ export class VirtualMachine {
       const funcName = this.nextOperant().value
       const numArgs = this.nextOperant().value
       const isNewExpression = this.nextOperant().value
-      // console.log(funcName, '--->', o, '--->', numArgs)
       isCallVMFunction = this.callFunction(void 0, o, funcName, numArgs, isNewExpression)
       break
     }
@@ -350,7 +349,6 @@ export class VirtualMachine {
       const f = o.value
       const numArgs = this.nextOperant().value
       const isNewExpression = this.nextOperant().value
-      // console.log(this.closureTable)
       isCallVMFunction = this.callFunction(f, void 0, '', numArgs, isNewExpression)
       break
     }
@@ -807,7 +805,7 @@ const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMac
   const funcsBuf = buffer.slice(funcionTableBasicIndex, stringTableBasicIndex)
   const funcsTable: FunctionInfo[] = parseFunctionTable(funcsBuf)
   console.log('string table', stringsTable)
-  console.log('function table', funcsTable)
+  // console.log('function table', funcsTable)
   console.log(mainFunctionIndex, 'function basic index', funcionTableBasicIndex)
   console.log('total codes bytes length -->', codesBuf.byteLength)
   console.log('main start index', funcsTable[mainFunctionIndex].ip, stringTableBasicIndex)
@@ -874,10 +872,8 @@ function parseVmFunctionToJsFunction (
       allArgs = []
       for (let i = 0; i < numArgs; i++) {
         allArgs.push(vm.stack[vm.sp - i])
-        // console.log(arguments, '--->')
       }
     }
-    // console.log("CALLING ---->", funcInfo)
     vm.closureTable = funcInfo.closureTable
     vm.closureTables.push(funcInfo.closureTable)
     vm.currentThis = this

@@ -14,6 +14,7 @@ const enum VariableType {
 }
 
 interface IScope {
+  funcName: string, // for debug.
   params: Map<string, any>,
   locals: Map<string, any>,
   closureTable?: Map<string, any>,
@@ -124,6 +125,7 @@ const createNewState = (): IState => {
     globals: {},
     locals: new Map(),
     currentScope: {
+      funcName: '',
       params: new Map(),
       locals: new Map(),
       closureTable: new Map(),
@@ -234,6 +236,7 @@ const parseToCode = (ast: any): void => {
   const touchRegister = (reg: string, currentScope: IScope, scopes: IScope[]): void => {
     /** 这个变量当前 scope 有了就不管了 */
     if (currentScope.locals.get(reg) || currentScope.params.get(reg)) { return }
+    let i = 0
     for (const scope of [...scopes].reverse()) {
       if (scope.locals.get(reg)) {
         scope.locals.set(reg, VariableType.CLOSURE)
@@ -245,16 +248,21 @@ const parseToCode = (ast: any): void => {
         allocateClosure(scopes[0], scope, reg)
         return
       }
+      i++
     }
   }
 
   const getRegisterName = (reg: string, currentScope: IScope, scopes: IScope[], isVar: boolean = false): string => {
     const isClosure = (v: VariableType): boolean => v === VariableType.CLOSURE
-    // if (reg === 'undefined') {
-    //   console.log('===========>', currentScope)
-    //   throw new Error('cannot get register name ' + reg)
-    // }
-    for (const scope of [currentScope, ...scopes].reverse()) {
+    const regType = currentScope.locals.get(reg) || currentScope.params.get(reg)
+    if (regType) {
+      if (regType === VariableType.CLOSURE) {
+        return currentScope.closureTable?.get(reg)
+      } else {
+        return reg
+      }
+    }
+    for (const scope of [...scopes, currentScope].reverse()) {
       if (
         isClosure(scope.locals.get(reg)) ||
         isClosure(scope.params.get(reg))
@@ -1091,7 +1099,11 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
       return o
     }, new Map())
     state.locals = getVariablesByFunctionAstBody(funcAst?.body.body)
-    const currentScope: IScope = state.currentScope = { params: state.params, locals: state.locals }
+    const currentScope: IScope = state.currentScope = {
+      params: state.params,
+      locals: state.locals,
+      funcName: funcAst?.name || '',
+    }
     state.codes.push(getFunctionDecleration(funcAst!), 0)
     state.codes.push((): string[] => {
       const paramClosureDeclarations = [...currentScope.params.keys()].reduce((o: any, param: string): any => {

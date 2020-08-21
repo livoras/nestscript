@@ -114,6 +114,10 @@ func main() {
 * * *
 
 ## Change Log
+## 2020-08-21
+* fix 闭包生成的顺序问题
+* 编译第三方库 moment.js, moment.min.js, lodash.js, lodash.min.js 成功并把编译加入测试
+
 ## 2020-08-19
 * 编译 moment.js 成功
 * fix if else 语句的顺序问题

@@ -1,57 +1,54 @@
 func @@main() {
     VAR %r0;
-    FUNC test @@f0;
-    GLOBAL test;
-    MOV %r0 true;
-    PUSH %r0;
-    MOV %r0 true;
-    PUSH %r0;
-    CALL_REG test 2 false;
+    FUNC %r0 @@f0;
+    CALL_REG %r0 0 false;
+    MOV $RET $RET;
 }
-func @@f0(a, b) {
+func @@f0() {
+    VAR @c0;
+    ALLOC @c0;
+    VAR a;
+    VAR c;
+    VAR %r0;
+    FUNC a @@f1;
+    FUNC c @@f2;
+    MOV @c0 1;
+    CALL_REG a 0 false;
+    MOV %r0 $RET;
+    CALL_REG %r0 0 false;
+    CALL_REG c 0 false;
+}
+func @@f1() {
+    VAR @c1;
+    ALLOC @c1;
     VAR %r0;
     VAR %r1;
-    VAR %r2;
-    VAR %r3;
-    MOV %r0 a;
-    JF %r0 _l1_;
-    MOV %r1 b;
-    JF %r1 _l3_;
-    MOV %r2 "ok";
-    PUSH %r2;
-    MOV_CTX %r2 "console";
-    MOV %r3 "log";
-    CALL_VAR %r2 %r3 1 false;
-    JMP _l2_;
-LABEL _l3_:
-    MOV %r2 "not ok";
-    PUSH %r2;
-    MOV_CTX %r2 "console";
-    MOV %r3 "log";
-    CALL_VAR %r2 %r3 1 false;
-LABEL _l2_:
-    MOV %r1 "------------>";
-    PUSH %r1;
-    MOV_CTX %r1 "console";
-    MOV %r2 "log";
-    CALL_VAR %r1 %r2 1 false;
-    MOV %r1 b;
-    NEG %r1;
-    JF %r1 _l5_;
-    MOV %r2 "not ok";
-    PUSH %r2;
-    MOV_CTX %r2 "console";
-    MOV %r3 "log";
-    CALL_VAR %r2 %r3 1 false;
-    JMP _l4_;
-LABEL _l5_:
-    MOV %r2 "ok";
-    PUSH %r2;
-    MOV_CTX %r2 "console";
-    MOV %r3 "log";
-    CALL_VAR %r2 %r3 1 false;
-LABEL _l4_:
-    JMP _l0_;
-LABEL _l1_:
-LABEL _l0_:
+    MOV @c1 2;
+    FUNC %r1 @@f3;
+    SET_CTX "b" %r1;
+    MOV %r0 %r1;
+    MOV $RET %r0;
+    RET;
+}
+func @@f2() {
+    VAR %r0;
+    VAR %r1;
+    MOV %r0 @c0;
+    PUSH %r0;
+    MOV %r0 "c";
+    PUSH %r0;
+    MOV_CTX %r0 "console";
+    MOV %r1 "log";
+    CALL_VAR %r0 %r1 2 false;
+}
+func @@f3() {
+    VAR %r0;
+    VAR %r1;
+    MOV %r0 @c1;
+    PUSH %r0;
+    MOV %r0 "b";
+    PUSH %r0;
+    MOV_CTX %r0 "console";
+    MOV %r1 "log";
+    CALL_VAR %r0 %r1 2 false;
 }
