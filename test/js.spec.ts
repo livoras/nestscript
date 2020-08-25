@@ -426,7 +426,6 @@ describe('function', (): void => {
     wrapper.say2 = function() {
       return 2
     }
-    console.log(wrapper, '---->')
     const add = wrapper.add
     expect(wrapper.run()).equal(3)
     expect(add(3, 5)).equal(8)
@@ -956,6 +955,13 @@ describe("closure", (): void => {
     expect(a()).equal(0)
     expect(b()).equal(0)
     expect(c()).equal(0)
+
+    expect(a()).equal(1)
+    expect(b()).equal(1)
+    expect(c()).equal(1)
+
+    expect(b()).equal(2)
+    expect(c()).equal(2)
     `)
   })
 })
