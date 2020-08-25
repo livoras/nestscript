@@ -465,9 +465,9 @@ describe('function', (): void => {
   it(`new function with contructor running method`, (): void => {
     tm(`
       function Locale(config) {
-          if (config != null) {
-              this.set(config);
-          }
+        if (config != null) {
+            this.set(config);
+        }
       }
       const proto = Locale.prototype
       proto.set = function (config) {

@@ -7,7 +7,7 @@ const walk = require("acorn-walk")
 import * as et from "estree"
 import { CategoriesPriorityQueue } from './utils'
 
-const enum VariableType {
+export const enum VariableType {
   FUNCTION = 1,
   VARIABLE = 2,
   CLOSURE = 3,
@@ -30,7 +30,7 @@ interface IFunction {
 
 interface IState {
   tmpVariableName: string,
-  globals: any,
+  // globals: any,
   locals: Map<string, any>,
   params: Map<string, any>,
   scopes: IScope[],
@@ -47,6 +47,7 @@ interface IState {
   currentFunctionName: string,
   funcName: string,
   currentScope?: IScope,
+  blockChain: Map<string, any>[],
 
   // $obj: string,
   // $key: string,
@@ -113,16 +114,13 @@ const getVariablesByFunctionAstBody = (ast: any): Map<string, any> => {
   return locals
 }
 
-const isNumber = (n: any): boolean => typeof n === 'number'
-const isString = (n: any): boolean => typeof n === 'string'
-
 const codegen = new Codegen()
 let state: IState
 const createNewState = (): IState => {
   return {
     tmpVariableName: '',
     isGlobal: true,
-    globals: {},
+    // globals: {},
     locals: new Map(),
     currentScope: {
       funcName: '',
@@ -144,6 +142,7 @@ const createNewState = (): IState => {
     r2: '', //
     maxRegister: 0,
     currentFunctionName: '',
+    blockChain: [],
   }
 }
 // tslint:disable-next-line: no-big-function
@@ -233,9 +232,15 @@ const parseToCode = (ast: any): void => {
     }
   }
 
-  const touchRegister = (reg: string, currentScope: IScope, scopes: IScope[]): void => {
+  const touchRegister = (
+    reg: string,
+    currentScope: IScope,
+    scopes: IScope[],
+    blockChain: Map<string, VariableType>[]): void => {
     /** 这个变量当前 scope 有了就不管了 */
-    if (currentScope.locals.get(reg) || currentScope.params.get(reg)) { return }
+    const currentBlock = blockChain[blockChain.length - 1]
+    if (currentBlock)
+      if (currentScope.locals.get(reg) || currentScope.params.get(reg)) { return }
     let i = 0
     for (const scope of [...scopes].reverse()) {
       if (scope.locals.get(reg)) {
@@ -295,17 +300,19 @@ const parseToCode = (ast: any): void => {
     // } else {
     const currentScope = getCurrentScope()
     const scopes = state.scopes
+    const blockChain = state.blockChain
+    const currentBlock = blockChain[blockChain.length - 1]
     // console.log(operants, '--->')
     operants.forEach((o: any): void => {
       if (typeof o === 'string') {
-        touchRegister(o, currentScope, scopes)
+        touchRegister(o, currentScope, scopes, blockChain)
       }
     })
     /** 这里需要提前一些指令，例如变量声明、全局变量、有名函数声明 */
     let priority
     if ('VAR' === operator) {
       priority = 1
-    } else if ('GLOBA' === operator) {
+    } else if ('GLOBAL' === operator) {
       priority = 2
     } else if ('ALLOC' === operator) {
       priority = 3
@@ -316,6 +323,10 @@ const parseToCode = (ast: any): void => {
     }
     return state.codes.push((): string[] => {
       // console.log(operator, operants)
+      if ((operator === 'BLOCK' || operator === 'END_BLOCK') && currentBlock.size === 0) {
+        return []
+      }
+
       if (typeof operator === 'function') {
         operator = operator()
       }
@@ -327,7 +338,6 @@ const parseToCode = (ast: any): void => {
       })
       const c = [operator, ...processedOps].join(' ')
       const ret = [c]
-      /** 分配闭包变量，但是参数闭包如何处理呢？ */
       if (operator === 'VAR' && processedOps[0].match(/^@c/)) {
         ret.push(`ALLOC ${processedOps[0]}`)
       }
@@ -345,7 +355,7 @@ const parseToCode = (ast: any): void => {
     // if (s.functionTable[id]) {
     //   cg('CALL', id, numArgs, isExpression)
     // } else
-    touchRegister(id, getCurrentScope(), state.scopes)
+    touchRegister(id, getCurrentScope(), state.scopes, s.blockChain)
     if (hasVars(id, s)) {
       cg(`CALL_REG`, id, numArgs, isExpression)
     } else {
@@ -399,10 +409,14 @@ const parseToCode = (ast: any): void => {
     }
   }
 
-  const declareVariable = (s: IState, name: string): void => {
-    if (state.isGlobal) {
-      cg(`GLOBAL`, name)
-      s.globals.set(name, VariableType.VARIABLE)
+  const declareVariable = (s: IState, name: string, kind: 'let' | 'var' | 'const' = 'var'): void => {
+    // if (state.isGlobal) {
+    //   cg(`GLOBAL`, name)
+    //   s.globals.set(name, VariableType.VARIABLE)
+    /* } else */
+    if (kind === 'let' || kind === 'const') {
+      cg('BVAR', `${name}`)
+      s.blockChain[s.blockChain.length - 1].set(name, VariableType.VARIABLE)
     } else {
       cg(`VAR`, `${name}`)
       s.locals.set(name, VariableType.VARIABLE)
@@ -417,6 +431,20 @@ const parseToCode = (ast: any): void => {
 
   const blockEndLabels: Map<string, BlockLabel> = new Map()
 
+  const newBlockChain = (): () => void => {
+    const oldBlockChain = state.blockChain
+    state.blockChain = [...oldBlockChain, new Map<string, any>()]
+    cg('BLOCK')
+    return (): void => {
+      // const currentBlock = state.blockChain[state.blockChain.length - 1]
+      cg('END_BLOCK')
+      state.blockChain = oldBlockChain
+      // for (const [name] of currentBlock.entries()) {
+      //   cg('FREEBV', name)
+      // }
+    }
+  }
+
   /**
    * 表达式结果处理原则：所有没有向下一层传递 s.r0 的都要处理 s.r0
    */
@@ -429,7 +457,9 @@ const parseToCode = (ast: any): void => {
 
     VariableDeclaration: (node: et.VariableDeclaration, s: any, c: any): void => {
       // console.log("VARIABLE...", node)
-      node.declarations.forEach((n: any): void => c(n, state))
+      s.varKind = node.kind
+      node.declarations.forEach((n: any): void => c(n, s))
+      delete s.varKind
     },
 
     /** 要处理 (global, local) * (function, other) 的情况 */
@@ -449,7 +479,7 @@ const parseToCode = (ast: any): void => {
         //     funcName = newFunctionName()
         //   }
         // } else {
-        declareVariable(s, node.id.name)
+        declareVariable(s, node.id.name, s.varKind)
         reg = node.id.name
         // }
       } else {
@@ -553,7 +583,9 @@ const parseToCode = (ast: any): void => {
     },
 
     BlockStatement(node: et.BlockStatement, s: any, c: any): void {
+      const restoreBlockChain = newBlockChain()
       node.body.forEach((n: any): void => c(n, s))
+      restoreBlockChain()
     },
 
     MemberExpression(node: et.MemberExpression, s: any, c: any): void {
@@ -675,6 +707,7 @@ const parseToCode = (ast: any): void => {
     },
 
     IfStatement(node: any, s: any, c: any): void {
+      const restoreBlockChain = newBlockChain()
       const [newReg, freeReg] = newRegisterController()
       const retReg = s.r0
       const endLabel = newLabelName()
@@ -703,6 +736,7 @@ const parseToCode = (ast: any): void => {
 
       cg(`LABEL`, `${ endLabel }:`)
       freeReg()
+      restoreBlockChain()
     },
 
     ConditionalExpression(node: et.ConditionalExpression, s: any, c: any): void {
@@ -735,6 +769,7 @@ const parseToCode = (ast: any): void => {
     },
 
     ForStatement(node: et.ForStatement, s: any, c: any): any {
+      const restoreBlockChain = newBlockChain()
       const [newReg, freeReg] = newRegisterController()
       const startLabel = newLabelName()
       let endLabel = newLabelName()
@@ -796,9 +831,11 @@ const parseToCode = (ast: any): void => {
       cg(`LABEL`, `${ endLabel }:`)
       popLoopLabels()
       freeReg()
+      restoreBlockChain()
     },
 
     ForInStatement(node: et.ForInStatement, s: any, c: any): any {
+      const restoreBlockChain = newBlockChain()
       const left = node.left
       const right = node.right
       const [newReg, freeReg] = newRegisterController()
@@ -806,8 +843,9 @@ const parseToCode = (ast: any): void => {
       if (left.type === 'Identifier') {
         leftReg = left.name
       } else if (left.type === 'VariableDeclaration') {
-        leftReg = (left.declarations[0].id as et.Identifier).name
-        declareVariable(s, leftReg)
+        const varDecorator = left.declarations[0]
+        leftReg = (varDecorator.id as et.Identifier).name
+        declareVariable(s, leftReg, left.kind)
       } else {
         throw new Error('Cannot process for in statement left type ' + left.type)
       }
@@ -823,6 +861,7 @@ const parseToCode = (ast: any): void => {
       lg(endLabel)
       freeReg()
       popLoopLabels()
+      restoreBlockChain()
     },
 
     WhileStatement(node: et.WhileStatement, s: any, c: any): any {
@@ -839,6 +878,7 @@ const parseToCode = (ast: any): void => {
         if (!blockEndLabels.has(name)) {
           throw new Error(`Label ${name} does not exist.`)
         }
+        cg('END_BLOCK')
         cg('JMP', blockEndLabels.get(name)!.endLabel)
         return
       }
@@ -855,6 +895,7 @@ const parseToCode = (ast: any): void => {
       }
       const endLabel = labels.endLabel
       // cg(`JMP ${endLabel} (break)`)
+      cg('END_BLOCK')
       cg(`JMP`, `${endLabel}`)
     },
 
@@ -866,6 +907,7 @@ const parseToCode = (ast: any): void => {
         }
         const blockLabel = blockEndLabels.get(name)!
         // continue label; 语法，如果有 update ，回到 update， 否则回到头
+        cg('END_BLOCK')
         cg('JMP', blockLabel.updateLabel || blockLabel.startLabel)
         return
       }
@@ -875,11 +917,13 @@ const parseToCode = (ast: any): void => {
         throw new Error("Not available labels, cannot use `continue` here.")
       }
       if (labels.isForIn) {
+        cg('END_BLOCK')
         cg('CONT_FORIN')
         return
       }
       const { startLabel, updateLabel } = labels
       // cg(`JMP ${endLabel} (break)`)
+      cg('END_BLOCK')
       cg(`JMP`, `${updateLabel || startLabel}`)
     },
 
@@ -981,6 +1025,7 @@ const parseToCode = (ast: any): void => {
     },
 
     LabeledStatement(node: et.LabeledStatement, s: any, c: any): any {
+      const restoreBlockChain = newBlockChain()
       const labelNode = node.label
       const labelName = labelNode.name
       const endLabel = newLabelName()
@@ -996,9 +1041,11 @@ const parseToCode = (ast: any): void => {
       c(node.body, s)
       blockEndLabels.delete(labelName)
       cg(`LABEL ${endLabel}:`)
+      restoreBlockChain()
     },
 
     SwitchStatement(node: et.SwitchStatement, s: any, c: any): any {
+      const restoreBlockChain = newBlockChain()
       const [newReg, freeReg] = newRegisterController()
       const discriminantReg = newReg()
       getValueOfNode(node.discriminant, discriminantReg, s, c)
@@ -1023,9 +1070,11 @@ const parseToCode = (ast: any): void => {
       cg(`LABEL ${switchEndLabel}:`)
       popLoopLabels()
       freeReg()
+      restoreBlockChain()
     },
 
     TryStatement(node: et.TryStatement, s: any, c: any): any {
+      const restoreBlockChain = newBlockChain()
       const catchLabel: string = newLabelName()
       const finalLabel: string = newLabelName()
 
@@ -1048,6 +1097,7 @@ const parseToCode = (ast: any): void => {
         const finalizer = node.finalizer
         c(finalizer, s)
       }
+      restoreBlockChain()
     },
 
     ThrowStatement(node: et.ThrowStatement, s: any, c: any): any {
