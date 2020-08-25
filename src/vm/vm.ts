@@ -63,35 +63,37 @@ export const enum IOperatantType {
 }
 
 // tslint:disable-next-line: max-classes-per-file
-class FunctionInfo {
-  public vm?: VirtualMachine
-  constructor(
-    public ip: number,
-    public numArgs: number,
-    public localSize: number,
-    public closureTable?: any,
-    public jsFunction?: CallableFunction,
-  ) {
-  }
+// class FunctionInfo {
+//   public vm?: VirtualMachine
+//   constructor(
+//     public ip: number,
+//     public numArgs: number,
+//     public localSize: number,
+//     public closureTable: any,
+//     public jsFunction?: CallableFunction,
+//   ) {
+//   }
 
-  public setVirtualMachine(vm: VirtualMachine): void {
-    this.vm = vm
-  }
+//   public setVirtualMachine(vm: VirtualMachine): void {
+//     this.vm = vm
+//   }
 
-  public getJsFunction(): CallableFunction {
-    if (!this.vm) { throw new VMRunTimeError("VirtualMachine is not set!")}
-    if (!this.closureTable) { this.closureTable = {} }
-    // let jsFunc = this.jsFunction
-    // if (!jsFunc) {
-    //   jsFunc = this.jsFunction = parseVmFunctionToJsFunction(this, this.vm)
-    // }
-    this.jsFunction = parseVmFunctionToJsFunction(this, this.vm)
-    return this.jsFunction as CallableFunction
-  }
+//   public getJsFunction(): CallableFunction {
+//     if (!this.vm) { throw new VMRunTimeError("VirtualMachine is not set!")}
+//     // if (!this.closureTable) { this.closureTable = {} }
+//     // this.closureTable = {}
+//     let jsFunc = this.jsFunction
+//     if (!jsFunc) {
+//       jsFunc = this.jsFunction = parseVmFunctionToJsFunction(this, this.vm)
+//     }
+//     return jsFunc as CallableFunction
+//     // this.jsFunction = parseVmFunctionToJsFunction(this, this.vm)
+//     // return this.jsFunction as CallableFunction
+//   }
 
-}
+// }
 
-type CallableFunction = (...args: any[]) => any
+// type CallableFunction = (...args: any[]) => any
 
 export interface IOperant {
   type: IOperatantType,
@@ -132,39 +134,46 @@ export class VirtualMachine {
   public allThis: any[] = []
 
   public isRunning: boolean = false
+  public mainFunction: CallableFunction
 
   constructor (
     public codes: ArrayBuffer,
-    public functionsTable: FunctionInfo[],
+    public functionsTable: FuncInfoMeta[],
+    public entryIndx: number,
     public stringsTable: string[],
-    public entryFunctionIndex: number,
     public globalSize: number,
     public ctx: any,
   ) {
+    // console.log(this.entryIndx, 'entry....')
+    this.mainFunction = this.parseToJsFunc(functionsTable[this.entryIndx], {})
     this.init()
   }
 
   public init(): void {
-    const { globalSize, functionsTable, entryFunctionIndex } = this
+    const { globalSize, mainFunction } = this
+    const { meta } = this.getMetaFromFunc(mainFunction)
+    const [ip, numArgs, localSize] = meta
     // RET
     // TODO: how to deal with it?
     this.stack.splice(0)
     // this.heap = []
     const globalIndex = globalSize + 1
-    const mainLocalSize = functionsTable[entryFunctionIndex].localSize
+    // const mainLocalSize = localSize
     this.fp = globalIndex // fp 指向 old fp 位置，兼容普通函数
     this.stack[this.fp] =-1
-    this.sp = this.fp + mainLocalSize
+    this.sp = this.fp
     this.stack.length = this.sp + 1
     //
-    this.closureTable = {}
-    this.closureTables = [this.closureTable]
+    // this.closureTable = {}
+    this.closureTables = []
     //
-    this.currentThis = this.ctx
-    this.allThis = [this.currentThis]
-    this.currentThis = this.ctx
+    // this.currentThis = this.ctx
+    // this.allThis = [this.currentThis]
+    this.allThis = []
+    // this.currentThis = this.ctx
     //
-    this.functionsTable.forEach((funcInfo): void => { funcInfo.vm = this })
+    // this.functionsTable.forEach((funcInfo): void => { funcInfo.vm = this })
+    // mainFuncInfo.vm = this
 
     /**
      * V2
@@ -177,7 +186,7 @@ export class VirtualMachine {
      */
     console.log(
       'globalIndex', globalIndex,
-      'localSize', functionsTable[entryFunctionIndex].localSize,
+      'localSize', localSize,
     )
     console.log("start ---> fp", this.fp, this.sp)
   }
@@ -190,7 +199,8 @@ export class VirtualMachine {
 
   // tslint:disable-next-line: no-big-function
   public run(): void {
-    this.ip = this.functionsTable[this.entryFunctionIndex].ip
+    this.callFunction(this.mainFunction, void 0, '', 0, false)
+    // this.ip = this.functionsTable[this.entryFunctionIndex].ip
     console.log("start stack", this.stack)
     this.isRunning = true
     while (this.isRunning) {
@@ -203,6 +213,7 @@ export class VirtualMachine {
       // console.log("SET closure", dst)
       this.heap[this.makeClosureIndex(dst.index)] = src.value
     } else {
+      // console.log("--------- set reg", dst)
       this.stack[dst.index] = src.value
     }
   }
@@ -237,7 +248,10 @@ export class VirtualMachine {
     // tslint:disable-next-line: max-switch-cases
     switch (op) {
     case I.PUSH: {
-      this.push(this.nextOperant().value)
+      const value = this.nextOperant().value
+      // console.log('PUSHING....', value)
+      this.push(value)
+      // console.log(this.stack)
       break
     }
     case I.EXIT: {
@@ -341,6 +355,7 @@ export class VirtualMachine {
       const funcName = this.nextOperant().value
       const numArgs = this.nextOperant().value
       const isNewExpression = this.nextOperant().value
+      // console.log("CALL---->", o, funcName, numArgs)
       isCallVMFunction = this.callFunction(void 0, o, funcName, numArgs, isNewExpression)
       break
     }
@@ -356,7 +371,9 @@ export class VirtualMachine {
       const dst = this.nextOperant()
       const propKey = this.nextOperant()
       const src = getByProp(this.ctx, propKey.value)
+      // console.log(' ================ MOV_CTX STACK -> before', this.stack)
       this.setReg(dst, { value: src })
+      // console.log(' ================ MOV_CTX STACK -> after', this.stack)
       break
     }
     case I.SET_CTX: {
@@ -408,13 +425,14 @@ export class VirtualMachine {
     case I.FUNC: {
       const dst = this.nextOperant()
       const funcOperant = this.nextOperant()
-      const funcInfoIndex: number = funcOperant.raw
-      const funcInfo = this.functionsTable[funcInfoIndex]
+      // const funcInfoIndex: number = funcOperant.value
+      const funcInfoMeta = funcOperant.value
+      const func = this.parseToJsFunc(funcInfoMeta, this.closureTable)
       // TODO
       // console.log(this.closureTable, '??????????????')
-      funcInfo.closureTable = { ...this.closureTable }
+      // funcInfo.closureTable = { ...this.closureTable }
       // stack[dst.index] = callback
-      this.setReg(dst, { value: funcOperant.value })
+      this.setReg(dst, { value: func })
       // console.log("++++++", dst, this.stack)
       break
     }
@@ -533,6 +551,7 @@ export class VirtualMachine {
     }
     case I.ALLOC: {
       const dst = this.nextOperant()
+      // this.makeClosureIndex()
       this.getReg(dst)
       break
     }
@@ -687,7 +706,7 @@ export class VirtualMachine {
     case IOperatantType.STRING:
       return this.stringsTable[value]
     case IOperatantType.FUNCTION_INDEX:
-      return this.functionsTable[value].getJsFunction()
+      return this.functionsTable[value]
     case IOperatantType.RETURN_VALUE:
       return this.stack[0]
     case IOperatantType.BOOLEAN:
@@ -725,7 +744,7 @@ export class VirtualMachine {
 
   // tslint:disable-next-line: cognitive-complexity
   public callFunction(
-    func: CallableFunction | undefined,
+    func: Callable | undefined,
     o: any,
     funcName: string,
     numArgs: number,
@@ -735,7 +754,7 @@ export class VirtualMachine {
     const f = func || o[funcName]
     let isCallVMFunction = false
     if ((f instanceof Callable) && !isNewExpression) {
-      // console.log('---> THE IP IS -->', (func as any).__ip__)
+      // console.log('---> THE IP IS -->', numArgs)
       const arg = new NumArgs(numArgs)
       if (o) {
         if (typeof o[funcName] === 'function') {
@@ -752,6 +771,7 @@ export class VirtualMachine {
       for (let i = 0; i < numArgs; i++) {
         args.push(stack[this.sp--])
       }
+      // console.log(stack, args, 'good....')
       if (o) {
         try {
           stack[0] = isNewExpression
@@ -775,6 +795,93 @@ export class VirtualMachine {
       this.stack.splice(this.sp + 1)
     }
     return isCallVMFunction
+  }
+
+  // tslint:disable-next-line: cognitive-complexity
+  public parseToJsFunc (meta: FuncInfoMeta, oldClosureTable: any): any {
+    const vm = this
+    const func = function (this: any, ...args: any[]): any {
+      const [ip, _, localSize] = meta
+      vm.isRunning = true
+      const n = args[0]
+      const isCalledFromJs = !(n instanceof NumArgs)
+      let numArgs = 0
+      let allArgs = []
+      if (isCalledFromJs) {
+        args.reverse()
+        args.forEach((arg: any): void => vm.push(arg))
+        numArgs = args.length
+        allArgs = [...args]
+      } else {
+        numArgs = n.numArgs
+        allArgs = []
+        for (let i = 0; i < numArgs; i++) {
+          allArgs.push(vm.stack[vm.sp - i])
+        }
+      }
+      const closureTable = { ...oldClosureTable }
+      vm.closureTable = closureTable
+      vm.closureTables.push(closureTable)
+      if (vm.allThis.length === 0) {
+        vm.currentThis = vm.ctx
+      } else {
+        vm.currentThis = this
+      }
+      vm.allThis.push(vm.currentThis)
+      const stack = vm.stack
+      if (isCalledFromJs) {
+        stack[0] = undefined
+      }
+      // console.log('call', funcInfo, numArgs)
+      //            | R3        |
+      //            | R2        |
+      //            | R1        |
+      //            | R0        |
+      //      sp -> | fp        | # for restoring old fp
+      //            | ip        | # for restoring old ip
+      //            | numArgs   | # for restoring old sp: old sp = current sp - numArgs - 3
+      //            | arguments | # for store arguments for js `arguments` keyword
+      //            | arg1      |
+      //            | arg2      |
+      //            | arg3      |
+      //  old sp -> | ....      |
+      stack[++vm.sp] = allArgs
+      stack[++vm.sp] = numArgs
+      stack[++vm.sp] = vm.ip
+      stack[++vm.sp] = vm.fp
+      // set to new ip and fp
+      vm.ip = ip
+      vm.fp = vm.sp
+      vm.sp += localSize
+      if (isCalledFromJs) {
+        /** 嵌套 vm 函数调 vm 函数，需要知道嵌套多少层，等到当前层完结再返回 */
+        let callCount = 1
+        while (callCount > 0 && vm.isRunning) {
+          const [op, isCallVMFunction] = vm.fetchAndExecute()
+          if (isCallVMFunction) {
+            callCount++
+          } else if (op === I.RET) {
+            callCount--
+          }
+        }
+        return stack[0]
+      }
+    }
+    Object.setPrototypeOf(func, Callable.prototype)
+    vm.setMetaToFunc(func, meta)
+    return func
+  }
+
+  private setMetaToFunc(func: any, meta: FuncInfoMeta): void {
+    Object.defineProperty(func, '__vm_func_info__', {
+      enumerable: false,
+      value: { meta },
+      writable: false,
+    })
+  }
+
+  private getMetaFromFunc(func: any): { meta: FuncInfoMeta, closureTable: any } {
+    return func.__vm_func_info__
   }
 }
 
@@ -803,30 +910,30 @@ const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMac
   const stringsTable: string[] = parseStringsArray(buffer.slice(stringTableBasicIndex))
   const codesBuf = buffer.slice(4 * 4, funcionTableBasicIndex)
   const funcsBuf = buffer.slice(funcionTableBasicIndex, stringTableBasicIndex)
-  const funcsTable: FunctionInfo[] = parseFunctionTable(funcsBuf)
+  const funcsTable: FuncInfoMeta[] = parseFunctionTable(funcsBuf)
   console.log('string table', stringsTable)
   // console.log('function table', funcsTable)
   console.log(mainFunctionIndex, 'function basic index', funcionTableBasicIndex)
   console.log('total codes bytes length -->', codesBuf.byteLength)
-  console.log('main start index', funcsTable[mainFunctionIndex].ip, stringTableBasicIndex)
+  console.log('main start index', funcsTable[mainFunctionIndex][0], stringTableBasicIndex)
 
-  return new VirtualMachine(codesBuf, funcsTable, stringsTable, mainFunctionIndex, globalsSize, ctx)
+  return new VirtualMachine(codesBuf, funcsTable, mainFunctionIndex, stringsTable, globalsSize, ctx)
+  // const mainFuncInfo = parseVmFunctionToJsFunction({
+  //   meta: mainFuncMeta,
+  //   closureTable: {},
+  // }) // new FunctionInfo(mainFuncMeta[0], mainFuncMeta[1], mainFuncMeta[2], {})
 }
 
-const parseFunctionTable = (buffer: ArrayBuffer): FunctionInfo[] => {
-  const funcs: FunctionInfo[] = []
+type FuncInfoMeta = [number, number, number] // address, numArgs, numLocals
+
+const parseFunctionTable = (buffer: ArrayBuffer): FuncInfoMeta[] => {
+  const funcs: FuncInfoMeta[] = []
   let i = 0
   while (i < buffer.byteLength) {
     const ipEnd = i + 4
     const ip = readUInt32(buffer, i, ipEnd)
     const numArgsAndLocal = new Uint16Array(buffer.slice(ipEnd, ipEnd + 2 * 2))
-    funcs.push(
-      new FunctionInfo(
-        ip,
-        numArgsAndLocal[0],
-        numArgsAndLocal[1],
-      ),
-    )
+    funcs.push([ip, numArgsAndLocal[0], numArgsAndLocal[1]])
     i += 8
   }
   return funcs
@@ -849,75 +956,5 @@ exports.Callable = Callable
 class NumArgs {
   constructor(public numArgs: number) {
   }
-}
-
-exports.NumArgs = NumArgs
-
-// tslint:disable-next-line: cognitive-complexity
-function parseVmFunctionToJsFunction (
-  funcInfo: FunctionInfo, vm: VirtualMachine): any {
-  const func = function (this: any, ...args: any[]): any {
-    vm.isRunning = true
-    const n = args[0]
-    const isCalledFromJs = !(n instanceof NumArgs)
-    let numArgs = 0
-    let allArgs = []
-    if (isCalledFromJs) {
-      args.reverse()
-      args.forEach((arg: any): void => vm.push(arg))
-      numArgs = args.length
-      allArgs = [...args]
-    } else {
-      numArgs = n.numArgs
-      allArgs = []
-      for (let i = 0; i < numArgs; i++) {
-        allArgs.push(vm.stack[vm.sp - i])
-      }
-    }
-    vm.closureTable = funcInfo.closureTable
-    vm.closureTables.push(funcInfo.closureTable)
-    vm.currentThis = this
-    vm.allThis.push(this)
-    const stack = vm.stack
-    if (isCalledFromJs) {
-      stack[0] = undefined
-    }
-    // console.log('call', funcInfo, numArgs)
-    //            | R3        |
-    //            | R2        |
-    //            | R1        |
-    //            | R0        |
-    //      sp -> | fp        | # for restoring old fp
-    //            | ip        | # for restoring old ip
-    //            | numArgs   | # for restoring old sp: old sp = current sp - numArgs - 3
-    //            | arguments | # for store arguments for js `arguments` keyword
-    //            | arg1      |
-    //            | arg2      |
-    //            | arg3      |
-    //  old sp -> | ....      |
-    stack[++vm.sp] = allArgs
-    stack[++vm.sp] = numArgs
-    stack[++vm.sp] = vm.ip
-    stack[++vm.sp] = vm.fp
-    // set to new ip and fp
-    vm.ip = funcInfo.ip
-    vm.fp = vm.sp
-    vm.sp += funcInfo.localSize
-    if (isCalledFromJs) {
-      /** 嵌套 vm 函数调 vm 函数，需要知道嵌套多少层，等到当前层完结再返回 */
-      let callCount = 1
-      while (callCount > 0 && vm.isRunning) {
-        const [op, isCallVMFunction] = vm.fetchAndExecute()
-        if (isCallVMFunction) {
-          callCount++
-        } else if (op === I.RET) {
-          callCount--
-        }
-      }
-      return stack[0]
-    }
-  }
-  Object.setPrototypeOf(func, Callable.prototype)
-  return func
-}
 // tslint:disable-next-line: max-file-line-count
+}

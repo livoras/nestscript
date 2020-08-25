@@ -426,6 +426,7 @@ describe('function', (): void => {
     wrapper.say2 = function() {
       return 2
     }
+    console.log(wrapper, '---->')
     const add = wrapper.add
     expect(wrapper.run()).equal(3)
     expect(add(3, 5)).equal(8)
@@ -940,17 +941,34 @@ describe("closure", (): void => {
     })()
     `)
   })
+
+  it(`multiple call returning fucntions`, (): void => {
+    tm(`
+    const fn = () => {
+      let n = 0
+      return () => {
+        return n++
+      }
+    }
+    const a = fn()
+    const b = fn()
+    const c = fn()
+    expect(a()).equal(0)
+    expect(b()).equal(0)
+    expect(c()).equal(0)
+    `)
+  })
 })
 
 describe('error handling', (): void => {
-  it('normal try', (): void => {
+  xit('normal try', (): void => {
     tm(`
     let e = 1
     try {
       k.a()
-      // throw new Error('ojbk')
+      throw new Error('ojbk')
     } catch(e) {
-      // expect(typeof e).equal('object')
+      expect(typeof e).equal('object')
     }
     expect(e).equal(1)
     `)

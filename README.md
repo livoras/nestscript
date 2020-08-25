@@ -114,6 +114,11 @@ func main() {
 * * *
 
 ## Change Log
+## 2020-08-25
+* 闭包的形式应该是:
+  * FUNC 每次都返回一个新的函数，并且记录上一层的 closure table
+  * 调用的时候根据旧的 closure table 构建新的 closure table 
+
 ## 2020-08-21
 * fix 闭包生成的顺序问题
 * 编译第三方库 moment.js, moment.min.js, lodash.js, lodash.min.js 成功并把编译加入测试
