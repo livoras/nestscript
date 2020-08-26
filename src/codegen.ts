@@ -93,15 +93,32 @@ class Codegen {
   }
 }
 
+/**
+ * 为了处理这种情况：
+ * ```
+ * i = 1
+ * var i
+ * ```
+ */
 const getVariablesByFunctionAstBody = (ast: any): Map<string, any> => {
   const locals = new Map()
   walk.recursive(ast, locals, {
+    VariableDeclaration: (node: et.VariableDeclaration, s: any, c: any): void => {
+      // console.log("VARIABLE...", node)
+      s.varKind = node.kind
+      node.declarations.forEach((n: any): void => c(n, s))
+      delete s.varKind
+    },
+
     /** 要处理 (global, local) * (function, other) 的情况 */
     VariableDeclarator: (node: et.VariableDeclarator, s: any, c: any): void => {
+      const kind = s.varKind
       // console.log(node)
       // let funcName = ''
       if (node.id.type === 'Identifier') {
-        locals.set(node.id.name, VariableType.VARIABLE)
+        if (kind === 'var') {
+          locals.set(node.id.name, VariableType.VARIABLE)
+        }
       } else {
         throw new Error("Unprocessed node.id.type " + node.id.type + " " + node.id)
       }
@@ -1153,8 +1170,8 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
   }
 
   state = createNewState()
-  // const globals = getVariablesByFunctionAstBody(ret)
-  state.blockChain = state.blockChain.newBlock()
+  const globals = getVariablesByFunctionAstBody(ret)
+  state.blockChain = state.blockChain.newBlock(globals)
   state.codes.push('func @@main() {', 0)
   processFunctionAst(ret)
 
@@ -1167,11 +1184,11 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
       o.set((param as et.Identifier).name, VariableType.VARIABLE)
       return o
     }, new Map())
-    // const locals = getVariablesByFunctionAstBody(funcInfo.body.body)
+    const locals = getVariablesByFunctionAstBody(funcInfo.body.body)
     if (!funcBlockChain.currentFuncBlock) { throw new Error('Should has function block chain.') }
     const currentFuncBlock = funcBlockChain.currentFuncBlock
     currentFuncBlock.params = params
-    // currentFuncBlock.variables = locals
+    currentFuncBlock.variables = locals
     state.codes.push(getFunctionDecleration(funcInfo), 0)
     state.codes.push((): string[] => {
       const paramClosureDeclarations = [...currentFuncBlock.params.keys()].reduce((o: any, param: string): any => {
