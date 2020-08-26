@@ -6,6 +6,7 @@ const acorn = require("acorn")
 const walk = require("acorn-walk")
 import * as et from "estree"
 import { CategoriesPriorityQueue } from './utils'
+import { BlockChain } from './block-chain'
 
 export const enum VariableType {
   FUNCTION = 1,
@@ -15,8 +16,8 @@ export const enum VariableType {
 
 interface IScope {
   funcName: string, // for debug.
-  params: Map<string, any>,
-  locals: Map<string, any>,
+  // params: Map<string, any>,
+  // locals: Map<string, any>,
   closureTable?: Map<string, any>,
   closureCounter?: number // 只有最外层的函数有
 }
@@ -24,15 +25,16 @@ interface IScope {
 interface IFunction {
   name: string,
   body: et.FunctionExpression | et.ArrowFunctionExpression | et.FunctionDeclaration,
-  scopes: IScope[], // 存储作用域链
+  blockChain: BlockChain,
+  // scopes: IScope[], // 存储作用域链
   // params: { [x in string]: 1 }[],
 }
 
 interface IState {
   tmpVariableName: string,
   // globals: any,
-  locals: Map<string, any>,
-  params: Map<string, any>,
+  // locals: Map<string, any>,
+  // params: Map<string, any>,
   scopes: IScope[],
   isGlobal: boolean,
   labelIndex: number,
@@ -47,7 +49,7 @@ interface IState {
   currentFunctionName: string,
   funcName: string,
   currentScope?: IScope,
-  blockChain: Map<string, any>[],
+  blockChain: BlockChain,
 
   // $obj: string,
   // $key: string,
@@ -121,15 +123,15 @@ const createNewState = (): IState => {
     tmpVariableName: '',
     isGlobal: true,
     // globals: {},
-    locals: new Map(),
+    // locals: new Map(),
     currentScope: {
       funcName: '',
-      params: new Map(),
-      locals: new Map(),
+      // params: new Map(),
+      // locals: new Map(),
       closureTable: new Map(),
       closureCounter: 0,
     },
-    params: new Map(),
+    // params: new Map(),
     scopes: [],
     labelIndex: 0,
     functionIndex: 0,
@@ -142,7 +144,7 @@ const createNewState = (): IState => {
     r2: '', //
     maxRegister: 0,
     currentFunctionName: '',
-    blockChain: [],
+    blockChain: new BlockChain([]),
   }
 }
 // tslint:disable-next-line: no-big-function
@@ -157,13 +159,15 @@ const parseToCode = (ast: any): void => {
     s: IState,
   ): string => {
     const funcName = newFunctionName()
-    s.globals[funcName] = VariableType.FUNCTION
+    // s.globals[funcName] = VariableType.FUNCTION
+    s.blockChain.newGlobal(funcName, VariableType.FUNCTION)
     s.functions.push({
       name: funcName,
       body: node,
-      scopes: [...s.scopes, getCurrentScope() || {
-        locals: s.locals, params: s.params, closureCounter: 0,
-      }],
+      blockChain: s.blockChain.newFuncBlock(),
+      // scopes: [...s.scopes, getCurrentScope() || {
+      //   locals: s.locals, params: s.params, closureCounter: 0,
+      // }],
     })
     s.functionTable[funcName] = node
     if (s.r0) {
@@ -201,85 +205,85 @@ const parseToCode = (ast: any): void => {
     }]
   }
 
-  const hasLocalOrParam = (name: string, s: IState): boolean => {
-    return s.locals.get(name) || s.params.get(name)
-  }
+  // const hasLocalOrParam = (name: string, s: IState): boolean => {
+  //   return s.locals.get(name) || s.params.get(name)
+  // }
 
-  const hasVars = (name: string, s: any): boolean => {
-    if (hasLocalOrParam(name, s)) { return true }
-    for (const scope of [...state.scopes]) {
-      if (scope.locals.get(name) || scope.params.get(name)) {
-        return true
-      }
-    }
-    return !!s.globals.get(name)
-  }
+  // const hasVars = (name: string, s: any): boolean => {
+  //   if (hasLocalOrParam(name, s)) { return true }
+  //   for (const scope of [...state.scopes]) {
+  //     if (scope.locals.get(name) || scope.params.get(name)) {
+  //       return true
+  //     }
+  //   }
+  //   return !!s.globals.get(name)
+  // }
 
-  const getCurrentScope = (): IScope => {
-    return state.currentScope!
-  }
+  // const getCurrentScope = (): IScope => {
+  //   return state.currentScope!
+  // }
 
-  const allocateClosure = (root: IScope, scope: IScope, reg: string): void => {
-    if (!scope.closureTable) {
-      scope.closureTable = new Map()
-    }
-    if (!scope.closureTable.get(reg)) {
-      if (root.closureCounter === void 0) {
-        throw new Error("Root scope closure counter cannot be 0.")
-      } else {
-        scope.closureTable.set(reg, `@c${root.closureCounter++}`)
-      }
-    }
-  }
+  // const allocateClosure = (root: IScope, scope: IScope, reg: string): void => {
+  //   if (!scope.closureTable) {
+  //     scope.closureTable = new Map()
+  //   }
+  //   if (!scope.closureTable.get(reg)) {
+  //     if (root.closureCounter === void 0) {
+  //       throw new Error("Root scope closure counter cannot be 0.")
+  //     } else {
+  //       scope.closureTable.set(reg, `@c${root.closureCounter++}`)
+  //     }
+  //   }
+  // }
 
-  const touchRegister = (
-    reg: string,
-    currentScope: IScope,
-    scopes: IScope[],
-    blockChain: Map<string, VariableType>[]): void => {
-    /** 这个变量当前 scope 有了就不管了 */
-    const currentBlock = blockChain[blockChain.length - 1]
-    if (currentBlock)
-      if (currentScope.locals.get(reg) || currentScope.params.get(reg)) { return }
-    let i = 0
-    for (const scope of [...scopes].reverse()) {
-      if (scope.locals.get(reg)) {
-        scope.locals.set(reg, VariableType.CLOSURE)
-        allocateClosure(scopes[0], scope, reg)
-        return
-      }
-      if (scope.params.get(reg)) {
-        scope.params.set(reg, VariableType.CLOSURE)
-        allocateClosure(scopes[0], scope, reg)
-        return
-      }
-      i++
-    }
-  }
+  // const touchRegister = (
+  //   reg: string,
+  //   currentScope: IScope,
+  //   scopes: IScope[],
+  //   blockChain: Map<string, VariableType>[]): void => {
+  //   /** 这个变量当前 scope 有了就不管了 */
+  //   const currentBlock = blockChain[blockChain.length - 1]
+  //   // if (currentBlock)
+  //   if (currentScope.locals.get(reg) || currentScope.params.get(reg)) { return }
+  //   let i = 0
+  //   for (const scope of [...scopes].reverse()) {
+  //     if (scope.locals.get(reg)) {
+  //       scope.locals.set(reg, VariableType.CLOSURE)
+  //       allocateClosure(scopes[0], scope, reg)
+  //       return
+  //     }
+  //     if (scope.params.get(reg)) {
+  //       scope.params.set(reg, VariableType.CLOSURE)
+  //       allocateClosure(scopes[0], scope, reg)
+  //       return
+  //     }
+  //     i++
+  //   }
+  // }
 
-  const getRegisterName = (reg: string, currentScope: IScope, scopes: IScope[], isVar: boolean = false): string => {
-    const isClosure = (v: VariableType): boolean => v === VariableType.CLOSURE
-    const regType = currentScope.locals.get(reg) || currentScope.params.get(reg)
-    if (regType) {
-      if (regType === VariableType.CLOSURE) {
-        return currentScope.closureTable?.get(reg)
-      } else {
-        return reg
-      }
-    }
-    for (const scope of [...scopes, currentScope].reverse()) {
-      if (
-        isClosure(scope.locals.get(reg)) ||
-        isClosure(scope.params.get(reg))
-      ) {
-        if (!scope.closureTable?.get(reg)) {
-          throw new Error(`Cannot found clouse variable ${reg} on closure table`)
-        }
-        return scope.closureTable.get(reg)
-      }
-    }
-    return reg
-  }
+  // const getRegisterName = (reg: string, currentScope: IScope, scopes: IScope[], isVar: boolean = false): string => {
+  //   const isClosure = (v: VariableType): boolean => v === VariableType.CLOSURE
+  //   const regType = currentScope.locals.get(reg) || currentScope.params.get(reg)
+  //   if (regType) {
+  //     if (regType === VariableType.CLOSURE) {
+  //       return currentScope.closureTable?.get(reg)
+  //     } else {
+  //       return reg
+  //     }
+  //   }
+  //   for (const scope of [...scopes, currentScope].reverse()) {
+  //     if (
+  //       isClosure(scope.locals.get(reg)) ||
+  //       isClosure(scope.params.get(reg))
+  //     ) {
+  //       if (!scope.closureTable?.get(reg)) {
+  //         throw new Error(`Cannot found clouse variable ${reg} on closure table`)
+  //       }
+  //       return scope.closureTable.get(reg)
+  //     }
+  //   }
+  //   return reg
+  // }
 
   const cg = (...ops: any[]): any => {
     /** 各种动态生成 */
@@ -298,14 +302,18 @@ const parseToCode = (ast: any): void => {
     // if (ops[0] === 'MOV') {
     //   state.codes.push(createMovCode(ops[1], ops[2], getCurrentScope()))
     // } else {
-    const currentScope = getCurrentScope()
-    const scopes = state.scopes
+    // const currentScope = getCurrentScope()
+    // const scopes = state.scopes
     const blockChain = state.blockChain
-    const currentBlock = blockChain[blockChain.length - 1]
+    // const currentBlock = blockChain[blockChain.length - 1]
     // console.log(operants, '--->')
     operants.forEach((o: any): void => {
       if (typeof o === 'string') {
-        touchRegister(o, currentScope, scopes, blockChain)
+        if (o === 'i') {
+          console.log(operator, o)
+        }
+        blockChain.accessName(o)
+        // touchRegister(o, currentScope, scopes, blockChain)
       }
     })
     /** 这里需要提前一些指令，例如变量声明、全局变量、有名函数声明 */
@@ -316,14 +324,15 @@ const parseToCode = (ast: any): void => {
       priority = 2
     } else if ('ALLOC' === operator) {
       priority = 3
-    } else if ('FUNC' === operator && hasVars(operants[0], state)) {
+    } else if ('FUNC' === operator && blockChain.hasName(operants[0])) {
       priority = 4
     } else {
       priority = 100
     }
+    const currentBlock = blockChain.getCurrentBlock()
     return state.codes.push((): string[] => {
       // console.log(operator, operants)
-      if ((operator === 'BLOCK' || operator === 'END_BLOCK') && currentBlock.size === 0) {
+      if ((operator === 'BLOCK' || operator === 'END_BLOCK') && currentBlock.variables.size === 0) {
         return []
       }
 
@@ -334,11 +343,12 @@ const parseToCode = (ast: any): void => {
         if (typeof o === 'function') {
           o = o()
         }
-        return getRegisterName(o, currentScope, scopes, operator === 'VAR')
+        return blockChain.getName(o)
+        // return getRegisterName(o, currentScope, scopes, operator === 'VAR')
       })
       const c = [operator, ...processedOps].join(' ')
       const ret = [c]
-      if (operator === 'VAR' && processedOps[0].match(/^@c/)) {
+      if (['VAR', 'BVAR'].includes(operator) && processedOps[0].match(/^@c/)) {
         ret.push(`ALLOC ${processedOps[0]}`)
       }
       return ret
@@ -355,8 +365,9 @@ const parseToCode = (ast: any): void => {
     // if (s.functionTable[id]) {
     //   cg('CALL', id, numArgs, isExpression)
     // } else
-    touchRegister(id, getCurrentScope(), state.scopes, s.blockChain)
-    if (hasVars(id, s)) {
+    s.blockChain.accessName(id)
+    // touchRegister(id, getCurrentScope(), state.scopes, s.blockChain)
+    if (s.blockChain.hasName(id)) {
       cg(`CALL_REG`, id, numArgs, isExpression)
     } else {
       cg(`CALL_CTX`, `'${id}'`, numArgs, isExpression)
@@ -380,7 +391,7 @@ const parseToCode = (ast: any): void => {
       freeRegister()
       freeRegister()
     } else if (node.type === 'Identifier') {
-      if (hasVars(node.name, s)) {
+      if (s.blockChain.hasName(node.name)) {
         cg(`MOV`, `${ node.name }`, `${ reg }`)
       } else {
         cg(`SET_CTX`, `"${node.name}"`, `${ reg }`)
@@ -393,7 +404,7 @@ const parseToCode = (ast: any): void => {
   const getValueOfNode = (node: any, reg: string, s: IState, c: any): any => {
     if (node.type === 'Identifier') {
       if (reg) {
-        if (hasVars(node.name, s)) {
+        if (s.blockChain.hasName(node.name)) {
           cg(`MOV`, `${ reg }`, `${ node.name }`, )
         } else {
           if (node.name === 'arguments') {
@@ -414,12 +425,16 @@ const parseToCode = (ast: any): void => {
     //   cg(`GLOBAL`, name)
     //   s.globals.set(name, VariableType.VARIABLE)
     /* } else */
-    if (kind === 'let' || kind === 'const') {
+    // if (state.isGlobal) {
+    //   cg(`GLOBAL`, name)
+    //   s.blockChain.newGlobal(name, VariableType.VARIABLE)
+    // } else
+    if ((kind === 'let' || kind === 'const') && s.blockChain.chain.length > 1) {
       cg('BVAR', `${name}`)
-      s.blockChain[s.blockChain.length - 1].set(name, VariableType.VARIABLE)
+      s.blockChain.newName(name, kind)
     } else {
       cg(`VAR`, `${name}`)
-      s.locals.set(name, VariableType.VARIABLE)
+      s.blockChain.newName(name, kind)
     }
   }
 
@@ -432,8 +447,10 @@ const parseToCode = (ast: any): void => {
   const blockEndLabels: Map<string, BlockLabel> = new Map()
 
   const newBlockChain = (): () => void => {
+    // throw new Error('shoud not called ...')
     const oldBlockChain = state.blockChain
-    state.blockChain = [...oldBlockChain, new Map<string, any>()]
+    // state.blockChain = [...oldBlockChain, new Map<string, any>()]
+    state.blockChain = oldBlockChain.newBlock()
     cg('BLOCK')
     return (): void => {
       // const currentBlock = state.blockChain[state.blockChain.length - 1]
@@ -707,7 +724,7 @@ const parseToCode = (ast: any): void => {
     },
 
     IfStatement(node: any, s: any, c: any): void {
-      const restoreBlockChain = newBlockChain()
+      // const restoreBlockChain = newBlockChain()
       const [newReg, freeReg] = newRegisterController()
       const retReg = s.r0
       const endLabel = newLabelName()
@@ -736,7 +753,7 @@ const parseToCode = (ast: any): void => {
 
       cg(`LABEL`, `${ endLabel }:`)
       freeReg()
-      restoreBlockChain()
+      // restoreBlockChain()
     },
 
     ConditionalExpression(node: et.ConditionalExpression, s: any, c: any): void {
@@ -769,7 +786,7 @@ const parseToCode = (ast: any): void => {
     },
 
     ForStatement(node: et.ForStatement, s: any, c: any): any {
-      const restoreBlockChain = newBlockChain()
+      // const restoreBlockChain = newBlockChain()
       const [newReg, freeReg] = newRegisterController()
       const startLabel = newLabelName()
       let endLabel = newLabelName()
@@ -831,11 +848,11 @@ const parseToCode = (ast: any): void => {
       cg(`LABEL`, `${ endLabel }:`)
       popLoopLabels()
       freeReg()
-      restoreBlockChain()
+      // restoreBlockChain()
     },
 
     ForInStatement(node: et.ForInStatement, s: any, c: any): any {
-      const restoreBlockChain = newBlockChain()
+      // const restoreBlockChain = newBlockChain()
       const left = node.left
       const right = node.right
       const [newReg, freeReg] = newRegisterController()
@@ -861,7 +878,7 @@ const parseToCode = (ast: any): void => {
       lg(endLabel)
       freeReg()
       popLoopLabels()
-      restoreBlockChain()
+      // restoreBlockChain()
     },
 
     WhileStatement(node: et.WhileStatement, s: any, c: any): any {
@@ -1025,7 +1042,7 @@ const parseToCode = (ast: any): void => {
     },
 
     LabeledStatement(node: et.LabeledStatement, s: any, c: any): any {
-      const restoreBlockChain = newBlockChain()
+      // const restoreBlockChain = newBlockChain()
       const labelNode = node.label
       const labelName = labelNode.name
       const endLabel = newLabelName()
@@ -1041,11 +1058,11 @@ const parseToCode = (ast: any): void => {
       c(node.body, s)
       blockEndLabels.delete(labelName)
       cg(`LABEL ${endLabel}:`)
-      restoreBlockChain()
+      // restoreBlockChain()
     },
 
     SwitchStatement(node: et.SwitchStatement, s: any, c: any): any {
-      const restoreBlockChain = newBlockChain()
+      // const restoreBlockChain = newBlockChain()
       const [newReg, freeReg] = newRegisterController()
       const discriminantReg = newReg()
       getValueOfNode(node.discriminant, discriminantReg, s, c)
@@ -1070,11 +1087,11 @@ const parseToCode = (ast: any): void => {
       cg(`LABEL ${switchEndLabel}:`)
       popLoopLabels()
       freeReg()
-      restoreBlockChain()
+      // restoreBlockChain()
     },
 
     TryStatement(node: et.TryStatement, s: any, c: any): any {
-      const restoreBlockChain = newBlockChain()
+      // const restoreBlockChain = newBlockChain()
       const catchLabel: string = newLabelName()
       const finalLabel: string = newLabelName()
 
@@ -1097,7 +1114,7 @@ const parseToCode = (ast: any): void => {
         const finalizer = node.finalizer
         c(finalizer, s)
       }
-      restoreBlockChain()
+      // restoreBlockChain()
     },
 
     ThrowStatement(node: et.ThrowStatement, s: any, c: any): any {
@@ -1136,29 +1153,30 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
   }
 
   state = createNewState()
-  state.globals = getVariablesByFunctionAstBody(ret)
+  // const globals = getVariablesByFunctionAstBody(ret)
+  state.blockChain = state.blockChain.newBlock()
   state.codes.push('func @@main() {', 0)
   processFunctionAst(ret)
 
   while (state.functions.length > 0) {
     state.isGlobal = false
     state.maxRegister = 0
-    const funcAst = state.functions.shift()
-    state.params = funcAst!.body.params.reduce((o, param): any => {
+    const funcInfo = state.functions.shift()!
+    const funcBlockChain = funcInfo.blockChain
+    const params = funcInfo.body.params.reduce((o, param): any => {
       o.set((param as et.Identifier).name, VariableType.VARIABLE)
       return o
     }, new Map())
-    state.locals = getVariablesByFunctionAstBody(funcAst?.body.body)
-    const currentScope: IScope = state.currentScope = {
-      params: state.params,
-      locals: state.locals,
-      funcName: funcAst?.name || '',
-    }
-    state.codes.push(getFunctionDecleration(funcAst!), 0)
+    // const locals = getVariablesByFunctionAstBody(funcInfo.body.body)
+    if (!funcBlockChain.currentFuncBlock) { throw new Error('Should has function block chain.') }
+    const currentFuncBlock = funcBlockChain.currentFuncBlock
+    currentFuncBlock.params = params
+    // currentFuncBlock.variables = locals
+    state.codes.push(getFunctionDecleration(funcInfo), 0)
     state.codes.push((): string[] => {
-      const paramClosureDeclarations = [...currentScope.params.keys()].reduce((o: any, param: string): any => {
-        if (currentScope.params.get(param) === VariableType.CLOSURE) {
-          const closureName = currentScope.closureTable?.get(param)
+      const paramClosureDeclarations = [...currentFuncBlock.params.keys()].reduce((o: any, param: string): any => {
+        if (currentFuncBlock.params.get(param) === VariableType.CLOSURE) {
+          const closureName = currentFuncBlock.closures.get(param)
           if (!closureName) { throw new Error(`Parameter ${param} is closure but not allow name`) }
           o.push(`ALLOC ${closureName}`)
           o.push(`MOV ${closureName} ${param}`)
@@ -1167,9 +1185,10 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
       }, [])
       return paramClosureDeclarations.length > 0 ? paramClosureDeclarations : []
     })
-    state.scopes = funcAst!.scopes
+    // state.scopes = funcInfo.scopes
+    state.blockChain = funcBlockChain
     // console.log(funcAst?.name, funcAst?.scopes)
-    processFunctionAst(funcAst?.body.body!)
+    processFunctionAst(funcInfo.body.body)
   }
 
   allCodes = allCodes.map((s: string | (() => string[])): string[] => {

@@ -21,20 +21,40 @@ export class BlockChain {
     }
   }
 
-  public newBlock(): BlockChain {
-    const block = { variables: new Map<string, any>(), closures: new Map<string, any>() }
+  public newBlock(variables?: Map<string, any>): BlockChain {
+    const block = { variables: variables || new Map<string, any>(), closures: new Map<string, any>() }
     return new BlockChain([ ...this.chain, block], this.currentFuncBlock)
   }
 
-  public newFuncBlock(params: Map<string, any>): BlockChain {
-    const funcBlock = { variables: new Map<string, any>(), closures: new Map<string, any>(), params }
+  public newFuncBlock(params?: Map<string, any>): BlockChain {
+    const funcBlock = {
+      variables: new Map<string, any>(),
+      closures: new Map<string, any>(),
+      params: params || new Map<string, any>(),
+    }
     return new BlockChain([...this.chain, funcBlock], funcBlock)
   }
 
+  // tslint:disable-next-line: cognitive-complexity
   public accessName(name: string): void {
     let i = this.chain.length
+    if (name === 'i') {
+      console.log(this.chain)
+    }
+    if (name.startsWith('@@f')) {
+      return
+    }
+    const currentFuncBlock = this.currentFuncBlock
+    let shouldMakeClosure = false
     while (i-- > 0) {
       const block = this.chain[i]
+      // console.log('make fucking closure', name, block, i, this.chain.length)
+      if (!shouldMakeClosure) {
+        if (this.isFuncBlock(block) && block === currentFuncBlock) {
+          shouldMakeClosure = true
+        }
+        continue
+      }
 
       if (i === this.chain.length - 1) {
         if (block.variables.has(name)) {
@@ -73,10 +93,35 @@ export class BlockChain {
       : kind === 'var'
         ? this.currentFuncBlock
         : this.chain[this.chain.length - 1]
+    console.log('NEW VARISBLE ---->', name, kind, block, '\n')
 
     block?.variables.set(name, VariableType.VARIABLE)
   }
 
+  public newGlobal(name: string, type: VariableType): void {
+    const block = this.chain[0]
+    if (!block) {
+      throw new Error('Root block is not assigned.')
+    }
+    block.variables.set(name, type)
+  }
+
+  public hasName(name: string): boolean {
+    let i = this.chain.length
+    while (i-- > 0) {
+      const block = this.chain[i]
+      let varType = block.variables.get(name)
+      if (!varType && this.isFuncBlock(block)) {
+        varType = block.params.get(name)
+      }
+      if (varType) {
+        return true
+      }
+    }
+    return false
+  }
+
+  // tslint:disable-next-line: cognitive-complexity
   public getName(name: string): string {
     let i = this.chain.length
     while (i-- > 0) {
@@ -86,13 +131,26 @@ export class BlockChain {
         varType = block.params.get(name)
       }
       if (!varType) { continue }
-      if (varType === VariableType.VARIABLE) {
+      if (varType === VariableType.VARIABLE ) {
+        // if (i === this.chain.length - 1) {
         return name
+        // }
+        //  else {
+        //   throw new Error(`Variable ${name} should be closure but got normal variable type.`)
+        // }
       }
       if (varType === VariableType.CLOSURE) {
-        return block.closures.get(name)
+        if (block.closures.has(name)) {
+          return block.closures.get(name)
+        } else {
+          throw new Error(`Closure for ${name} is not allocated.`)
+        }
       }
     }
-    return ''
+    return name
+  }
+
+  public getCurrentBlock(): IFuncBlock | IBlock {
+    return this.chain[this.chain.length - 1]
   }
 }
