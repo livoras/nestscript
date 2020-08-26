@@ -332,7 +332,7 @@ const parseToCode = (ast: any): void => {
     const currentBlock = blockChain.getCurrentBlock()
     return state.codes.push((): string[] => {
       // console.log(operator, operants)
-      if ((operator === 'BLOCK' || operator === 'END_BLOCK') && currentBlock.variables.size === 0) {
+      if (['BLOCK', 'END_BLOCK', 'CLR_BLOCK'].includes(operator) && currentBlock.variables.size === 0) {
         return []
       }
 
@@ -895,7 +895,7 @@ const parseToCode = (ast: any): void => {
         if (!blockEndLabels.has(name)) {
           throw new Error(`Label ${name} does not exist.`)
         }
-        cg('END_BLOCK')
+        cg('CLR_BLOCK')
         cg('JMP', blockEndLabels.get(name)!.endLabel)
         return
       }
@@ -912,7 +912,7 @@ const parseToCode = (ast: any): void => {
       }
       const endLabel = labels.endLabel
       // cg(`JMP ${endLabel} (break)`)
-      cg('END_BLOCK')
+      cg('CLR_BLOCK')
       cg(`JMP`, `${endLabel}`)
     },
 
@@ -924,7 +924,7 @@ const parseToCode = (ast: any): void => {
         }
         const blockLabel = blockEndLabels.get(name)!
         // continue label; 语法，如果有 update ，回到 update， 否则回到头
-        cg('END_BLOCK')
+        cg('CLR_BLOCK')
         cg('JMP', blockLabel.updateLabel || blockLabel.startLabel)
         return
       }
@@ -934,13 +934,13 @@ const parseToCode = (ast: any): void => {
         throw new Error("Not available labels, cannot use `continue` here.")
       }
       if (labels.isForIn) {
-        cg('END_BLOCK')
+        cg('CLR_BLOCK')
         cg('CONT_FORIN')
         return
       }
       const { startLabel, updateLabel } = labels
       // cg(`JMP ${endLabel} (break)`)
-      cg('END_BLOCK')
+      cg('CLR_BLOCK')
       cg(`JMP`, `${updateLabel || startLabel}`)
     },
 

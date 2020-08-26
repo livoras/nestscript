@@ -38,6 +38,8 @@ export enum I {
  MOV_ARGS,
 
  FORIN, FORIN_END, BREAK_FORIN, CONT_FORIN,
+
+ BVAR, BLOCK, END_BLOCK, CLR_BLOCK,
 }
 
 class VMRunTimeError extends Error {
@@ -660,6 +662,21 @@ export class VirtualMachine {
       // throw new VMRunTimeError('Should not has `TRY_END` here.')
       break
     }
+
+    case I.BVAR: {
+      const o = this.nextOperant()
+      break
+    }
+    case I.BLOCK: {
+      break
+    }
+    case I.CLR_BLOCK: {
+      break
+    }
+    case I.END_BLOCK: {
+      break
+    }
+
     default:
       console.log(this.ip)
       throw new VMRunTimeError("Unknow command " + op + " " + I[op],)
