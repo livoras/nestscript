@@ -195,8 +195,8 @@ change</panel_attributes>
       <w>98</w>
       <h>154</h>
     </coordinates>
-    <panel_attributes>lt=&lt;&lt;.
-defined and fork</panel_attributes>
+    <panel_attributes>lt=&lt;-
+is</panel_attributes>
     <additional_attributes>120.0;200.0;10.0;200.0;10.0;10.0</additional_attributes>
   </element>
   <element>
@@ -276,11 +276,11 @@ bg=blue</panel_attributes>
     <coordinates>
       <x>406</x>
       <y>210</y>
-      <w>91</w>
+      <w>28</w>
       <h>308</h>
     </coordinates>
-    <panel_attributes>lt=&lt;&lt;.
-define and fork</panel_attributes>
+    <panel_attributes>lt=&lt;-
+is</panel_attributes>
     <additional_attributes>10.0;420.0;10.0;10.0</additional_attributes>
   </element>
   <element>
