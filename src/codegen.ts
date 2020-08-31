@@ -9,6 +9,7 @@ import { CategoriesPriorityQueue } from './utils'
 import { BlockChain } from './block-chain'
 
 export const enum VariableType {
+  NO_EXIST = -1,
   FUNCTION = 1,
   VARIABLE = 2,
   CLOSURE = 3,
@@ -174,6 +175,7 @@ const parseToCode = (ast: any): void => {
   const parseFunc = (
     node: et.FunctionExpression | et.ArrowFunctionExpression | et.FunctionDeclaration,
     s: IState,
+    prior?: number,
   ): string => {
     const funcName = newFunctionName()
     // s.globals[funcName] = VariableType.FUNCTION
@@ -188,7 +190,7 @@ const parseToCode = (ast: any): void => {
     })
     s.functionTable[funcName] = node
     if (s.r0) {
-      cg(`FUNC`, `${s.r0}`, `${funcName}`)
+      cg([`FUNC`, `${s.r0}`, `${funcName}`], prior)
     }
     delete s.funcName
     return funcName
@@ -302,7 +304,7 @@ const parseToCode = (ast: any): void => {
   //   return reg
   // }
 
-  const cg = (...ops: any[]): any => {
+  const cg = (ops: any[], prior?: number): any => {
     /** 各种动态生成 */
     // if (typeof ops[0] === 'function') {
     //   ops = ops[0]()
@@ -335,16 +337,20 @@ const parseToCode = (ast: any): void => {
     })
     /** 这里需要提前一些指令，例如变量声明、全局变量、有名函数声明 */
     let priority
-    if ('VAR' === operator) {
-      priority = 1
-    } else if ('GLOBAL' === operator) {
-      priority = 2
-    } else if ('ALLOC' === operator) {
-      priority = 3
-    } else if ('FUNC' === operator && blockChain.hasName(operants[0])) {
-      priority = 4
+    if (prior === void 0) {
+      if ('VAR' === operator) {
+        priority = 1
+      } else if ('GLOBAL' === operator) {
+        priority = 2
+      } else if ('ALLOC' === operator) {
+        priority = 3
+      // } else if ('FUNC' === operator && blockChain.hasName(operants[0])) {
+      //   priority = 4
+      } else {
+        priority = 100
+      }
     } else {
-      priority = 100
+      priority = prior
     }
     const currentBlock = blockChain.getCurrentBlock()
     return state.codes.push((): string[] => {
@@ -365,8 +371,11 @@ const parseToCode = (ast: any): void => {
       })
       const c = [operator, ...processedOps].join(' ')
       const ret = [c]
-      if (['VAR', 'BVAR'].includes(operator) && processedOps[0].match(/^@c/)) {
-        ret.push(`ALLOC ${processedOps[0]}`)
+      if (['VAR', 'BVAR'].includes(operator)) {
+        const isClosure = blockChain.getNameType(processedOps[0]) === VariableType.CLOSURE
+        if (isClosure) {
+          ret.push(`ALLOC ${processedOps[0]}`)
+        }
       }
       return ret
     }, priority)
@@ -375,7 +384,7 @@ const parseToCode = (ast: any): void => {
 
   /** 生成 label */
   const lg = (label: string): string => {
-    return cg(`LABEL ${label}:`)
+    return cg([`LABEL ${label}:`])
   }
 
   const callIdentifier = (id: string, numArgs: number, s: IState, isExpression: boolean): void => {
@@ -385,9 +394,9 @@ const parseToCode = (ast: any): void => {
     s.blockChain.accessName(id)
     // touchRegister(id, getCurrentScope(), state.scopes, s.blockChain)
     if (s.blockChain.hasName(id)) {
-      cg(`CALL_REG`, id, numArgs, isExpression)
+      cg([`CALL_REG`, id, numArgs, isExpression])
     } else {
-      cg(`CALL_CTX`, `'${id}'`, numArgs, isExpression)
+      cg([`CALL_CTX`, `'${id}'`, numArgs, isExpression])
     }
   }
 
@@ -404,14 +413,14 @@ const parseToCode = (ast: any): void => {
       const objReg = s.r1 = newRegister()
       const keyReg = s.r2 = newRegister()
       c(node, s)
-      cg(`SET_KEY`, objReg, keyReg, reg)
+      cg([`SET_KEY`, objReg, keyReg, reg])
       freeRegister()
       freeRegister()
     } else if (node.type === 'Identifier') {
       if (s.blockChain.hasName(node.name)) {
-        cg(`MOV`, `${ node.name }`, `${ reg }`)
+        cg([`MOV`, `${ node.name }`, `${ reg }`])
       } else {
-        cg(`SET_CTX`, `"${node.name}"`, `${ reg }`)
+        cg([`SET_CTX`, `"${node.name}"`, `${ reg }`])
       }
     } else {
       throw new Error('Unprocessed assignment')
@@ -422,12 +431,12 @@ const parseToCode = (ast: any): void => {
     if (node.type === 'Identifier') {
       if (reg) {
         if (s.blockChain.hasName(node.name)) {
-          cg(`MOV`, `${ reg }`, `${ node.name }`, )
+          cg([`MOV`, `${ reg }`, `${ node.name }`])
         } else {
           if (node.name === 'arguments') {
-            cg(`MOV_ARGS`, `${ reg }`)
+            cg([`MOV_ARGS`, `${ reg }`])
           } else {
-            cg(`MOV_CTX`, `${ reg }`, `"${node.name}"`)
+            cg([`MOV_CTX`, `${ reg }`, `"${node.name}"`])
           }
         }
       }
@@ -447,10 +456,10 @@ const parseToCode = (ast: any): void => {
     //   s.blockChain.newGlobal(name, VariableType.VARIABLE)
     // } else
     if ((kind === 'let' || kind === 'const') && s.blockChain.chain.length > 1) {
-      cg('BVAR', `${name}`)
+      cg(['BVAR', `${name}`])
       s.blockChain.newName(name, kind)
     } else {
-      cg(`VAR`, `${name}`)
+      cg([`VAR`, `${name}`])
       s.blockChain.newName(name, kind)
     }
   }
@@ -468,10 +477,10 @@ const parseToCode = (ast: any): void => {
     const oldBlockChain = state.blockChain
     // state.blockChain = [...oldBlockChain, new Map<string, any>()]
     state.blockChain = oldBlockChain.newBlock()
-    cg('BLOCK')
+    cg(['BLOCK'])
     return (): void => {
       // const currentBlock = state.blockChain[state.blockChain.length - 1]
-      cg('END_BLOCK')
+      cg(['END_BLOCK'])
       state.blockChain = oldBlockChain
       // for (const [name] of currentBlock.entries()) {
       //   cg('FREEBV', name)
@@ -522,7 +531,7 @@ const parseToCode = (ast: any): void => {
       if (node.init) {
         if (node.init?.type === 'Identifier') {
           // if (!state.isGlobal) {
-          cg(`MOV`, reg, node.init.name)
+          cg([`MOV`, reg, node.init.name])
           // }
         } else {
           s.r0 = reg
@@ -535,9 +544,13 @@ const parseToCode = (ast: any): void => {
     },
 
     FunctionDeclaration(node: et.FunctionDeclaration, s: any, c: any): any {
-      s.r0 = node.id?.name
-      declareVariable(s, s.r0)
-      parseFunc(node, s)
+      if (s.r0) {
+        parseFunc(node, s)
+      } else {
+        s.r0 = node.id?.name
+        declareVariable(s, s.r0)
+        parseFunc(node, s, 4)
+      }
       s.r0 = null
     },
 
@@ -556,7 +569,7 @@ const parseToCode = (ast: any): void => {
         //   freeRegister()
         // }
         freeRegister()
-        cg(`PUSH`, reg)
+        cg([`PUSH`, reg])
       }
 
       if (node.callee.type === "MemberExpression") {
@@ -564,7 +577,7 @@ const parseToCode = (ast: any): void => {
         const objReg = s.r1 = newRegister()
         const keyReg = s.r2 = newRegister()
         c(node.callee, s)
-        cg(`CALL_VAR`, objReg, keyReg, node.arguments.length, isNewExpression)
+        cg([`CALL_VAR`, objReg, keyReg, node.arguments.length, isNewExpression])
         freeRegister()
         freeRegister()
       } else if (node.callee.type === "Identifier") {
@@ -574,10 +587,10 @@ const parseToCode = (ast: any): void => {
         c(node.callee, s)
         freeRegister()
         /** 这里不能用 callIdentifier */
-        cg(`CALL_REG`, ret, node.arguments.length, isNewExpression)
+        cg([`CALL_REG`, ret, node.arguments.length, isNewExpression])
       }
       if (retReg) {
-        cg(`MOV`, retReg, `$RET`)
+        cg([`MOV`, retReg, `$RET`])
       }
       s.r0 = null
     },
@@ -587,7 +600,7 @@ const parseToCode = (ast: any): void => {
 
       if ((node as any).regex) {
         const { pattern, flags } = (node as any).regex
-        cg('NEW_REG', s.r0, `"${unescape(pattern)}"`, `"${flags}"`)
+        cg(['NEW_REG', s.r0, `"${unescape(pattern)}"`, `"${flags}"`])
         return
       }
 
@@ -604,7 +617,7 @@ const parseToCode = (ast: any): void => {
       }
       // console.log("==========================================>", s.r0, val)
       if (s.r0) {
-        cg(`MOV`, s.r0, `${val}`)
+        cg([`MOV`, s.r0, `${val}`])
       }
     },
 
@@ -648,9 +661,9 @@ const parseToCode = (ast: any): void => {
       } else if (node.property.type === 'Identifier') {
         // a.b.c.d
         if (node.computed) {
-          cg(`MOV`, keyReg, node.property.name)
+          cg([`MOV`, keyReg, node.property.name])
         } else {
-          cg(`MOV`, keyReg, `"${node.property.name}"`)
+          cg([`MOV`, keyReg, `"${node.property.name}"`])
         }
       } else {
         s.r0 = keyReg
@@ -658,7 +671,7 @@ const parseToCode = (ast: any): void => {
       }
 
       if (valReg) {
-        cg(`MOV_PROP`, valReg, objReg, keyReg)
+        cg([`MOV_PROP`, valReg, objReg, keyReg])
       }
       s.r0 = null
       s.r1 = null
@@ -679,12 +692,12 @@ const parseToCode = (ast: any): void => {
         if (!cmd) { throw new Error(`Operation ${o} is not implemented.`)}
         const leftReg = newReg()
         getValueOfNode(left, leftReg, s, c)
-        cg(`${cmd} ${leftReg} ${rightReg}`)
+        cg([`${cmd} ${leftReg} ${rightReg}`])
         rightReg = leftReg
       }
       setValueToNode(left, rightReg, s, c)
       if (retReg) {
-        cg(`MOV ${retReg} ${rightReg}`)
+        cg([`MOV ${retReg} ${rightReg}`])
       }
       freeReg()
     },
@@ -706,7 +719,7 @@ const parseToCode = (ast: any): void => {
       if (!op) {
         throw new Error(`${ node.operator } is not implemented.`)
       }
-      cg(op, leftReg, rightReg)
+      cg([op, leftReg, rightReg])
       freeReg()
     },
 
@@ -726,13 +739,13 @@ const parseToCode = (ast: any): void => {
       if (op !== 'delete') {
         const reg = s.r0
         getValueOfNode(node.argument, reg, s, c)
-        cg(`${cmd} ${reg}`)
+        cg([`${cmd} ${reg}`])
       } else {
         s.r0 = null
         const objReg = s.r1 = newReg()
         const keyReg = s.r2 = newReg()
         c(node.argument, s)
-        cg(`DEL ${objReg} ${keyReg}`)
+        cg([`DEL ${objReg} ${keyReg}`])
         s.r1 = null
         s.r2 = null
       }
@@ -753,11 +766,11 @@ const parseToCode = (ast: any): void => {
         s.r0 = testReg
         c(node.test, s)
 
-        cg(`JF`, testReg, nextLabel)
+        cg([`JF`, testReg, nextLabel])
         getValueOfNode(node.consequent, retReg, s, c)
-        cg(`JMP`, endLabel)
+        cg([`JMP`, endLabel])
 
-        cg(`LABEL`, `${ nextLabel }:`)
+        cg([`LABEL`, `${ nextLabel }:`])
         node = node.alternate
         // if (node.alternate) {
         //   getValueOfNode(node.alternate, retReg, s, c)
@@ -768,7 +781,7 @@ const parseToCode = (ast: any): void => {
         getValueOfNode(node, retReg, s, c)
       }
 
-      cg(`LABEL`, `${ endLabel }:`)
+      cg([`LABEL`, `${ endLabel }:`])
       freeReg()
       // restoreBlockChain()
     },
@@ -786,19 +799,19 @@ const parseToCode = (ast: any): void => {
       const op = node.operator
       // console.log(node)
       if (retReg) {
-        cg(`MOV`, `${retReg}`, `${leftReg}`)
+        cg([`MOV`, `${retReg}`, `${leftReg}`])
       }
       if (op === '&&') {
-        cg(`JF`, `${leftReg}`, `${endLabel}`)
+        cg([`JF`, `${leftReg}`, `${endLabel}`])
       } else {
-        cg(`JIF`, `${leftReg}`, `${endLabel}`)
+        cg([`JIF`, `${leftReg}`, `${endLabel}`])
       }
       const rightReg = s.r0 = newReg()
       getValueOfNode(node.right, rightReg, s, c)
       if (retReg) {
-        cg(op === '&&' ? `LG_AND` : `LG_OR`, `${retReg}`, `${rightReg}`)
+        cg([op === '&&' ? `LG_AND` : `LG_OR`, `${retReg}`, `${rightReg}`])
       }
-      cg('LABEL', `${endLabel}:`)
+      cg(['LABEL', `${endLabel}:`])
       freeReg()
     },
 
@@ -839,30 +852,30 @@ const parseToCode = (ast: any): void => {
       const isDoWhileLoop = node.type as string === 'DoWhileStatement'
       const bodyLabel = newLabelName()
       if (isDoWhileLoop) {
-        cg(`JMP`, bodyLabel)
+        cg([`JMP`, bodyLabel])
       }
 
-      cg(`LABEL`, `${ startLabel }:`)
+      cg([`LABEL`, `${ startLabel }:`])
       // test
       if (node.test) {
         const testReg = s.r0 = newReg()
         c(node.test, s)
-        cg(`JF`, `${ testReg }`, `${ endLabel }`)
+        cg([`JF`, `${ testReg }`, `${ endLabel }`])
       }
       // body
       s.forEndLabel = endLabel
       s.r0 = null
-      cg(`LABEL`, `${ bodyLabel }:`)
+      cg([`LABEL`, `${ bodyLabel }:`])
       c(node.body, s)
       // update
       if (node.update) {
-        cg('LABEL', `${ updateLabel }:`)
+        cg(['LABEL', `${ updateLabel }:`])
         s.r0 = null
         c(node.update, s)
       }
-      cg(`JMP`, `${ startLabel }`)
+      cg([`JMP`, `${ startLabel }`])
       // end
-      cg(`LABEL`, `${ endLabel }:`)
+      cg([`LABEL`, `${ endLabel }:`])
       popLoopLabels()
       freeReg()
       // restoreBlockChain()
@@ -888,10 +901,10 @@ const parseToCode = (ast: any): void => {
       const endLabel = newLabelName()
       getValueOfNode(right, rightReg, s, c)
       pushLoopLabels({ startLabel, endLabel, updateLabel: startLabel, isForIn: true })
-      cg('FORIN', leftReg, rightReg, startLabel, endLabel)
+      cg(['FORIN', leftReg, rightReg, startLabel, endLabel])
       lg(startLabel)
       c(node.body, s)
-      cg('FORIN_END')
+      cg(['FORIN_END'])
       lg(endLabel)
       freeReg()
       popLoopLabels()
@@ -912,8 +925,8 @@ const parseToCode = (ast: any): void => {
         if (!blockEndLabels.has(name)) {
           throw new Error(`Label ${name} does not exist.`)
         }
-        cg('CLR_BLOCK')
-        cg('JMP', blockEndLabels.get(name)!.endLabel)
+        cg(['CLR_BLOCK'])
+        cg(['JMP', blockEndLabels.get(name)!.endLabel])
         return
       }
 
@@ -924,13 +937,13 @@ const parseToCode = (ast: any): void => {
         throw new Error("Not available labels, cannot use `break` here.")
       }
       if (labels.isForIn) {
-        cg('BREAK_FORIN')
+        cg(['BREAK_FORIN'])
         return
       }
       const endLabel = labels.endLabel
       // cg(`JMP ${endLabel} (break)`)
-      cg('CLR_BLOCK')
-      cg(`JMP`, `${endLabel}`)
+      cg(['CLR_BLOCK'])
+      cg([`JMP`, `${endLabel}`])
     },
 
     ContinueStatement(node: et.ContinueStatement, s: any, c: any): any {
@@ -941,8 +954,8 @@ const parseToCode = (ast: any): void => {
         }
         const blockLabel = blockEndLabels.get(name)!
         // continue label; 语法，如果有 update ，回到 update， 否则回到头
-        cg('CLR_BLOCK')
-        cg('JMP', blockLabel.updateLabel || blockLabel.startLabel)
+        cg(['CLR_BLOCK'])
+        cg(['JMP', blockLabel.updateLabel || blockLabel.startLabel])
         return
       }
 
@@ -951,14 +964,14 @@ const parseToCode = (ast: any): void => {
         throw new Error("Not available labels, cannot use `continue` here.")
       }
       if (labels.isForIn) {
-        cg('CLR_BLOCK')
-        cg('CONT_FORIN')
+        cg(['CLR_BLOCK'])
+        cg(['CONT_FORIN'])
         return
       }
       const { startLabel, updateLabel } = labels
       // cg(`JMP ${endLabel} (break)`)
-      cg('CLR_BLOCK')
-      cg(`JMP`, `${updateLabel || startLabel}`)
+      cg(['CLR_BLOCK'])
+      cg([`JMP`, `${updateLabel || startLabel}`])
     },
 
     UpdateExpression(node: et.UpdateExpression, s: any, c: any): any {
@@ -968,15 +981,15 @@ const parseToCode = (ast: any): void => {
       const reg = newReg()
       getValueOfNode(node.argument, reg, s, c)
       if (retReg && !node.prefix) {
-        cg(`MOV ${retReg} ${reg}`)
+        cg([`MOV ${retReg} ${reg}`])
       }
       if (op === '++') {
-        cg(`ADD`, `${reg}`, `1`)
+        cg([`ADD`, `${reg}`, `1`])
       } else if (op === '--') {
-        cg(`SUB`, `${reg}`, `1`)
+        cg([`SUB`, `${reg}`, `1`])
       }
       if (retReg && node.prefix) {
-        cg(`MOV ${retReg} ${reg}`)
+        cg([`MOV ${retReg} ${reg}`])
       }
       setValueToNode(node.argument, reg, s, c)
       freeReg()
@@ -985,7 +998,7 @@ const parseToCode = (ast: any): void => {
     ObjectExpression(node: et.ObjectExpression, s: any, c: any): any {
       const [newReg, freeReg] = newRegisterController()
       const reg = s.r0 || newReg()
-      cg(`NEW_OBJ`, `${reg}`)
+      cg([`NEW_OBJ`, `${reg}`])
       for (const prop of node.properties) {
         s.r0 = reg
         c(prop, s)
@@ -996,14 +1009,14 @@ const parseToCode = (ast: any): void => {
     ArrayExpression(node: et.ArrayExpression, s: any, c: any): any {
       const [newReg, freeReg] = newRegisterController()
       const reg = s.r0 || newReg()
-      cg(`NEW_ARR`, `${reg}`)
+      cg([`NEW_ARR`, `${reg}`])
       node.elements.forEach((el: any, i: number): void => {
         if (!el) {
           return
         }
         const valReg = newRegister()
         getValueOfNode(el, valReg, s, c)
-        cg(`SET_KEY`, `${reg}`, `${i}`, `${valReg}`)
+        cg([`SET_KEY`, `${reg}`, `${i}`, `${valReg}`])
         freeRegister()
       })
       freeReg()
@@ -1020,7 +1033,7 @@ const parseToCode = (ast: any): void => {
         key = node.key.raw
       }
       getValueOfNode(node.value, valReg, s, c)
-      cg(`SET_KEY`, `${objReg}`, key, `${valReg}`)
+      cg([`SET_KEY`, `${objReg}`, key, `${valReg}`])
       // cg(`SET_KEY`, `${objReg}`, `"${key}"`, `${valReg}`)
       freeReg()
     },
@@ -1029,9 +1042,9 @@ const parseToCode = (ast: any): void => {
       const reg = s.r0 = newRegister()
       if (node.argument) {
         c(node.argument, s)
-        cg(`MOV`, `$RET`, `${reg}`)
+        cg([`MOV`, `$RET`, `${reg}`])
       }
-      cg('RET')
+      cg(['RET'])
       freeRegister()
     },
 
@@ -1050,7 +1063,7 @@ const parseToCode = (ast: any): void => {
       if (!s.r0) {
         throw new Error('Access `this` without register r0')
       }
-      cg(`MOV_THIS ${s.r0}`)
+      cg([`MOV_THIS ${s.r0}`])
     },
 
     NewExpression(node: et.NewExpression, s: any, c: any): any {
@@ -1074,7 +1087,7 @@ const parseToCode = (ast: any): void => {
       }
       c(node.body, s)
       blockEndLabels.delete(labelName)
-      cg(`LABEL ${endLabel}:`)
+      cg([`LABEL ${endLabel}:`])
       // restoreBlockChain()
     },
 
@@ -1092,16 +1105,16 @@ const parseToCode = (ast: any): void => {
         if (cs.test) {
           const testReg = newReg()
           getValueOfNode(cs.test, testReg, s, c)
-          cg(`JE ${discriminantReg} ${testReg} ${startLabel}`)
-          cg(`JMP ${endLabel}`)
+          cg([`JE ${discriminantReg} ${testReg} ${startLabel}`])
+          cg([`JMP ${endLabel}`])
         }
-        cg(`LABEL ${startLabel}:`)
+        cg([`LABEL ${startLabel}:`])
         cs.consequent.forEach((n: any): void => {
           c(n, s)
         })
-        cg(`LABEL ${endLabel}:`)
+        cg([`LABEL ${endLabel}:`])
       })
-      cg(`LABEL ${switchEndLabel}:`)
+      cg([`LABEL ${switchEndLabel}:`])
       popLoopLabels()
       freeReg()
       // restoreBlockChain()
@@ -1113,9 +1126,9 @@ const parseToCode = (ast: any): void => {
       const finalLabel: string = newLabelName()
 
       const endLabel = node.handler ? catchLabel : finalLabel
-      cg('TRY', endLabel, finalLabel)
+      cg(['TRY', endLabel, finalLabel])
       c(node.block, s)
-      cg('TRY_END')
+      cg(['TRY_END'])
 
       if (node.handler) {
         const handler = node.handler
@@ -1137,7 +1150,7 @@ const parseToCode = (ast: any): void => {
     ThrowStatement(node: et.ThrowStatement, s: any, c: any): any {
       const reg = newRegister()
       getValueOfNode(node.argument, reg, s, c)
-      cg('THROW', reg)
+      cg(['THROW', reg])
       freeRegister()
     },
   })
@@ -1162,7 +1175,7 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     }
     parseToCode(funcBody)
     for (let i = 0; i < state.maxRegister; i++) {
-      state.codes.push(`VAR %r${i}`, 1)
+      state.codes.push(`REG %r${i}`, 1)
     }
     state.codes.push('}')
     allCodes = [...allCodes, ...state.codes]

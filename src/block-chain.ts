@@ -93,7 +93,6 @@ export class BlockChain {
       : kind === 'var'
         ? this.currentFuncBlock
         : this.chain[this.chain.length - 1]
-    console.log('NEW VARISBLE ---->', name, kind, block, '\n')
 
     block?.variables.set(name, VariableType.VARIABLE)
   }
@@ -106,7 +105,7 @@ export class BlockChain {
     block.variables.set(name, type)
   }
 
-  public hasName(name: string): boolean {
+  public getNameType(name: string): VariableType {
     let i = this.chain.length
     while (i-- > 0) {
       const block = this.chain[i]
@@ -114,11 +113,15 @@ export class BlockChain {
       if (!varType && this.isFuncBlock(block)) {
         varType = block.params.get(name)
       }
-      if (varType) {
-        return true
+      if (varType > 0) {
+        return varType
       }
     }
-    return false
+    return VariableType.NO_EXIST
+  }
+
+  public hasName(name: string): boolean {
+    return this.getNameType(name) > 0
   }
 
   // tslint:disable-next-line: cognitive-complexity
@@ -141,7 +144,8 @@ export class BlockChain {
       }
       if (varType === VariableType.CLOSURE) {
         if (block.closures.has(name)) {
-          return block.closures.get(name)
+          return name
+          // return block.closures.get(name)
         } else {
           throw new Error(`Closure for ${name} is not allocated.`)
         }
