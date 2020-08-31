@@ -663,10 +663,10 @@ export class VirtualMachine {
       break
     }
 
-    case I.BVAR: {
-      const o = this.nextOperant()
-      break
-    }
+    // case I.BVAR: {
+    //   const o = this.nextOperant()
+    //   break
+    // }
     case I.BLOCK: {
       break
     }

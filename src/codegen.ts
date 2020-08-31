@@ -338,11 +338,11 @@ const parseToCode = (ast: any): void => {
     /** 这里需要提前一些指令，例如变量声明、全局变量、有名函数声明 */
     let priority
     if (prior === void 0) {
-      if ('VAR' === operator) {
-        priority = 1
-      } else if ('GLOBAL' === operator) {
-        priority = 2
-      } else if ('ALLOC' === operator) {
+      // if ('VAR' === operator) {
+      //   priority = 1
+      // } else if ('GLOBAL' === operator) {
+      //   priority = 2
+      if ('ALLOC' === operator) {
         priority = 3
       // } else if ('FUNC' === operator && blockChain.hasName(operants[0])) {
       //   priority = 4
@@ -456,10 +456,10 @@ const parseToCode = (ast: any): void => {
     //   s.blockChain.newGlobal(name, VariableType.VARIABLE)
     // } else
     if ((kind === 'let' || kind === 'const') && s.blockChain.chain.length > 1) {
-      cg(['BVAR', `${name}`])
+      cg(['VAR', `${name}`])
       s.blockChain.newName(name, kind)
     } else {
-      cg([`VAR`, `${name}`])
+      cg([`VAR`, `${name}`], 1)
       s.blockChain.newName(name, kind)
     }
   }
