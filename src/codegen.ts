@@ -369,13 +369,20 @@ const parseToCode = (ast: any): void => {
         return blockChain.getName(o)
         // return getRegisterName(o, currentScope, scopes, operator === 'VAR')
       })
-      const c = [operator, ...processedOps].join(' ')
-      const ret = [c]
-      if (['VAR', 'BVAR'].includes(operator)) {
-        const isClosure = blockChain.getNameType(processedOps[0]) === VariableType.CLOSURE
-        if (isClosure) {
-          ret.push(`ALLOC ${processedOps[0]}`)
-        }
+      const ret: any[] = []
+      const pushCode = (): void => {
+        const c = [operator, ...processedOps].join(' ')
+        ret.push(c)
+      }
+      if (
+        ['VAR', 'BVAR'].includes(operator) &&
+        blockChain.getNameType(operants[0]) === VariableType.CLOSURE
+      ) {
+        operator = 'CLS'
+        pushCode()
+        // ret.push(`ALLOC ${processedOps[0]}`)
+      } else {
+        pushCode()
       }
       return ret
     }, priority)
@@ -1160,7 +1167,7 @@ const parseToCode = (ast: any): void => {
 
 const getFunctionDecleration = (func: IFunction): string => {
   const name = func.name
-  const params = func.body.params.map((p: any): string => p.name).join(', ')
+  const params = func.body.params.map((p: any): string => '.' + p.name).join(', ')
   return `func ${name}(${params}) {`
 }
 
@@ -1211,7 +1218,9 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
           // console.log(
           //   '===========+>', varType, param, funcBlockChain.chain[funcBlockChain.chain.length - 1], currentFuncBlock)
           // if (param === VariableType.CLOSURE) {
-          o.push(`ALLOC ${param}`)
+          const name = funcBlockChain.getName(param)
+          o.push(`CLS ${name}`)
+          o.push(`MOV ${name} .${param}`)
           // }
           // if (!closureName) { throw new Error(`Parameter ${param} is closure but not allow name`) }
           // o.push(`MOV ${closureName} ${param}`)

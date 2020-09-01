@@ -93,6 +93,18 @@ export const parseCodeToProgram = (program: string): Buffer => {
   const stringIndex: any = {}
   // const funcs = parseAssembler(optimizeCode(program))
   const funcs = parseAssembler(program) // program
+  const _symbols = new Map<string, number>()
+  let symbolsCounter = 0
+
+  const getSymbolIndex = (name: string): number => {
+    if (_symbols.has(name)) {
+      return _symbols.get(name)!
+    } else {
+      _symbols.set(name, symbolsCounter++)
+      return _symbols.get(name)!
+    }
+  }
+
     // .trim()
     // .match(/func\s[\s\S]+?\}/g) || []
 
@@ -114,6 +126,7 @@ export const parseCodeToProgram = (program: string): Buffer => {
   // 2 pass
   funcsInfo.forEach((funcInfo: IFuncInfo): void => {
     const symbols = funcInfo.symbols
+    // console.log(symbols)
     funcInfo.codes.forEach((code: any[]): void => {
       const op = code[0]
       code[0] = I[op]
@@ -152,19 +165,17 @@ export const parseCodeToProgram = (program: string): Buffer => {
             return
           }
 
-          if (o.startsWith('@c')) {
-            code[i] = {
-              type: IOperatantType.CLOSURE_REGISTER,
-              value: Number(o.replace('@c', '')),
-            }
-            return
-          }
+          // const namemap = {
+          //   '@': IOperatantType.CLOSURE_REGISTER,
+          //   '.': IOperatantType.PARAM_REGISTER,
+          //   '%': IOperatantType.REGISTER,
+          // }
 
           /** 寄存器 */
           let regIndex = symbols[o]
           if (regIndex !== undefined) {
             code[i] = {
-              type: IOperatantType.REGISTER,
+              type: o[0] === IOperatantType.REGISTER,
               value: regIndex,
             }
             return
@@ -229,10 +240,23 @@ export const parseCodeToProgram = (program: string): Buffer => {
           }
 
           /** Number */
-          code[i] = {
-            type: IOperatantType.NUMBER,
-            value: +o,
+          if (!isNaN(+o)) {
+            code[i] = {
+              type: IOperatantType.NUMBER,
+              value: +o,
+            }
+            return
           }
+
+          /** 普通变量或者闭包 */
+          const symbolIndex = getSymbolIndex(o.replace(/^@/, ''))
+          code[i] = {
+            type: o.startsWith('@')
+              ? IOperatantType.CLOSURE_REGISTER
+              : IOperatantType.VAR_SYMBOL,
+            value: symbolIndex,
+          }
+          // console.log('symbol index -> ', symbolIndex, o)
         })
       }
     })
@@ -331,6 +355,7 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
       functionBuffer.set(buf.slice(0, addressByteLen), bufferIndex)
     })
 
+    // console.log(' current -----------------> ', new Uint8Array(currentFuncBuffer)[0])
     buffer = concatBuffer(buffer, currentFuncBuffer)
   })
 
@@ -393,11 +418,11 @@ const parseFunction = (func: IParsedFunction): IFuncInfo => {
   const args = func.params
   const body = func.instructions
 
-  const vars = body.filter((stat: string[]): boolean => stat[0] === 'VAR')
+  const vars = body.filter((stat: string[]): boolean => stat[0] === 'REG')
   const globals = body
     .filter((stat: string[]): boolean => stat[0] === 'GLOBAL')
     .map((stat: string[]): string => stat[1])
-  const codes = body.filter((stat: string[]): boolean => stat[0] !== 'VAR' && stat[0] !== 'GLOBAL')
+  const codes = body.filter((stat: string[]): boolean => stat[0] !== 'REG' && stat[0] !== 'GLOBAL')
   const symbols: any = {}
   args.forEach((arg: string, i: number): void => {
     symbols[arg] = -4 - i
@@ -405,12 +430,12 @@ const parseFunction = (func: IParsedFunction): IFuncInfo => {
   let j = 0
   vars.forEach((v: string[], i: number): void => {
     const reg = v[1]
-    if (reg.startsWith('@c')) {
-      symbols[reg] = -1
-    } else {
-      symbols[reg] = j + 1
-      j++
-    }
+    // if (reg.startsWith('@c')) {
+    //   symbols[reg] = -1
+    // } else {
+    symbols[reg] = j + 1
+    j++
+    // }
   })
 
   if (funcName === '@@main') {

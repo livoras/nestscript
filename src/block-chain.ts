@@ -130,13 +130,15 @@ export class BlockChain {
     while (i-- > 0) {
       const block = this.chain[i]
       let varType = block.variables.get(name)
+      let isParam = false
       if (!varType && this.isFuncBlock(block)) {
         varType = block.params.get(name)
+        isParam = true
       }
       if (!varType) { continue }
       if (varType === VariableType.VARIABLE ) {
         // if (i === this.chain.length - 1) {
-        return name
+        return (isParam ? '.' : '') + name
         // }
         //  else {
         //   throw new Error(`Variable ${name} should be closure but got normal variable type.`)
@@ -144,7 +146,7 @@ export class BlockChain {
       }
       if (varType === VariableType.CLOSURE) {
         if (block.closures.has(name)) {
-          return name
+          return '@' + name
           // return block.closures.get(name)
         } else {
           throw new Error(`Closure for ${name} is not allocated.`)

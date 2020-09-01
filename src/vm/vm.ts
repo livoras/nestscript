@@ -2,6 +2,8 @@
 import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from '../utils'
 
 export enum I {
+ VAR, CLS,
+
  MOV, ADD, SUB, MUL, DIV, MOD,
  EXP, INC, DEC,
 
@@ -62,6 +64,7 @@ export const enum IOperatantType {
   BOOLEAN = 9 << 4,
   NULL = 10 << 4,
   UNDEFINED = 11 << 4,
+  VAR_SYMBOL = 13 << 4,
 }
 
 // tslint:disable-next-line: max-classes-per-file
@@ -249,6 +252,18 @@ export class VirtualMachine {
     // console.log(op, I[op])
     // tslint:disable-next-line: max-switch-cases
     switch (op) {
+    case I.VAR: {
+      const o = this.nextOperant()
+      console.log(o)
+      break
+    }
+
+    case I.CLS: {
+      const o = this.nextOperant()
+      console.log('?', o)
+      break
+    }
+
     case I.PUSH: {
       const value = this.nextOperant().value
       // console.log('PUSHING....', value)
@@ -690,7 +705,7 @@ export class VirtualMachine {
   }
 
   public nextOperator(): I {
-    // console.log("ip -> ", this.ip)
+    // console.log("ip -->> ", this.ip)
     return readUInt8(this.codes, this.ip, ++this.ip)
   }
 
@@ -732,6 +747,9 @@ export class VirtualMachine {
       return null
     case IOperatantType.UNDEFINED:
       return void 0
+    case IOperatantType.VAR_SYMBOL:
+      // TODO
+      return ''
     default:
       throw new VMRunTimeError("Unknown operant " + valueType)
     }
@@ -816,9 +834,11 @@ export class VirtualMachine {
 
   // tslint:disable-next-line: cognitive-complexity
   public parseToJsFunc (meta: FuncInfoMeta, oldClosureTable: any): any {
+    // console.log('meta -->', meta)
     const vm = this
     const func = function (this: any, ...args: any[]): any {
       const [ip, _, localSize] = meta
+      // console.log('running ip', ip)
       vm.isRunning = true
       const n = args[0]
       const isCalledFromJs = !(n instanceof NumArgs)
@@ -953,6 +973,7 @@ const parseFunctionTable = (buffer: ArrayBuffer): FuncInfoMeta[] => {
     funcs.push([ip, numArgsAndLocal[0], numArgsAndLocal[1]])
     i += 8
   }
+  // console.log('ALL FUNCTIONS META --->', funcs)
   return funcs
 }
 
