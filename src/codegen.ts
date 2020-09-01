@@ -1205,11 +1205,16 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     state.codes.push(getFunctionDecleration(funcInfo), 0)
     state.codes.push((): string[] => {
       const paramClosureDeclarations = [...currentFuncBlock.params.keys()].reduce((o: any, param: string): any => {
-        if (currentFuncBlock.params.get(param) === VariableType.CLOSURE) {
-          const closureName = currentFuncBlock.closures.get(param)
-          if (!closureName) { throw new Error(`Parameter ${param} is closure but not allow name`) }
-          o.push(`ALLOC ${closureName}`)
-          o.push(`MOV ${closureName} ${param}`)
+        const paramType = funcBlockChain.getNameType(param)
+        if (paramType === VariableType.CLOSURE) {
+          // const closureName = currentFuncBlock.closures.get(param)
+          // console.log(
+          //   '===========+>', varType, param, funcBlockChain.chain[funcBlockChain.chain.length - 1], currentFuncBlock)
+          // if (param === VariableType.CLOSURE) {
+          o.push(`ALLOC ${param}`)
+          // }
+          // if (!closureName) { throw new Error(`Parameter ${param} is closure but not allow name`) }
+          // o.push(`MOV ${closureName} ${param}`)
         }
         return o
       }, [])
