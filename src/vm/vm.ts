@@ -1,5 +1,6 @@
 // tslint:disable: no-bitwise
 import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from '../utils'
+import { Scope } from '../scope'
 
 export enum I {
  VAR, CLS,
@@ -48,6 +49,11 @@ class VMRunTimeError extends Error {
   constructor(public error: any) {
     super(error)
   }
+}
+
+interface ICallingFunctionInfo {
+  closureTable: any,
+  variables: Scope,
 }
 
 export const enum IOperatantType {
@@ -131,8 +137,8 @@ export class VirtualMachine {
   public heap: any[] = []
 
   /** 闭包映射表 */
-  public closureTable: any = {}
-  public closureTables: any[] = []
+  public callingFunctionInfo: ICallingFunctionInfo = { closureTable: {}, variables: new Scope() }
+  public callingFunctionInfos: ICallingFunctionInfo[] = []
 
   /** this 链 */
   public currentThis: any
@@ -170,7 +176,7 @@ export class VirtualMachine {
     this.stack.length = this.sp + 1
     //
     // this.closureTable = {}
-    this.closureTables = []
+    this.callingFunctionInfos = []
     //
     // this.currentThis = this.ctx
     // this.allThis = [this.currentThis]
@@ -233,11 +239,12 @@ export class VirtualMachine {
   }
 
   public makeClosureIndex = (index: number): number => {
-    if (this.closureTable[index] === undefined) {
-      this.closureTable[index] = this.heap.length
+    const closureTable = this.callingFunctionInfo.closureTable
+    if (closureTable[index] === undefined) {
+      closureTable[index] = this.heap.length
       this.heap.push(undefined)
     }
-    return this.closureTable[index]
+    return closureTable[index]
   }
 
   // tslint:disable-next-line: no-big-function cognitive-complexity
@@ -296,8 +303,8 @@ export class VirtualMachine {
       this.sp = fp - stack[fp - 2] - 4
       // 清空上一帧
       this.stack.splice(this.sp + 1)
-      this.closureTables.pop()
-      this.closureTable = this.closureTables[this.closureTables.length - 1]
+      this.callingFunctionInfos.pop()
+      this.callingFunctionInfo = this.callingFunctionInfos[this.callingFunctionInfos.length - 1]
       //
       this.allThis.pop()
       this.currentThis = this.allThis[this.allThis.length - 1]
@@ -444,7 +451,7 @@ export class VirtualMachine {
       const funcOperant = this.nextOperant()
       // const funcInfoIndex: number = funcOperant.value
       const funcInfoMeta = funcOperant.value
-      const func = this.parseToJsFunc(funcInfoMeta, this.closureTable)
+      const func = this.parseToJsFunc(funcInfoMeta, this.callingFunctionInfo.closureTable)
       // TODO
       // console.log(this.closureTable, '??????????????')
       // funcInfo.closureTable = { ...this.closureTable }
@@ -726,7 +733,7 @@ export class VirtualMachine {
   public parseValue(valueType: IOperatantType, value: any): any {
     switch (valueType) {
     case IOperatantType.CLOSURE_REGISTER:
-      return this.heap[this.closureTable[value]]
+      return this.heap[this.callingFunctionInfo.closureTable[value]]
     case IOperatantType.REGISTER:
       return this.stack[this.fp + value]
     case IOperatantType.ARG_COUNT:
@@ -857,8 +864,8 @@ export class VirtualMachine {
         }
       }
       const closureTable = { ...oldClosureTable }
-      vm.closureTable = closureTable
-      vm.closureTables.push(closureTable)
+      vm.callingFunctionInfo = { closureTable, variables: new Scope() }
+      vm.callingFunctionInfos.push(vm.callingFunctionInfo)
       if (vm.allThis.length === 0) {
         vm.currentThis = vm.ctx
       } else {
