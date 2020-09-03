@@ -34,26 +34,27 @@ export class Scope {
 }
 
 
-const s = new Scope()
-s.set('name', 'good')
+// const s = new Scope()
+// s.isRestoreWhenChange = true
+// s.set('name', 'good')
 
-s.front()
-s.set('title', 'nice')
+// s.front()
+// s.set('title', 'nice')
 
-const s1 = s.fork()
-console.log(s1.get('title') === 'nice')
-console.log(s1.get('name') === 'good')
+// const s1 = s.fork()
+// console.log(s1.get('title') === 'nice')
+// console.log(s1.get('name') === 'good')
 
-s.front()
-s.set('age', 12)
+// s.front()
+// s.set('age', 12)
 
-console.log(s.get('age') === 12)
-console.log(s.get('title') === 'nice')
-console.log(s.get('name') === 'good')
-console.log(s1.get('age') === void 0)
+// console.log(s.get('age') === 12)
+// console.log(s.get('title') === 'nice')
+// console.log(s.get('name') === 'good')
+// console.log(s1.get('age') === void 0)
 
-console.log(s.heap)
-s.back()
-console.log(s.heap)
-s.back()
-console.log(s.heap)
+// console.log(s.heap)
+// s.back()
+// console.log(s.heap)
+// s.back()
+// console.log(s.heap)
