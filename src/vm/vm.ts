@@ -35,7 +35,7 @@ export enum I {
  MOV_THIS, // moving this to resgister
 
  // try catch
- TRY, TRY_END, THROW,
+ TRY, TRY_END, THROW, GET_ERR,
 
  // arguments
  MOV_ARGS,
@@ -147,6 +147,8 @@ export class VirtualMachine {
   public isRunning: boolean = false
   public mainFunction: CallableFunction
 
+  public error: any
+
   constructor (
     public codes: ArrayBuffer,
     public functionsTable: FuncInfoMeta[],
@@ -208,6 +210,7 @@ export class VirtualMachine {
 
   public reset(): void {
     this.init()
+    this.error = null
     // this.closureScope = new Scope()
     // this.closureScope.isRestoreWhenChange = false
     // this.stack = []
@@ -671,6 +674,7 @@ export class VirtualMachine {
           if (e instanceof VMRunTimeError) {
             throw e
           }
+          this.error = e
           this.ip = catchAddress.value
           break
           // } else {
@@ -688,6 +692,11 @@ export class VirtualMachine {
     }
     case I.TRY_END: {
       // throw new VMRunTimeError('Should not has `TRY_END` here.')
+      break
+    }
+    case I.GET_ERR: {
+      const o = this.nextOperant()
+      this.setReg(o, { value: this.error })
       break
     }
     case I.MOV_ARGS: {

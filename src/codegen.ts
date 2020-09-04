@@ -1145,12 +1145,19 @@ const parseToCode = (ast: any): void => {
       cg(['TRY_END'])
 
       if (node.handler) {
+        const restoreBlockChain = newBlockChain()
         const handler = node.handler
         lg(catchLabel)
-        if (handler.param){
-          // TODO
+        if (handler.param) {
+          if (handler.param.type !== 'Identifier') {
+            throw new Error('cannot process error type ' + handler.param.type)
+          }
+          const errName = handler.param.name
+          cg(['VAR', errName])
+          cg(['GET_ERR', errName])
         }
         c(handler, s)
+        restoreBlockChain()
       }
 
       lg(finalLabel)

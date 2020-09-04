@@ -967,7 +967,7 @@ describe("closure", (): void => {
 })
 
 describe('error handling', (): void => {
-  xit('normal try', (): void => {
+  it('normal try', (): void => {
     tm(`
     let e = 1
     try {
