@@ -1,54 +1,288 @@
 func @@main() {
     VAR %r0;
-    FUNC %r0 @@f0;
-    CALL_REG %r0 0 false;
-    MOV $RET $RET;
+    FUNC rotatingHash @@f0;
+    FUNC _encryptKey @@f1;
+    FUNC getRandom @@f2;
+    FUNC judegeWx @@f3;
+    FUNC init @@f4;
+    GLOBAL isWx;
+    MOV isWx false;
+    GLOBAL rotatingHash;
+    GLOBAL _encryptKey;
+    GLOBAL getRandom;
+    GLOBAL judegeWx;
+    GLOBAL init;
+    CALL_REG init 0 false;
+    MOV %r0 _encryptKey;
+    SET_CTX "encryptKey" %r0;
 }
-func @@f0() {
-    VAR @c0;
-    ALLOC @c0;
-    VAR a;
-    VAR c;
-    VAR %r0;
-    FUNC a @@f1;
-    FUNC c @@f2;
-    MOV @c0 1;
-    CALL_REG a 0 false;
-    MOV %r0 $RET;
-    CALL_REG %r0 0 false;
-    CALL_REG c 0 false;
-}
-func @@f1() {
-    VAR @c1;
-    ALLOC @c1;
+func @@f0(string) {
+    VAR hash;
+    VAR len;
+    VAR i;
     VAR %r0;
     VAR %r1;
-    MOV @c1 2;
-    FUNC %r1 @@f3;
-    SET_CTX "b" %r1;
-    MOV %r0 %r1;
+    VAR %r2;
+    VAR %r3;
+    VAR %r4;
+    MOV %r0 string;
+    MOV %r1 "length";
+    MOV_PROP hash %r0 %r1;
+    MOV %r0 string;
+    MOV %r1 "length";
+    MOV_PROP len %r0 %r1;
+    MOV i 0;
+LABEL _l0_:
+    MOV %r0 i;
+    MOV %r1 len;
+    LT %r0 %r1;
+    JF %r0 _l1_;
+LABEL _l3_:
+    MOV %r1 hash;
+    MOV %r4 7;
+    SHL %r1 %r4;
+    MOV %r3 hash;
+    MOV %r4 18;
+    SHR %r3 %r4;
+    XOR %r1 %r3;
+    MOV %r3 i;
+    PUSH %r3;
+    MOV %r3 string;
+    MOV %r4 "charCodeAt";
+    CALL_VAR %r3 %r4 1 false;
+    MOV %r2 $RET;
+    XOR %r1 %r2;
+    MOV hash %r1;
+    MOV %r2 isWx;
+    NEG %r2;
+    JF %r2 _l5_;
+    MOV %r1 hash;
+    MOV %r3 1;
+    ADD %r1 %r3;
+    JMP _l4_;
+LABEL _l5_:
+    MOV %r1 hash;
+LABEL _l4_:
+    MOV hash %r1;
+    MOV %r2 isWx;
+    JF %r2 _l7_;
+    MOV %r1 hash;
+    JMP _l6_;
+LABEL _l7_:
+    MOV %r1 hash;
+    MOV %r3 1;
+    SHL %r1 %r3;
+LABEL _l6_:
+    MOV hash %r1;
+LABEL _l2_:
+    MOV %r1 i;
+    ADD %r1 1;
+    MOV i %r1;
+    JMP _l0_;
+LABEL _l1_:
+    MOV %r1 hash;
+    PUSH %r1;
+    MOV_CTX %r1 "Math";
+    MOV %r2 "abs";
+    CALL_VAR %r1 %r2 1 false;
+    MOV %r0 $RET;
     MOV $RET %r0;
     RET;
 }
-func @@f2() {
+func @@f1(key) {
+    VAR tempKey;
+    VAR md5Timer;
+    VAR i;
     VAR %r0;
     VAR %r1;
-    MOV %r0 @c0;
-    PUSH %r0;
-    MOV %r0 "c";
-    PUSH %r0;
-    MOV_CTX %r0 "console";
-    MOV %r1 "log";
-    CALL_VAR %r0 %r1 2 false;
+    VAR %r2;
+    VAR %r3;
+    MOV tempKey key;
+    MOV %r1 key;
+    PUSH %r1;
+    CALL_REG rotatingHash 1 false;
+    MOV %r0 $RET;
+    MOV tempKey %r0;
+    MOV md5Timer tempKey;
+    MOV %r1 10;
+    MOD md5Timer %r1;
+    MOV %r0 1;
+    OR md5Timer %r0;
+    MOV i 0;
+LABEL _l8_:
+    MOV %r0 i;
+    MOV %r1 md5Timer;
+    LT %r0 %r1;
+    JF %r0 _l9_;
+LABEL _l11_:
+    MOV %r3 tempKey;
+    PUSH %r3;
+    CALL_CTX 'md5' 1 false;
+    MOV %r1 $RET;
+    MOV %r2 "";
+    ADD %r1 %r2;
+    MOV tempKey %r1;
+LABEL _l10_:
+    MOV %r1 i;
+    ADD %r1 1;
+    MOV i %r1;
+    JMP _l8_;
+LABEL _l9_:
+    MOV %r0 tempKey;
+    MOV $RET %r0;
+    RET;
+}
+func @@f2(num) {
+    VAR %r0;
+    VAR %r1;
+    VAR %r2;
+    VAR %r3;
+    VAR %r4;
+    MOV_CTX %r3 "Math";
+    MOV %r4 "random";
+    CALL_VAR %r3 %r4 0 false;
+    MOV %r0 $RET;
+    MOV %r2 num;
+    MUL %r0 %r2;
+    MOV %r1 0;
+    SHR %r0 %r1;
+    MOV $RET %r0;
+    RET;
 }
 func @@f3() {
     VAR %r0;
     VAR %r1;
-    MOV %r0 @c1;
+    VAR %r2;
+    VAR %r3;
+    VAR %r4;
+    VAR %r5;
+    VAR %r6;
+    VAR %r7;
+    VAR %r8;
+    VAR %r9;
+    VAR %r10;
+    VAR %r11;
+    VAR %r12;
+    MOV_CTX %r7 "a";
+    MOV %r6 %r7;
+    JF %r7 _l18_;
+    MOV_CTX %r9 "a";
+    MOV %r10 "aldstat";
+    MOV_PROP %r8 %r9 %r10;
+    LG_AND %r6 %r8;
+LABEL _l18_:
+    MOV %r5 %r6;
+    JF %r6 _l17_;
+    MOV_CTX %r11 "a";
+    MOV %r12 "aldstat";
+    MOV_PROP %r9 %r11 %r12;
+    MOV %r10 "app";
+    MOV_PROP %r7 %r9 %r10;
+    MOV_CTX %r8 "a";
+    EQ %r7 %r8;
+    LG_AND %r5 %r7;
+LABEL _l17_:
+    MOV %r4 %r5;
+    JF %r5 _l16_;
+    MOV_CTX %r10 "a";
+    MOV %r11 "ignoreUrlList";
+    MOV_PROP %r8 %r10 %r11;
+    MOV %r9 1;
+    MOV_PROP %r6 %r8 %r9;
+    MOV %r7 "/authorization/authorization";
+    EQ %r6 %r7;
+    LG_AND %r4 %r6;
+LABEL _l16_:
+    MOV %r3 %r4;
+    JF %r4 _l15_;
+    MOV_CTX %r9 "a";
+    MOV %r10 "utils";
+    MOV_PROP %r7 %r9 %r10;
+    MOV %r8 "app";
+    MOV_PROP %r5 %r7 %r8;
+    MOV_CTX %r6 "a";
+    EQ %r5 %r6;
+    LG_AND %r3 %r5;
+LABEL _l15_:
+    MOV %r2 %r3;
+    JF %r3 _l14_;
+    MOV_CTX %r8 "a";
+    MOV %r9 "utils";
+    MOV_PROP %r6 %r8 %r9;
+    MOV %r7 "aliMonitor";
+    MOV_PROP %r4 %r6 %r7;
+    MOV_CTX %r6 "a";
+    MOV %r7 "monitor";
+    MOV_PROP %r5 %r6 %r7;
+    EQ %r4 %r5;
+    LG_AND %r2 %r4;
+LABEL _l14_:
+    MOV %r1 %r2;
+    JF %r2 _l13_;
+    MOV_CTX %r5 "a";
+    MOV %r6 "getCurrentPageUrlWithArgs";
+    MOV_PROP %r3 %r5 %r6;
+    TYPE_OF %r3;
+    MOV %r4 "function";
+    EQ %r3 %r4;
+    LG_AND %r1 %r3;
+LABEL _l13_:
+    MOV %r0 %r1;
+    JF %r1 _l12_;
+    MOV %r4 "pages";
+    PUSH %r4;
+    MOV_CTX %r6 "a";
+    MOV %r7 "getCurrentPageUrlWithArgs";
+    CALL_VAR %r6 %r7 0 false;
+    MOV %r4 $RET;
+    MOV %r5 "indexOf";
+    CALL_VAR %r4 %r5 1 false;
+    MOV %r2 $RET;
+    MOV %r3 1;
+    MINUS %r3;
+    NE %r2 %r3;
+    LG_AND %r0 %r2;
+LABEL _l12_:
+    MOV isWx %r0;
+    RET;
+}
+func @@f4() {
+    VAR forTime;
+    VAR judgeTimer;
+    VAR i;
+    VAR %r0;
+    VAR %r1;
+    VAR %r2;
+    MOV %r1 100;
+    PUSH %r1;
+    CALL_REG getRandom 1 false;
+    MOV forTime $RET;
+    MOV %r0 10;
+    ADD forTime %r0;
+    MOV %r0 forTime;
     PUSH %r0;
-    MOV %r0 "b";
-    PUSH %r0;
-    MOV_CTX %r0 "console";
-    MOV %r1 "log";
-    CALL_VAR %r0 %r1 2 false;
+    CALL_REG getRandom 1 false;
+    MOV judgeTimer $RET;
+    MOV %r0 0;
+    MOV i %r0;
+LABEL _l19_:
+    MOV %r0 i;
+    MOV %r1 forTime;
+    LT %r0 %r1;
+    JF %r0 _l20_;
+LABEL _l22_:
+    MOV %r1 judgeTimer;
+    MOV %r2 i;
+    WEQ %r1 %r2;
+    JF %r1 _l24_;
+    CALL_REG judegeWx 0 false;
+    JMP _l23_;
+LABEL _l24_:
+LABEL _l23_:
+LABEL _l21_:
+    MOV %r1 i;
+    ADD %r1 1;
+    MOV i %r1;
+    JMP _l19_;
+LABEL _l20_:
 }
