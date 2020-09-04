@@ -189,6 +189,7 @@ const parseToCode = (ast: any): void => {
       // }],
     })
     s.functionTable[funcName] = node
+    // console.log(s.r0, '....', s.functionTable)
     if (s.r0) {
       cg([`FUNC`, `${s.r0}`, `${funcName}`], prior)
     }
@@ -315,6 +316,7 @@ const parseToCode = (ast: any): void => {
       throw new Error('Operator cannot be ' + operator)
     }
     const operants = ops.slice(1)
+    // console.log(ops, '------------>', operants)
     if (operator === 'MOV' && ops[1] === 'undefined') {
       throw new Error('First operant of MOV cannot be undefined' )
     }
@@ -328,9 +330,9 @@ const parseToCode = (ast: any): void => {
     // console.log(operants, '--->')
     operants.forEach((o: any): void => {
       if (typeof o === 'string') {
-        if (o === 'i') {
-          console.log(operator, o)
-        }
+        // if (o === 'i') {
+        //   console.log(operator, o)
+        // }
         blockChain.accessName(o)
         // touchRegister(o, currentScope, scopes, blockChain)
       }
@@ -352,12 +354,15 @@ const parseToCode = (ast: any): void => {
     } else {
       priority = prior
     }
-    const currentBlock = blockChain.getCurrentBlock()
+    // const currentBlock = blockChain.getCurrentBlock()
     return state.codes.push((): string[] => {
+      // console.log(ops, operants)
       // console.log(operator, operants)
-      if (['BLOCK', 'END_BLOCK', 'CLR_BLOCK'].includes(operator) && currentBlock.variables.size === 0) {
-        return []
-      }
+
+      // TOFIX: 是否要清除 block?还是要再考虑一下
+      // if (['BLOCK', 'END_BLOCK', 'CLR_BLOCK'].includes(operator) && currentBlock.variables.size === 0) {
+      //   return []
+      // }
 
       if (typeof operator === 'function') {
         operator = operator()
@@ -366,6 +371,9 @@ const parseToCode = (ast: any): void => {
         if (typeof o === 'function') {
           o = o()
         }
+        // if (o === 'momentProperties') {
+        //   console.log(blockChain)
+        // }
         return blockChain.getName(o)
         // return getRegisterName(o, currentScope, scopes, operator === 'VAR')
       })
@@ -551,7 +559,7 @@ const parseToCode = (ast: any): void => {
     },
 
     FunctionDeclaration(node: et.FunctionDeclaration, s: any, c: any): any {
-      if (s.r0) {
+      if (s.r0 && !state.isGlobal) {
         parseFunc(node, s)
       } else {
         s.r0 = node.id?.name
@@ -622,7 +630,6 @@ const parseToCode = (ast: any): void => {
           val = `"${unescape(val)}"`
         }
       }
-      // console.log("==========================================>", s.r0, val)
       if (s.r0) {
         cg([`MOV`, s.r0, `${val}`])
       }
@@ -699,12 +706,12 @@ const parseToCode = (ast: any): void => {
         if (!cmd) { throw new Error(`Operation ${o} is not implemented.`)}
         const leftReg = newReg()
         getValueOfNode(left, leftReg, s, c)
-        cg([`${cmd} ${leftReg} ${rightReg}`])
+        cg([`${cmd}`, leftReg, rightReg])
         rightReg = leftReg
       }
       setValueToNode(left, rightReg, s, c)
       if (retReg) {
-        cg([`MOV ${retReg} ${rightReg}`])
+        cg([`MOV`, retReg, rightReg])
       }
       freeReg()
     },
@@ -746,13 +753,13 @@ const parseToCode = (ast: any): void => {
       if (op !== 'delete') {
         const reg = s.r0
         getValueOfNode(node.argument, reg, s, c)
-        cg([`${cmd} ${reg}`])
+        cg([`${cmd}`, `${reg}`])
       } else {
         s.r0 = null
         const objReg = s.r1 = newReg()
         const keyReg = s.r2 = newReg()
         c(node.argument, s)
-        cg([`DEL ${objReg} ${keyReg}`])
+        cg([`DEL`, `${objReg}`, `${keyReg}`])
         s.r1 = null
         s.r2 = null
       }
@@ -804,7 +811,6 @@ const parseToCode = (ast: any): void => {
       const leftReg = s.r0 = newReg()
       getValueOfNode(node.left, leftReg, s, c)
       const op = node.operator
-      // console.log(node)
       if (retReg) {
         cg([`MOV`, `${retReg}`, `${leftReg}`])
       }
@@ -823,7 +829,7 @@ const parseToCode = (ast: any): void => {
     },
 
     ForStatement(node: et.ForStatement, s: any, c: any): any {
-      // const restoreBlockChain = newBlockChain()
+      const restoreBlockChainInit = newBlockChain()
       const [newReg, freeReg] = newRegisterController()
       const startLabel = newLabelName()
       let endLabel = newLabelName()
@@ -873,6 +879,7 @@ const parseToCode = (ast: any): void => {
       s.forEndLabel = endLabel
       s.r0 = null
       cg([`LABEL`, `${ bodyLabel }:`])
+      // console.log('for body', node.body)
       c(node.body, s)
       // update
       if (node.update) {
@@ -881,11 +888,11 @@ const parseToCode = (ast: any): void => {
         c(node.update, s)
       }
       cg([`JMP`, `${ startLabel }`])
+      restoreBlockChainInit()
       // end
       cg([`LABEL`, `${ endLabel }:`])
       popLoopLabels()
       freeReg()
-      // restoreBlockChain()
     },
 
     ForInStatement(node: et.ForInStatement, s: any, c: any): any {
@@ -1070,7 +1077,7 @@ const parseToCode = (ast: any): void => {
       if (!s.r0) {
         throw new Error('Access `this` without register r0')
       }
-      cg([`MOV_THIS ${s.r0}`])
+      cg([`MOV_THIS`, `${s.r0}`])
     },
 
     NewExpression(node: et.NewExpression, s: any, c: any): any {
@@ -1112,8 +1119,8 @@ const parseToCode = (ast: any): void => {
         if (cs.test) {
           const testReg = newReg()
           getValueOfNode(cs.test, testReg, s, c)
-          cg([`JE ${discriminantReg} ${testReg} ${startLabel}`])
-          cg([`JMP ${endLabel}`])
+          cg([`JE`, `${discriminantReg}`, `${testReg}`, `${startLabel}`])
+          cg([`JMP`, `${endLabel}`])
         }
         cg([`LABEL ${startLabel}:`])
         cs.consequent.forEach((n: any): void => {
@@ -1178,6 +1185,7 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
   const processFunctionAst = (funcBody: et.Node): void => {
     /** () => a + b，无显式 return 的返回表达式 */
     if (funcBody.type !== 'BlockStatement') {
+      // console.log(funcBody, '.....?')
       state.r0 = '$RET'
     }
     parseToCode(funcBody)

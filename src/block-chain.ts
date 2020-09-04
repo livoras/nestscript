@@ -38,9 +38,9 @@ export class BlockChain {
   // tslint:disable-next-line: cognitive-complexity
   public accessName(name: string): void {
     let i = this.chain.length
-    if (name === 'i') {
-      console.log(this.chain)
-    }
+    // if (name === 'i') {
+      // console.log(this.chain)
+    // }
     if (name.startsWith('@@f')) {
       return
     }

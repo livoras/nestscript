@@ -12,19 +12,29 @@ export class Scope {
   public back(): void {
     if (this.isRestoreWhenChange) {
       const len = this.scope.len
-      this.heap.splice(0, len)
+      this.heap.splice(len)
     }
     this.scope = Object.getPrototypeOf(this.scope)
   }
 
   public fork(): Scope {
-    return new Scope(this.scope, this.heap, this.isRestoreWhenChange)
+    const scope = Object.setPrototypeOf({ len: this.heap.length }, this.scope)
+    return new Scope(scope, this.heap, this.isRestoreWhenChange)
+  }
+
+  public new(key: any): void {
+    const index = this.heap.length
+    this.scope[key] = index
+    this.heap.push(void 0)
+    // console.log('pushing .....', this.heap)
   }
 
   public set(key: any, value: any): void {
-    const index = this.heap.length
-    this.scope[key] = index
-    this.heap.push(value)
+    if (!(key in this.scope)) {
+      throw new Error('variable is used before decleration')
+    }
+    const index = this.scope[key]
+    this.heap[index] = value
   }
 
   public get(key: any): any {

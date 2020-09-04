@@ -73,7 +73,7 @@ import { optimizeCode } from './optimizer'
  */
 interface IFuncInfo {
   name: string,
-  symbols: any,
+  symbols: Map<string, any>,
   codes: string[][],
   numArgs: number,
   localSize: number,
@@ -88,7 +88,7 @@ interface IFuncInfo {
 // tslint:disable-next-line: no-big-function
 export const parseCodeToProgram = (program: string): Buffer => {
   const funcsTable = {}
-  const globalSymbols = {}
+  const globalSymbols = new Map<string, any>()
   const stringTable: string[] = []
   const stringIndex: any = {}
   // const funcs = parseAssembler(optimizeCode(program))
@@ -171,81 +171,83 @@ export const parseCodeToProgram = (program: string): Buffer => {
           //   '%': IOperatantType.REGISTER,
           // }
 
-          /** 寄存器 */
-          let regIndex = symbols[o]
-          if (regIndex !== undefined) {
-            code[i] = {
-              type: o[0] === IOperatantType.REGISTER,
-              value: regIndex,
+          if (!['VAR', 'CLS'].includes(op)) {
+            /** 寄存器 */
+            let regIndex = symbols.get(o)
+            if (regIndex !== undefined) {
+              code[i] = {
+                type: o[0] === IOperatantType.REGISTER,
+                value: regIndex,
+              }
+              return
             }
-            return
-          }
 
-          /** 全局 */
-          regIndex = globalSymbols[o]
-          if (regIndex !== undefined) {
-            code[i] = {
-              type: IOperatantType.GLOBAL,
-              value: regIndex + 1, // 留一位给 RET
+            /** 全局 */
+            regIndex = globalSymbols.get(o)
+            if (regIndex !== undefined) {
+              code[i] = {
+                type: IOperatantType.GLOBAL,
+                value: regIndex + 1, // 留一位给 RET
+              }
+              return
             }
-            return
-          }
 
-          if (o === 'true' || o === 'false') {
-            code[i] = {
-              type: IOperatantType.BOOLEAN,
-              value: o === 'true' ? 1: 0,
+            if (o === 'true' || o === 'false') {
+              code[i] = {
+                type: IOperatantType.BOOLEAN,
+                value: o === 'true' ? 1: 0,
+              }
+              return
             }
-            return
-          }
 
-          if (o === 'null') {
-            code[i] = {
-              type: IOperatantType.NULL,
+            if (o === 'null') {
+              code[i] = {
+                type: IOperatantType.NULL,
+              }
+              return
             }
-            return
-          }
 
-          if (o === 'undefined') {
-            code[i] = {
-              type: IOperatantType.UNDEFINED,
+            if (o === 'undefined') {
+              code[i] = {
+                type: IOperatantType.UNDEFINED,
+              }
+              return
             }
-            return
-          }
 
-          /** 返回类型 */
-          if (o === '$RET') {
-            code[i] = {
-              type: IOperatantType.RETURN_VALUE,
+            /** 返回类型 */
+            if (o === '$RET') {
+              code[i] = {
+                type: IOperatantType.RETURN_VALUE,
+              }
+              return
             }
-            return
-          }
 
-          /** 字符串 */
-          if (o.match(/^\"[\s\S]*\"$/) || o.match(/^\'[\s\S]*\'$/)) {
-            const str = o.replace(/^[\'\"]|[\'\"]$/g, '')
-            let index = stringIndex[str]
-            index = typeof index === 'number' ? index : void 0 // 'toString' 不就挂了？
-            code[i] = {
-              type: IOperatantType.STRING,
-              value: index === undefined
-                ? stringTable.length
-                : index,
+            /** 字符串 */
+            if (o.match(/^\"[\s\S]*\"$/) || o.match(/^\'[\s\S]*\'$/)) {
+              const str = o.replace(/^[\'\"]|[\'\"]$/g, '')
+              let index = stringIndex[str]
+              index = typeof index === 'number' ? index : void 0 // 'toString' 不就挂了？
+              code[i] = {
+                type: IOperatantType.STRING,
+                value: index === undefined
+                  ? stringTable.length
+                  : index,
+              }
+              if (index === undefined) {
+                stringIndex[str] = stringTable.length
+                stringTable.push(str)
+              }
+              return
             }
-            if (index === undefined) {
-              stringIndex[str] = stringTable.length
-              stringTable.push(str)
-            }
-            return
-          }
 
-          /** Number */
-          if (!isNaN(+o)) {
-            code[i] = {
-              type: IOperatantType.NUMBER,
-              value: +o,
+            /** Number */
+            if (!isNaN(+o)) {
+              code[i] = {
+                type: IOperatantType.NUMBER,
+                value: +o,
+              }
+              return
             }
-            return
           }
 
           /** 普通变量或者闭包 */
@@ -423,9 +425,9 @@ const parseFunction = (func: IParsedFunction): IFuncInfo => {
     .filter((stat: string[]): boolean => stat[0] === 'GLOBAL')
     .map((stat: string[]): string => stat[1])
   const codes = body.filter((stat: string[]): boolean => stat[0] !== 'REG' && stat[0] !== 'GLOBAL')
-  const symbols: any = {}
+  const symbols = new Map<string, any>()
   args.forEach((arg: string, i: number): void => {
-    symbols[arg] = -4 - i
+    symbols.set(arg, -4 - i)
   })
   let j = 0
   vars.forEach((v: string[], i: number): void => {
@@ -433,7 +435,7 @@ const parseFunction = (func: IParsedFunction): IFuncInfo => {
     // if (reg.startsWith('@c')) {
     //   symbols[reg] = -1
     // } else {
-    symbols[reg] = j + 1
+    symbols.set(reg, j + 1)
     j++
     // }
   })
