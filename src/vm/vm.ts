@@ -749,12 +749,12 @@ export class VirtualMachine {
     }
     case I.CLR_BLOCK:
     case I.END_BLOCK: {
-      // console.log('===================== end block ===================')
-      // console.log(this.callingFunctionInfo.variables)
+      console.log('===================== end block ===================')
+      console.log('before -> ', this.callingFunctionInfo.variables.printScope())
       this.callingFunctionInfo.closureScope.back()
       this.callingFunctionInfo.variables.back()
-      // console.log(this.callingFunctionInfo.variables)
-      // console.log('\n')
+      console.log('after -> ', this.callingFunctionInfo.variables.printScope())
+      console.log('\n')
       break
     }
     // case I.END_BLOCK: {

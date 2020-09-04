@@ -41,6 +41,16 @@ export class Scope {
     const index = this.scope[key]
     return this.heap[index]
   }
+
+  public printScope(): string {
+    let scope = this.scope
+    const scopes = []
+    while (scope.len !== undefined) {
+      scopes.push(JSON.stringify(scope))
+      scope = Object.getPrototypeOf(scope)
+    }
+    return `len ${scopes.length}: ` + scopes.join(' <- ')
+  }
 }
 
 

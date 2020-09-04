@@ -354,15 +354,15 @@ const parseToCode = (ast: any): void => {
     } else {
       priority = prior
     }
-    // const currentBlock = blockChain.getCurrentBlock()
+    const currentBlock = blockChain.getCurrentBlock()
     return state.codes.push((): string[] => {
       // console.log(ops, operants)
       // console.log(operator, operants)
 
       // TOFIX: 是否要清除 block?还是要再考虑一下
-      // if (['BLOCK', 'END_BLOCK', 'CLR_BLOCK'].includes(operator) && currentBlock.variables.size === 0) {
-      //   return []
-      // }
+      if (['BLOCK', 'END_BLOCK', 'CLR_BLOCK'].includes(operator) && currentBlock.variables.size === 0) {
+        return []
+      }
 
       if (typeof operator === 'function') {
         operator = operator()
@@ -891,6 +891,7 @@ const parseToCode = (ast: any): void => {
       restoreBlockChainInit()
       // end
       cg([`LABEL`, `${ endLabel }:`])
+      cg(['END_BLOCK'])
       popLoopLabels()
       freeReg()
     },
@@ -1145,15 +1146,15 @@ const parseToCode = (ast: any): void => {
       cg(['TRY_END'])
 
       if (node.handler) {
+        lg(catchLabel)
         const restoreBlockChain = newBlockChain()
         const handler = node.handler
-        lg(catchLabel)
         if (handler.param) {
           if (handler.param.type !== 'Identifier') {
             throw new Error('cannot process error type ' + handler.param.type)
           }
           const errName = handler.param.name
-          cg(['VAR', errName])
+          declareVariable(s, errName, 'let')
           cg(['GET_ERR', errName])
         }
         c(handler, s)
