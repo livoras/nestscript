@@ -465,9 +465,9 @@ describe('function', (): void => {
   it(`new function with contructor running method`, (): void => {
     tm(`
       function Locale(config) {
-          if (config != null) {
-              this.set(config);
-          }
+        if (config != null) {
+            this.set(config);
+        }
       }
       const proto = Locale.prototype
       proto.set = function (config) {
@@ -967,7 +967,7 @@ describe("closure", (): void => {
 })
 
 describe('error handling', (): void => {
-  xit('normal try', (): void => {
+  it('normal try', (): void => {
     tm(`
     let e = 1
     try {

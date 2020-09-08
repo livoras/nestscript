@@ -1,7 +1,10 @@
 // tslint:disable: no-bitwise
 import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from '../utils'
+import { Scope } from '../scope'
 
 export enum I {
+ VAR, CLS,
+
  MOV, ADD, SUB, MUL, DIV, MOD,
  EXP, INC, DEC,
 
@@ -32,18 +35,25 @@ export enum I {
  MOV_THIS, // moving this to resgister
 
  // try catch
- TRY, TRY_END, THROW,
+ TRY, TRY_END, THROW, GET_ERR,
 
  // arguments
  MOV_ARGS,
 
  FORIN, FORIN_END, BREAK_FORIN, CONT_FORIN,
+
+ BVAR, BLOCK, END_BLOCK, CLR_BLOCK,
 }
 
 class VMRunTimeError extends Error {
   constructor(public error: any) {
     super(error)
   }
+}
+
+interface ICallingFunctionInfo {
+  closureScope: Scope,
+  variables: Scope,
 }
 
 export const enum IOperatantType {
@@ -60,6 +70,7 @@ export const enum IOperatantType {
   BOOLEAN = 9 << 4,
   NULL = 10 << 4,
   UNDEFINED = 11 << 4,
+  VAR_SYMBOL = 13 << 4,
 }
 
 // tslint:disable-next-line: max-classes-per-file
@@ -123,11 +134,11 @@ export class VirtualMachine {
   public stack: any[] = []
 
   /** 闭包变量存储 */
-  public heap: any[] = []
+  // public closureScope: Scope
 
   /** 闭包映射表 */
-  public closureTable: any = {}
-  public closureTables: any[] = []
+  public callingFunctionInfo: ICallingFunctionInfo = { closureScope: new Scope(), variables: new Scope() }
+  public callingFunctionInfos: ICallingFunctionInfo[] = []
 
   /** this 链 */
   public currentThis: any
@@ -135,6 +146,8 @@ export class VirtualMachine {
 
   public isRunning: boolean = false
   public mainFunction: CallableFunction
+
+  public error: any
 
   constructor (
     public codes: ArrayBuffer,
@@ -144,8 +157,12 @@ export class VirtualMachine {
     public globalSize: number,
     public ctx: any,
   ) {
+    // this.closureScope = new Scope()
+    // this.closureScope.isRestoreWhenChange = false
     // console.log(this.entryIndx, 'entry....')
-    this.mainFunction = this.parseToJsFunc(functionsTable[this.entryIndx], {})
+    const mainClosureScope = new Scope()
+    mainClosureScope.isRestoreWhenChange = false
+    this.mainFunction = this.parseToJsFunc(functionsTable[this.entryIndx], mainClosureScope)
     this.init()
   }
 
@@ -165,7 +182,7 @@ export class VirtualMachine {
     this.stack.length = this.sp + 1
     //
     // this.closureTable = {}
-    this.closureTables = []
+    this.callingFunctionInfos = []
     //
     // this.currentThis = this.ctx
     // this.allThis = [this.currentThis]
@@ -193,8 +210,11 @@ export class VirtualMachine {
 
   public reset(): void {
     this.init()
+    this.error = null
+    // this.closureScope = new Scope()
+    // this.closureScope.isRestoreWhenChange = false
     // this.stack = []
-    this.heap = []
+    // this.heap = []
   }
 
   // tslint:disable-next-line: no-big-function
@@ -209,31 +229,55 @@ export class VirtualMachine {
   }
 
   public setReg(dst: IOperant, src: { value: any }): void {
-    if (dst.type === IOperatantType.CLOSURE_REGISTER) {
-      // console.log("SET closure", dst)
-      this.heap[this.makeClosureIndex(dst.index)] = src.value
-    } else {
-      // console.log("--------- set reg", dst)
+    if (dst.type === IOperatantType.VAR_SYMBOL) {
+      this.callingFunctionInfo.variables.set(dst.index, src.value)
+    } else if (dst.type === IOperatantType.CLOSURE_REGISTER) {
+      this.callingFunctionInfo.closureScope.set(dst.index, src.value)
+    } else if (dst.type === IOperatantType.REGISTER || dst.type === IOperatantType.RETURN_VALUE) {
       this.stack[dst.index] = src.value
-    }
-  }
-
-  public getReg(operatant: IOperant): any {
-    if (operatant.type === IOperatantType.CLOSURE_REGISTER) {
-      // console.log("GET closure", operatant)
-      return this.heap[this.makeClosureIndex(operatant.index)]
     } else {
-      return this.stack[operatant.index]
+      console.error(dst)
+      throw new Error(`Cannot process register type ${dst.type}`)
     }
   }
 
-  public makeClosureIndex = (index: number): number => {
-    if (this.closureTable[index] === undefined) {
-      this.closureTable[index] = this.heap.length
-      this.heap.push(undefined)
+  public newReg(o: IOperant): any {
+    if (o.type === IOperatantType.VAR_SYMBOL) {
+      this.callingFunctionInfo.variables.new(o.index)
+    } else if (o.type === IOperatantType.CLOSURE_REGISTER) {
+      this.callingFunctionInfo.closureScope.new(o.index)
+    } else {
+      console.error(o)
+      throw new Error(`Cannot process register type ${o.type}`)
     }
-    return this.closureTable[index]
   }
+
+  public getReg(o: IOperant): any {
+    if (o.type === IOperatantType.VAR_SYMBOL) {
+      return this.callingFunctionInfo.variables.get(o.index)
+    } else if (o.type === IOperatantType.CLOSURE_REGISTER) {
+      return this.callingFunctionInfo.closureScope.get(o.index)
+    } else if (o.type === IOperatantType.REGISTER || o.type === IOperatantType.RETURN_VALUE) {
+      return this.stack[o.index]
+    } else {
+      throw new Error(`Cannot process register type ${o.type}`)
+    }
+    // if (operatant.type === IOperatantType.CLOSURE_REGISTER) {
+    //   // console.log("GET closure", operatant)
+    //   return this.heap[this.makeClosureIndex(operatant.index)]
+    // } else {
+    //   return this.stack[operatant.index]
+    // }
+  }
+
+  // public makeClosureIndex = (index: number): number => {
+  //   const closureTable = this.callingFunctionInfo.closureTable
+  //   if (closureTable[index] === undefined) {
+  //     closureTable[index] = this.heap.length
+  //     this.heap.push(undefined)
+  //   }
+  //   return closureTable[index]
+  // }
 
   // tslint:disable-next-line: no-big-function cognitive-complexity
   public fetchAndExecute(): [I, boolean] {
@@ -247,6 +291,28 @@ export class VirtualMachine {
     // console.log(op, I[op])
     // tslint:disable-next-line: max-switch-cases
     switch (op) {
+    case I.VAR:
+    case I.CLS: {
+      const o = this.nextOperant()
+      // this.callingFunctionInfo.variables.set(o.raw, void 0)
+      // console.log('---------------------------------------')
+      // const closureScope = this.callingFunctionInfo.closureScope
+      // console.log(closureScope, o, closureScope.scope, Object.getPrototypeOf(closureScope.scope))
+      this.newReg(o)
+      // console.log(closureScope)
+      // console.log('---------------------------------------')
+      break
+    }
+
+    // case I.CLS: {
+    //   console.log(this.callingFunctionInfo.closureScope)
+    //   const o = this.nextOperant()
+    //   this.newReg(o)
+    //   console.log(this.callingFunctionInfo.closureScope)
+    //   // console.log('?', o)
+    //   break
+    // }
+
     case I.PUSH: {
       const value = this.nextOperant().value
       // console.log('PUSHING....', value)
@@ -279,8 +345,8 @@ export class VirtualMachine {
       this.sp = fp - stack[fp - 2] - 4
       // 清空上一帧
       this.stack.splice(this.sp + 1)
-      this.closureTables.pop()
-      this.closureTable = this.closureTables[this.closureTables.length - 1]
+      this.callingFunctionInfos.pop()
+      this.callingFunctionInfo = this.callingFunctionInfos[this.callingFunctionInfos.length - 1]
       //
       this.allThis.pop()
       this.currentThis = this.allThis[this.allThis.length - 1]
@@ -295,7 +361,9 @@ export class VirtualMachine {
       const dst = this.nextOperant()
       const src = this.nextOperant()
       // console.log('MOV', dst, src)
+      // console.log('MOV', dst, src)
       // this.stack[dst.index] = src.value
+      // console.log(dst, src)
       this.setReg(dst, src)
       break
     }
@@ -427,7 +495,7 @@ export class VirtualMachine {
       const funcOperant = this.nextOperant()
       // const funcInfoIndex: number = funcOperant.value
       const funcInfoMeta = funcOperant.value
-      const func = this.parseToJsFunc(funcInfoMeta, this.closureTable)
+      const func = this.parseToJsFunc(funcInfoMeta, this.callingFunctionInfo.closureScope.fork())
       // TODO
       // console.log(this.closureTable, '??????????????')
       // funcInfo.closureTable = { ...this.closureTable }
@@ -606,6 +674,7 @@ export class VirtualMachine {
           if (e instanceof VMRunTimeError) {
             throw e
           }
+          this.error = e
           this.ip = catchAddress.value
           break
           // } else {
@@ -623,6 +692,11 @@ export class VirtualMachine {
     }
     case I.TRY_END: {
       // throw new VMRunTimeError('Should not has `TRY_END` here.')
+      break
+    }
+    case I.GET_ERR: {
+      const o = this.nextOperant()
+      this.setReg(o, { value: this.error })
       break
     }
     case I.MOV_ARGS: {
@@ -660,6 +734,37 @@ export class VirtualMachine {
       // throw new VMRunTimeError('Should not has `TRY_END` here.')
       break
     }
+
+    // case I.BVAR: {
+    //   const o = this.nextOperant()
+    //   break
+    // }
+    case I.BLOCK: {
+      const o= this.nextOperant()
+      // console.log('===================== start block ===================', o.value)
+      // console.log(this.callingFunctionInfo.variables)
+      this.callingFunctionInfo.closureScope.front(o.value)
+      this.callingFunctionInfo.variables.front(o.value)
+      // console.log('\n')
+      break
+    }
+    case I.CLR_BLOCK:
+    case I.END_BLOCK: {
+      const o = this.nextOperant()
+      // console.log('===================== end block ===================', o.value)
+      console.log('before -> ', this.callingFunctionInfo.variables.printScope())
+      this.callingFunctionInfo.closureScope.back(o.value)
+      this.callingFunctionInfo.variables.back(o.value)
+      console.log('after -> ', this.callingFunctionInfo.variables.printScope())
+      console.log('\n')
+      break
+    }
+    // case I.END_BLOCK: {
+    //   this.callingFunctionInfo.closureScope.back()
+    //   this.callingFunctionInfo.variables.back()
+    //   break
+    // }
+
     default:
       console.log(this.ip)
       throw new VMRunTimeError("Unknow command " + op + " " + I[op],)
@@ -673,7 +778,7 @@ export class VirtualMachine {
   }
 
   public nextOperator(): I {
-    // console.log("ip -> ", this.ip)
+    // console.log("ip -->> ", this.ip)
     return readUInt8(this.codes, this.ip, ++this.ip)
   }
 
@@ -681,6 +786,9 @@ export class VirtualMachine {
     const codes = this.codes
     const [operantType, value, byteLength] = getOperatantByBuffer(codes, this.ip++)
     this.ip = this.ip + byteLength
+    if (operantType === IOperatantType.REGISTER) {
+      // console.log(this.fp, value)
+    }
     return {
       type: operantType,
       value: this.parseValue(operantType, value),
@@ -694,8 +802,9 @@ export class VirtualMachine {
   public parseValue(valueType: IOperatantType, value: any): any {
     switch (valueType) {
     case IOperatantType.CLOSURE_REGISTER:
-      return this.heap[this.closureTable[value]]
+      return this.callingFunctionInfo.closureScope.get(value) // [this.callingFunctionInfo.closureTable[value]]
     case IOperatantType.REGISTER:
+      // console.log(this.fp, value)
       return this.stack[this.fp + value]
     case IOperatantType.ARG_COUNT:
     case IOperatantType.NUMBER:
@@ -715,6 +824,9 @@ export class VirtualMachine {
       return null
     case IOperatantType.UNDEFINED:
       return void 0
+    case IOperatantType.VAR_SYMBOL:
+      return this.callingFunctionInfo.variables.get(value)
+      return ''
     default:
       throw new VMRunTimeError("Unknown operant " + valueType)
     }
@@ -760,7 +872,7 @@ export class VirtualMachine {
         if (typeof o[funcName] === 'function') {
           o[funcName](arg)
         } else {
-          throw new VMRunTimeError(`The fucking ${funcName} is not a function`)
+          throw new VMRunTimeError(`The function ${funcName} is not a function`)
         }
       } else {
         f(arg)
@@ -798,10 +910,12 @@ export class VirtualMachine {
   }
 
   // tslint:disable-next-line: cognitive-complexity
-  public parseToJsFunc (meta: FuncInfoMeta, oldClosureTable: any): any {
+  public parseToJsFunc (meta: FuncInfoMeta, closureScope: Scope): any {
+    // console.log('meta -->', meta)
     const vm = this
     const func = function (this: any, ...args: any[]): any {
       const [ip, _, localSize] = meta
+      // console.log('running ip', ip)
       vm.isRunning = true
       const n = args[0]
       const isCalledFromJs = !(n instanceof NumArgs)
@@ -819,9 +933,9 @@ export class VirtualMachine {
           allArgs.push(vm.stack[vm.sp - i])
         }
       }
-      const closureTable = { ...oldClosureTable }
-      vm.closureTable = closureTable
-      vm.closureTables.push(closureTable)
+      vm.callingFunctionInfo = { closureScope: closureScope.fork(true), variables: new Scope() }
+      vm.callingFunctionInfos.push(vm.callingFunctionInfo)
+      // console.log(vm.callingFunctionInfo.variables, 'start variables..')
       if (vm.allThis.length === 0) {
         vm.currentThis = vm.ctx
       } else {
@@ -936,6 +1050,7 @@ const parseFunctionTable = (buffer: ArrayBuffer): FuncInfoMeta[] => {
     funcs.push([ip, numArgsAndLocal[0], numArgsAndLocal[1]])
     i += 8
   }
+  // console.log('ALL FUNCTIONS META --->', funcs)
   return funcs
 }
 

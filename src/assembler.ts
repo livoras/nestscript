@@ -73,7 +73,7 @@ import { optimizeCode } from './optimizer'
  */
 interface IFuncInfo {
   name: string,
-  symbols: any,
+  symbols: Map<string, any>,
   codes: string[][],
   numArgs: number,
   localSize: number,
@@ -88,11 +88,23 @@ interface IFuncInfo {
 // tslint:disable-next-line: no-big-function
 export const parseCodeToProgram = (program: string): Buffer => {
   const funcsTable = {}
-  const globalSymbols = {}
+  const globalSymbols = new Map<string, any>()
   const stringTable: string[] = []
   const stringIndex: any = {}
   // const funcs = parseAssembler(optimizeCode(program))
   const funcs = parseAssembler(program) // program
+  const _symbols = new Map<string, number>()
+  let symbolsCounter = 0
+
+  const getSymbolIndex = (name: string): number => {
+    if (_symbols.has(name)) {
+      return _symbols.get(name)!
+    } else {
+      _symbols.set(name, symbolsCounter++)
+      return _symbols.get(name)!
+    }
+  }
+
     // .trim()
     // .match(/func\s[\s\S]+?\}/g) || []
 
@@ -114,6 +126,7 @@ export const parseCodeToProgram = (program: string): Buffer => {
   // 2 pass
   funcsInfo.forEach((funcInfo: IFuncInfo): void => {
     const symbols = funcInfo.symbols
+    // console.log(symbols)
     funcInfo.codes.forEach((code: any[]): void => {
       const op = code[0]
       code[0] = I[op]
@@ -152,87 +165,100 @@ export const parseCodeToProgram = (program: string): Buffer => {
             return
           }
 
-          if (o.startsWith('@c')) {
-            code[i] = {
-              type: IOperatantType.CLOSURE_REGISTER,
-              value: Number(o.replace('@c', '')),
+          // const namemap = {
+          //   '@': IOperatantType.CLOSURE_REGISTER,
+          //   '.': IOperatantType.PARAM_REGISTER,
+          //   '%': IOperatantType.REGISTER,
+          // }
+
+          if (!['VAR', 'CLS'].includes(op)) {
+            /** 寄存器 */
+            let regIndex = symbols.get(o)
+            if (regIndex !== undefined) {
+              code[i] = {
+                type: o[0] === IOperatantType.REGISTER,
+                value: regIndex,
+              }
+              return
             }
-            return
+
+            /** 全局 */
+            regIndex = globalSymbols.get(o)
+            if (regIndex !== undefined) {
+              code[i] = {
+                type: IOperatantType.GLOBAL,
+                value: regIndex + 1, // 留一位给 RET
+              }
+              return
+            }
+
+            if (o === 'true' || o === 'false') {
+              code[i] = {
+                type: IOperatantType.BOOLEAN,
+                value: o === 'true' ? 1: 0,
+              }
+              return
+            }
+
+            if (o === 'null') {
+              code[i] = {
+                type: IOperatantType.NULL,
+              }
+              return
+            }
+
+            if (o === 'undefined') {
+              code[i] = {
+                type: IOperatantType.UNDEFINED,
+              }
+              return
+            }
+
+            /** 返回类型 */
+            if (o === '$RET') {
+              code[i] = {
+                type: IOperatantType.RETURN_VALUE,
+              }
+              return
+            }
+
+            /** 字符串 */
+            if (o.match(/^\"[\s\S]*\"$/) || o.match(/^\'[\s\S]*\'$/)) {
+              const str = o.replace(/^[\'\"]|[\'\"]$/g, '')
+              let index = stringIndex[str]
+              index = typeof index === 'number' ? index : void 0 // 'toString' 不就挂了？
+              code[i] = {
+                type: IOperatantType.STRING,
+                value: index === undefined
+                  ? stringTable.length
+                  : index,
+              }
+              if (index === undefined) {
+                stringIndex[str] = stringTable.length
+                stringTable.push(str)
+              }
+              return
+            }
+
+            /** Number */
+            if (!isNaN(+o)) {
+              code[i] = {
+                type: IOperatantType.NUMBER,
+                value: +o,
+              }
+              return
+            }
           }
 
-          /** 寄存器 */
-          let regIndex = symbols[o]
-          if (regIndex !== undefined) {
-            code[i] = {
-              type: IOperatantType.REGISTER,
-              value: regIndex,
-            }
-            return
-          }
-
-          /** 全局 */
-          regIndex = globalSymbols[o]
-          if (regIndex !== undefined) {
-            code[i] = {
-              type: IOperatantType.GLOBAL,
-              value: regIndex + 1, // 留一位给 RET
-            }
-            return
-          }
-
-          if (o === 'true' || o === 'false') {
-            code[i] = {
-              type: IOperatantType.BOOLEAN,
-              value: o === 'true' ? 1: 0,
-            }
-            return
-          }
-
-          if (o === 'null') {
-            code[i] = {
-              type: IOperatantType.NULL,
-            }
-            return
-          }
-
-          if (o === 'undefined') {
-            code[i] = {
-              type: IOperatantType.UNDEFINED,
-            }
-            return
-          }
-
-          /** 返回类型 */
-          if (o === '$RET') {
-            code[i] = {
-              type: IOperatantType.RETURN_VALUE,
-            }
-            return
-          }
-
-          /** 字符串 */
-          if (o.match(/^\"[\s\S]*\"$/) || o.match(/^\'[\s\S]*\'$/)) {
-            const str = o.replace(/^[\'\"]|[\'\"]$/g, '')
-            let index = stringIndex[str]
-            index = typeof index === 'number' ? index : void 0 // 'toString' 不就挂了？
-            code[i] = {
-              type: IOperatantType.STRING,
-              value: index === undefined
-                ? stringTable.length
-                : index,
-            }
-            if (index === undefined) {
-              stringIndex[str] = stringTable.length
-              stringTable.push(str)
-            }
-            return
-          }
-
-          /** Number */
+          /** 普通变量或者闭包 */
+          const symbolIndex = getSymbolIndex(o.replace(/^@/, ''))
           code[i] = {
-            type: IOperatantType.NUMBER,
-            value: +o,
+            type: o.startsWith('@')
+              ? IOperatantType.CLOSURE_REGISTER
+              : IOperatantType.VAR_SYMBOL,
+            value: symbolIndex,
           }
+          // console.log('symbol index -> ', symbolIndex, o)
         })
       }
     })
@@ -331,6 +357,7 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
       functionBuffer.set(buf.slice(0, addressByteLen), bufferIndex)
     })
 
+    // console.log(' current -----------------> ', new Uint8Array(currentFuncBuffer)[0])
     buffer = concatBuffer(buffer, currentFuncBuffer)
   })
 
@@ -393,24 +420,24 @@ const parseFunction = (func: IParsedFunction): IFuncInfo => {
   const args = func.params
   const body = func.instructions
 
-  const vars = body.filter((stat: string[]): boolean => stat[0] === 'VAR')
+  const vars = body.filter((stat: string[]): boolean => stat[0] === 'REG')
   const globals = body
     .filter((stat: string[]): boolean => stat[0] === 'GLOBAL')
     .map((stat: string[]): string => stat[1])
-  const codes = body.filter((stat: string[]): boolean => stat[0] !== 'VAR' && stat[0] !== 'GLOBAL')
-  const symbols: any = {}
+  const codes = body.filter((stat: string[]): boolean => stat[0] !== 'REG' && stat[0] !== 'GLOBAL')
+  const symbols = new Map<string, any>()
   args.forEach((arg: string, i: number): void => {
-    symbols[arg] = -4 - i
+    symbols.set(arg, -4 - i)
   })
   let j = 0
   vars.forEach((v: string[], i: number): void => {
     const reg = v[1]
-    if (reg.startsWith('@c')) {
-      symbols[reg] = -1
-    } else {
-      symbols[reg] = j + 1
-      j++
-    }
+    // if (reg.startsWith('@c')) {
+    //   symbols[reg] = -1
+    // } else {
+    symbols.set(reg, j + 1)
+    j++
+    // }
   })
 
   if (funcName === '@@main') {
