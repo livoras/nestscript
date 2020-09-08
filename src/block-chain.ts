@@ -1,8 +1,9 @@
 import { VariableType } from './codegen'
 
-interface IBlock {
+export interface IBlock {
   variables: Map<string, any>
   closures: Map<string, any>
+  isForceBlock: boolean
 }
 
 interface IFuncBlock extends IBlock {
@@ -24,7 +25,11 @@ export class BlockChain {
   }
 
   public newBlock(variables?: Map<string, any>): BlockChain {
-    const block = { variables: variables || new Map<string, any>(), closures: new Map<string, any>() }
+    const block = {
+      variables: variables || new Map<string, any>(),
+      closures: new Map<string, any>(),
+      isForceBlock: false,
+    }
     return new BlockChain([ ...this.chain, block], this.currentFuncBlock)
   }
 
@@ -34,6 +39,7 @@ export class BlockChain {
       closures: new Map<string, any>(),
       params: params || new Map<string, any>(),
       blockNameIndex: 0,
+      isForceBlock: false,
     }
     return new BlockChain([...this.chain, funcBlock], funcBlock)
   }

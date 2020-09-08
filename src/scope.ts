@@ -8,19 +8,22 @@ export class Scope {
 
   public front(blockName: any): void {
     this.scope = Object.setPrototypeOf({ len: this.heap.length }, this.scope)
+    this.scope.blockName = blockName // 用来销毁用
     this.scope.blockNameMap.set(blockName, this.scope)
   }
 
   public back(blockName: any): void {
-    const scope = this.scope.blockNameMap.get(blockName)
+    const targetScope = this.scope.blockNameMap.get(blockName)
+    // 这里可能有内存泄漏问题，map 里面还存在着中间的 scope 对象
+    // 但是函数的执行结束以后就会回收掉，似乎不需要考虑太多？
     if (this.isRestoreWhenChange) {
-      const len = scope.len
+      const len = targetScope.len
       this.heap.splice(len)
     }
-    this.scope = Object.getPrototypeOf(scope)
+    this.scope = Object.getPrototypeOf(targetScope)
   }
 
-  public fork(isCreateBlockNameMap: boolean = false): Scope {
+  public fork(): Scope {
     const scope = Object.setPrototypeOf({ len: this.heap.length }, this.scope)
     return new Scope(scope, this.heap, this.isRestoreWhenChange)
   }
