@@ -6,7 +6,7 @@ const acorn = require("acorn")
 const walk = require("acorn-walk")
 import * as et from "estree"
 import { CategoriesPriorityQueue } from './utils'
-import { BlockChain } from './block-chain'
+import { BlockChain, IBlock } from './block-chain'
 
 export const enum VariableType {
   NO_EXIST = -1,
@@ -64,6 +64,9 @@ interface BlockLabel {
   blockNameStart?: string, // 给 block 起名，这样好 continue 和 break
   blockNameBody?: string, // 给 block 起名，这样好 continue 和 break
   isForIn?: boolean,
+
+  startBlock?: IBlock,
+  bodyBlock?: IBlock,
 }
 
 const codeMap = {
@@ -193,7 +196,7 @@ const parseToCode = (ast: any): void => {
     s.functionTable[funcName] = node
     // console.log(s.r0, '....', s.functionTable)
     if (s.r0) {
-      cg([`FUNC`, `${s.r0}`, `${funcName}`], prior)
+      cg([`FUNC`, `${s.r0}`, `${funcName}`], { prior })
     }
     delete s.funcName
     return funcName
@@ -307,7 +310,7 @@ const parseToCode = (ast: any): void => {
   //   return reg
   // }
 
-  const cg = (ops: any[], prior?: number): any => {
+  const cg = (ops: any[], { prior, isForceBlock }: { prior?: number, isForceBlock?: boolean } = {}): any => {
     /** 各种动态生成 */
     // if (typeof ops[0] === 'function') {
     //   ops = ops[0]()
@@ -318,7 +321,6 @@ const parseToCode = (ast: any): void => {
       throw new Error('Operator cannot be ' + operator)
     }
     const operants = ops.slice(1)
-    // console.log(ops, '------------>', operants)
     if (operator === 'MOV' && ops[1] === 'undefined') {
       throw new Error('First operant of MOV cannot be undefined' )
     }
@@ -362,9 +364,13 @@ const parseToCode = (ast: any): void => {
       // console.log(operator, operants)
 
       // TOFIX: 是否要清除 block?还是要再考虑一下
-      // if (['BLOCK', 'END_BLOCK', 'CLR_BLOCK'].includes(operator) && currentBlock.variables.size === 0) {
-      //   return []
-      // }
+      if (
+        ['BLOCK', 'END_BLOCK', 'CLR_BLOCK'].includes(operator) &&
+        currentBlock.variables.size === 0 &&
+        !(currentBlock.isForceBlock || isForceBlock)
+      ) {
+        return []
+      }
 
       if (typeof operator === 'function') {
         operator = operator()
@@ -476,7 +482,7 @@ const parseToCode = (ast: any): void => {
       cg(['VAR', `${name}`])
       s.blockChain.newName(name, kind)
     } else {
-      cg([`VAR`, `${name}`], 1)
+      cg([`VAR`, `${name}`], { prior: 1 })
       s.blockChain.newName(name, kind)
     }
   }
@@ -859,6 +865,7 @@ const parseToCode = (ast: any): void => {
       if (node.update) {
         labels.updateLabel = updateLabel
       }
+      labels.startBlock = s.blockChain.getCurrentBlock()
       labels.blockNameStart = labels.blockNameBody = restoreBlockChainInit.blockIndexName
       pushLoopLabels(labels)
       // init
@@ -887,6 +894,7 @@ const parseToCode = (ast: any): void => {
       cg([`LABEL`, `${ bodyLabel }:`])
       const restoreBlockChainBody = newBlockChain()
       // console.log('for body', node.body)
+      labels.bodyBlock = s.blockChain.getCurrentBlock()
       labels.blockNameBody = restoreBlockChainBody.blockIndexName
       c(node.body, s)
       restoreBlockChainBody()
@@ -929,12 +937,14 @@ const parseToCode = (ast: any): void => {
         updateLabel: startLabel,
         isForIn: true,
         blockNameStart: restoreBlockChain.blockIndexName,
+        startBlock: s.blockChain.getCurrentBlock(),
       }
       pushLoopLabels(labels)
       cg(['FORIN', leftReg, rightReg, startLabel, endLabel])
       lg(startLabel)
       const restoreBlockChainBody = newBlockChain()
       labels.blockNameBody = restoreBlockChainBody.blockIndexName
+      labels.bodyBlock = s.blockChain.getCurrentBlock()
       c(node.body, s)
       restoreBlockChainBody()
       cg(['FORIN_END'])
@@ -959,7 +969,8 @@ const parseToCode = (ast: any): void => {
           throw new Error(`Label ${name} does not exist.`)
         }
         const lb = blockEndLabels.get(name)!
-        cg(['CLR_BLOCK', lb.blockNameStart])
+        lb.startBlock!.isForceBlock = true
+        cg(['CLR_BLOCK', lb.blockNameStart], { isForceBlock: true })
         cg(['JMP', lb.endLabel])
         return
       }
@@ -975,8 +986,10 @@ const parseToCode = (ast: any): void => {
         return
       }
       const endLabel = labels.endLabel
-      // cg(`JMP ${endLabel} (break)`)
-      cg(['CLR_BLOCK', labels.blockNameStart])
+      if (labels.startBlock) { // for switch case
+        labels.startBlock.isForceBlock = true
+      }
+      cg(['CLR_BLOCK', labels.blockNameStart], { isForceBlock: true })
       cg([`JMP`, `${endLabel}`])
     },
 
@@ -988,7 +1001,8 @@ const parseToCode = (ast: any): void => {
         }
         const blockLabel = blockEndLabels.get(name)!
         // continue label; 语法，如果有 update ，回到 update， 否则回到头
-        cg(['CLR_BLOCK', blockLabel.blockNameBody])
+        blockLabel.bodyBlock!.isForceBlock = true
+        cg(['CLR_BLOCK', blockLabel.blockNameBody], { isForceBlock: true })
         cg(['JMP', blockLabel.updateLabel || blockLabel.startLabel])
         return
       }
@@ -998,13 +1012,15 @@ const parseToCode = (ast: any): void => {
         throw new Error("Not available labels, cannot use `continue` here.")
       }
       if (labels.isForIn) {
-        cg(['CLR_BLOCK', labels.blockNameBody])
+        labels.bodyBlock!.isForceBlock = true
+        cg(['CLR_BLOCK', labels.blockNameBody], { isForceBlock: true })
         cg(['CONT_FORIN'])
         return
       }
       const { startLabel, updateLabel } = labels
       // cg(`JMP ${endLabel} (break)`)
-      cg(['CLR_BLOCK', labels.blockNameBody])
+      labels.bodyBlock!.isForceBlock = true
+      cg(['CLR_BLOCK', labels.blockNameBody], { isForceBlock: true })
       cg([`JMP`, `${updateLabel || startLabel}`])
     },
 
@@ -1110,7 +1126,11 @@ const parseToCode = (ast: any): void => {
       const labelNode = node.label
       const labelName = labelNode.name
       const endLabel = newLabelName()
-      blockEndLabels.set(labelName, { endLabel, blockNameStart: restoreBlockChain.blockIndexName })
+      blockEndLabels.set(labelName, {
+        endLabel,
+        blockNameStart: restoreBlockChain.blockIndexName,
+        startBlock: s.blockChain.getCurrentBlock(),
+      })
       if (
         node.body.type === 'ForStatement' ||
         node.body.type === 'ForInStatement' ||

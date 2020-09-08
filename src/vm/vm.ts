@@ -933,7 +933,7 @@ export class VirtualMachine {
           allArgs.push(vm.stack[vm.sp - i])
         }
       }
-      vm.callingFunctionInfo = { closureScope: closureScope.fork(true), variables: new Scope() }
+      vm.callingFunctionInfo = { closureScope: closureScope.fork(), variables: new Scope() }
       vm.callingFunctionInfos.push(vm.callingFunctionInfo)
       // console.log(vm.callingFunctionInfo.variables, 'start variables..')
       if (vm.allThis.length === 0) {
