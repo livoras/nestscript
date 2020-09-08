@@ -740,19 +740,21 @@ export class VirtualMachine {
     //   break
     // }
     case I.BLOCK: {
-      // console.log('===================== start block ===================')
+      const o= this.nextOperant()
+      // console.log('===================== start block ===================', o.value)
       // console.log(this.callingFunctionInfo.variables)
-      this.callingFunctionInfo.closureScope.front()
-      this.callingFunctionInfo.variables.front()
+      this.callingFunctionInfo.closureScope.front(o.value)
+      this.callingFunctionInfo.variables.front(o.value)
       // console.log('\n')
       break
     }
     case I.CLR_BLOCK:
     case I.END_BLOCK: {
-      console.log('===================== end block ===================')
+      const o = this.nextOperant()
+      // console.log('===================== end block ===================', o.value)
       console.log('before -> ', this.callingFunctionInfo.variables.printScope())
-      this.callingFunctionInfo.closureScope.back()
-      this.callingFunctionInfo.variables.back()
+      this.callingFunctionInfo.closureScope.back(o.value)
+      this.callingFunctionInfo.variables.back(o.value)
       console.log('after -> ', this.callingFunctionInfo.variables.printScope())
       console.log('\n')
       break
@@ -931,7 +933,7 @@ export class VirtualMachine {
           allArgs.push(vm.stack[vm.sp - i])
         }
       }
-      vm.callingFunctionInfo = { closureScope: closureScope.fork(), variables: new Scope() }
+      vm.callingFunctionInfo = { closureScope: closureScope.fork(true), variables: new Scope() }
       vm.callingFunctionInfos.push(vm.callingFunctionInfo)
       // console.log(vm.callingFunctionInfo.variables, 'start variables..')
       if (vm.allThis.length === 0) {

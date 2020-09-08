@@ -3,21 +3,24 @@ export class Scope {
     public scope: any = {},
     public heap: any[] = [],
     public isRestoreWhenChange: boolean = true) {
+    this.scope.blockNameMap = new Map<string, any>()
   }
 
-  public front(): void {
+  public front(blockName: any): void {
     this.scope = Object.setPrototypeOf({ len: this.heap.length }, this.scope)
+    this.scope.blockNameMap.set(blockName, this.scope)
   }
 
-  public back(): void {
+  public back(blockName: any): void {
+    const scope = this.scope.blockNameMap.get(blockName)
     if (this.isRestoreWhenChange) {
-      const len = this.scope.len
+      const len = scope.len
       this.heap.splice(len)
     }
-    this.scope = Object.getPrototypeOf(this.scope)
+    this.scope = Object.getPrototypeOf(scope)
   }
 
-  public fork(): Scope {
+  public fork(isCreateBlockNameMap: boolean = false): Scope {
     const scope = Object.setPrototypeOf({ len: this.heap.length }, this.scope)
     return new Scope(scope, this.heap, this.isRestoreWhenChange)
   }

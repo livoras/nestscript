@@ -7,10 +7,12 @@ interface IBlock {
 
 interface IFuncBlock extends IBlock {
   params: Map<string, any>
+  blockNameIndex: number
 }
 
 export class BlockChain {
   public closureCounter: number = 0
+  private static globalBlockNameIndex: number = 0
 
   constructor(
     public chain: (IBlock | IFuncBlock)[],
@@ -31,6 +33,7 @@ export class BlockChain {
       variables: new Map<string, any>(),
       closures: new Map<string, any>(),
       params: params || new Map<string, any>(),
+      blockNameIndex: 0,
     }
     return new BlockChain([...this.chain, funcBlock], funcBlock)
   }
@@ -158,5 +161,13 @@ export class BlockChain {
 
   public getCurrentBlock(): IFuncBlock | IBlock {
     return this.chain[this.chain.length - 1]
+  }
+
+  public newBlockName(): any {
+    if (this.currentFuncBlock) {
+      return this.currentFuncBlock.blockNameIndex++
+    } else {
+      return BlockChain.globalBlockNameIndex++
+    }
   }
 }

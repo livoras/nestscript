@@ -61,6 +61,8 @@ interface BlockLabel {
   startLabel?: string,
   endLabel?: string,
   updateLabel?: string,
+  blockNameStart?: string, // 给 block 起名，这样好 continue 和 break
+  blockNameBody?: string, // 给 block 起名，这样好 continue 和 break
   isForIn?: boolean,
 }
 
@@ -360,9 +362,9 @@ const parseToCode = (ast: any): void => {
       // console.log(operator, operants)
 
       // TOFIX: 是否要清除 block?还是要再考虑一下
-      if (['BLOCK', 'END_BLOCK', 'CLR_BLOCK'].includes(operator) && currentBlock.variables.size === 0) {
-        return []
-      }
+      // if (['BLOCK', 'END_BLOCK', 'CLR_BLOCK'].includes(operator) && currentBlock.variables.size === 0) {
+      //   return []
+      // }
 
       if (typeof operator === 'function') {
         operator = operator()
@@ -487,20 +489,23 @@ const parseToCode = (ast: any): void => {
 
   const blockEndLabels: Map<string, BlockLabel> = new Map()
 
-  const newBlockChain = (): () => void => {
+  const newBlockChain = (): (() => void) & { blockIndexName: string } => {
     // throw new Error('shoud not called ...')
     const oldBlockChain = state.blockChain
     // state.blockChain = [...oldBlockChain, new Map<string, any>()]
     state.blockChain = oldBlockChain.newBlock()
-    cg(['BLOCK'])
-    return (): void => {
+    const blockName = state.blockChain.newBlockName()
+    cg(['BLOCK', blockName])
+    const ret = (): void => {
       // const currentBlock = state.blockChain[state.blockChain.length - 1]
-      cg(['END_BLOCK'])
+      cg(['END_BLOCK', blockName])
       state.blockChain = oldBlockChain
       // for (const [name] of currentBlock.entries()) {
       //   cg('FREEBV', name)
       // }
     }
+    ret.blockIndexName = blockName
+    return ret
   }
 
   /**
@@ -854,6 +859,7 @@ const parseToCode = (ast: any): void => {
       if (node.update) {
         labels.updateLabel = updateLabel
       }
+      labels.blockNameStart = labels.blockNameBody = restoreBlockChainInit.blockIndexName
       pushLoopLabels(labels)
       // init
       if (node.init) {
@@ -879,8 +885,11 @@ const parseToCode = (ast: any): void => {
       s.forEndLabel = endLabel
       s.r0 = null
       cg([`LABEL`, `${ bodyLabel }:`])
+      const restoreBlockChainBody = newBlockChain()
       // console.log('for body', node.body)
+      labels.blockNameBody = restoreBlockChainBody.blockIndexName
       c(node.body, s)
+      restoreBlockChainBody()
       // update
       if (node.update) {
         cg(['LABEL', `${ updateLabel }:`])
@@ -888,16 +897,15 @@ const parseToCode = (ast: any): void => {
         c(node.update, s)
       }
       cg([`JMP`, `${ startLabel }`])
-      restoreBlockChainInit()
       // end
       cg([`LABEL`, `${ endLabel }:`])
-      cg(['END_BLOCK'])
+      restoreBlockChainInit()
       popLoopLabels()
       freeReg()
     },
 
     ForInStatement(node: et.ForInStatement, s: any, c: any): any {
-      // const restoreBlockChain = newBlockChain()
+      const restoreBlockChain = newBlockChain()
       const left = node.left
       const right = node.right
       const [newReg, freeReg] = newRegisterController()
@@ -915,15 +923,25 @@ const parseToCode = (ast: any): void => {
       const startLabel = newLabelName()
       const endLabel = newLabelName()
       getValueOfNode(right, rightReg, s, c)
-      pushLoopLabels({ startLabel, endLabel, updateLabel: startLabel, isForIn: true })
+      const labels: BlockLabel = {
+        startLabel,
+        endLabel,
+        updateLabel: startLabel,
+        isForIn: true,
+        blockNameStart: restoreBlockChain.blockIndexName,
+      }
+      pushLoopLabels(labels)
       cg(['FORIN', leftReg, rightReg, startLabel, endLabel])
       lg(startLabel)
+      const restoreBlockChainBody = newBlockChain()
+      labels.blockNameBody = restoreBlockChainBody.blockIndexName
       c(node.body, s)
+      restoreBlockChainBody()
       cg(['FORIN_END'])
       lg(endLabel)
+      restoreBlockChain()
       freeReg()
       popLoopLabels()
-      // restoreBlockChain()
     },
 
     WhileStatement(node: et.WhileStatement, s: any, c: any): any {
@@ -940,8 +958,9 @@ const parseToCode = (ast: any): void => {
         if (!blockEndLabels.has(name)) {
           throw new Error(`Label ${name} does not exist.`)
         }
-        cg(['CLR_BLOCK'])
-        cg(['JMP', blockEndLabels.get(name)!.endLabel])
+        const lb = blockEndLabels.get(name)!
+        cg(['CLR_BLOCK', lb.blockNameStart])
+        cg(['JMP', lb.endLabel])
         return
       }
 
@@ -957,7 +976,7 @@ const parseToCode = (ast: any): void => {
       }
       const endLabel = labels.endLabel
       // cg(`JMP ${endLabel} (break)`)
-      cg(['CLR_BLOCK'])
+      cg(['CLR_BLOCK', labels.blockNameStart])
       cg([`JMP`, `${endLabel}`])
     },
 
@@ -969,7 +988,7 @@ const parseToCode = (ast: any): void => {
         }
         const blockLabel = blockEndLabels.get(name)!
         // continue label; 语法，如果有 update ，回到 update， 否则回到头
-        cg(['CLR_BLOCK'])
+        cg(['CLR_BLOCK', blockLabel.blockNameBody])
         cg(['JMP', blockLabel.updateLabel || blockLabel.startLabel])
         return
       }
@@ -979,13 +998,13 @@ const parseToCode = (ast: any): void => {
         throw new Error("Not available labels, cannot use `continue` here.")
       }
       if (labels.isForIn) {
-        cg(['CLR_BLOCK'])
+        cg(['CLR_BLOCK', labels.blockNameBody])
         cg(['CONT_FORIN'])
         return
       }
       const { startLabel, updateLabel } = labels
       // cg(`JMP ${endLabel} (break)`)
-      cg(['CLR_BLOCK'])
+      cg(['CLR_BLOCK', labels.blockNameBody])
       cg([`JMP`, `${updateLabel || startLabel}`])
     },
 
@@ -1087,11 +1106,11 @@ const parseToCode = (ast: any): void => {
     },
 
     LabeledStatement(node: et.LabeledStatement, s: any, c: any): any {
-      // const restoreBlockChain = newBlockChain()
+      const restoreBlockChain = newBlockChain()
       const labelNode = node.label
       const labelName = labelNode.name
       const endLabel = newLabelName()
-      blockEndLabels.set(labelName, { endLabel })
+      blockEndLabels.set(labelName, { endLabel, blockNameStart: restoreBlockChain.blockIndexName })
       if (
         node.body.type === 'ForStatement' ||
         node.body.type === 'ForInStatement' ||
@@ -1103,7 +1122,7 @@ const parseToCode = (ast: any): void => {
       c(node.body, s)
       blockEndLabels.delete(labelName)
       cg([`LABEL ${endLabel}:`])
-      // restoreBlockChain()
+      restoreBlockChain()
     },
 
     SwitchStatement(node: et.SwitchStatement, s: any, c: any): any {
