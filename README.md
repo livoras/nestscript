@@ -114,6 +114,11 @@ func main() {
 * * *
 
 ## Change Log
+## 2020-09-08
+* 重新设计闭包、普通变量的实现方式，使用 scope chain、block chain
+* 实现块级作用域
+* 使用块级作用域实现 `error` 参数在 `catch` 的使用
+
 ## 2020-08-25
 * 闭包的形式应该是:
   * FUNC 每次都返回一个新的函数，并且记录上一层的 closure table
