@@ -557,7 +557,8 @@ const parseToCode = (ast: any): void => {
       if (node.init) {
         if (node.init?.type === 'Identifier') {
           // if (!state.isGlobal) {
-          cg([`MOV`, reg, node.init.name])
+          getValueOfNode(node.init, reg, s, c)
+          // cg([`MOV`, reg, node.init.name])
           // }
         } else {
           s.r0 = reg
@@ -989,6 +990,9 @@ const parseToCode = (ast: any): void => {
       if (labels.startBlock) { // for switch case
         labels.startBlock.isForceBlock = true
       }
+      if (!labels.blockNameStart) {
+        throw new Error('No start block name')
+      }
       cg(['CLR_BLOCK', labels.blockNameStart], { isForceBlock: true })
       cg([`JMP`, `${endLabel}`])
     },
@@ -1146,12 +1150,16 @@ const parseToCode = (ast: any): void => {
     },
 
     SwitchStatement(node: et.SwitchStatement, s: any, c: any): any {
-      // const restoreBlockChain = newBlockChain()
+      const restoreBlockChain = newBlockChain()
       const [newReg, freeReg] = newRegisterController()
       const discriminantReg = newReg()
       getValueOfNode(node.discriminant, discriminantReg, s, c)
       const switchEndLabel = newLabelName()
-      const label: BlockLabel = { endLabel: switchEndLabel }
+      const label: BlockLabel = {
+        endLabel: switchEndLabel,
+        blockNameStart: restoreBlockChain.blockIndexName,
+        startBlock: s.blockChain.getCurrentBlock(),
+      }
       pushLoopLabels(label)
       node.cases.forEach((cs: et.SwitchCase): void => {
         const startLabel = newLabelName()
@@ -1171,7 +1179,7 @@ const parseToCode = (ast: any): void => {
       cg([`LABEL ${switchEndLabel}:`])
       popLoopLabels()
       freeReg()
-      // restoreBlockChain()
+      restoreBlockChain()
     },
 
     TryStatement(node: et.TryStatement, s: any, c: any): any {

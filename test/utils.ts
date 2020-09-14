@@ -4,7 +4,7 @@ const spies = require('chai-spies')
 
 export const makeSpy = (): any => chai.spy((): void => {})
 
-export const tm = (codes: string, ctx: any = {}): void => {
+export const tm = (codes: string, ctx: any = {}): any => {
   const c = { expect: chai.expect, Date, console, ...ctx, Error,
     Array,
     Function,
@@ -14,8 +14,10 @@ export const tm = (codes: string, ctx: any = {}): void => {
     TypeError,
     ArrayBuffer,
     DataView,
+    Infinity,
     Math,
   }
   const vm = createVMFromJavaScript(codes, c)
   vm.run()
+  return c
 }

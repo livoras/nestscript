@@ -45,6 +45,8 @@ export enum I {
  BVAR, BLOCK, END_BLOCK, CLR_BLOCK,
 }
 
+const NO_RETURN_SYMBOL = Symbol()
+
 class VMRunTimeError extends Error {
   constructor(public error: any) {
     super(error)
@@ -54,6 +56,8 @@ class VMRunTimeError extends Error {
 interface ICallingFunctionInfo {
   closureScope: Scope,
   variables: Scope,
+  returnValue?: any,
+  args: any[],
 }
 
 export const enum IOperatantType {
@@ -137,7 +141,11 @@ export class VirtualMachine {
   // public closureScope: Scope
 
   /** 闭包映射表 */
-  public callingFunctionInfo: ICallingFunctionInfo = { closureScope: new Scope(), variables: new Scope() }
+  public callingFunctionInfo: ICallingFunctionInfo = {
+    closureScope: new Scope(),
+    variables: new Scope(),
+    args: [],
+  }
   public callingFunctionInfos: ICallingFunctionInfo[] = []
 
   /** this 链 */
@@ -234,7 +242,14 @@ export class VirtualMachine {
     } else if (dst.type === IOperatantType.CLOSURE_REGISTER) {
       this.callingFunctionInfo.closureScope.set(dst.index, src.value)
     } else if (dst.type === IOperatantType.REGISTER || dst.type === IOperatantType.RETURN_VALUE) {
-      this.stack[dst.index] = src.value
+      if (dst.type === IOperatantType.RETURN_VALUE) {
+        this.callingFunctionInfo.returnValue = src.value
+      }
+      if (dst.raw <= -4) {
+        this.callingFunctionInfo.args[-4 - dst.raw] = src.value
+      } else {
+        this.stack[dst.index] = src.value
+      }
     } else {
       console.error(dst)
       throw new Error(`Cannot process register type ${dst.type}`)
@@ -282,13 +297,13 @@ export class VirtualMachine {
   // tslint:disable-next-line: no-big-function cognitive-complexity
   public fetchAndExecute(): [I, boolean] {
     if (!this.isRunning) {
-      throw new Error('try to run again...')
+      throw new VMRunTimeError('try to run again...')
     }
     const stack = this.stack
     const op = this.nextOperator()
     // 用来判断是否嵌套调用 vm 函数
     let isCallVMFunction = false
-    // console.log(op, I[op])
+    // console.log(, op, I[op])
     // tslint:disable-next-line: max-switch-cases
     switch (op) {
     case I.VAR:
@@ -345,6 +360,9 @@ export class VirtualMachine {
       this.sp = fp - stack[fp - 2] - 4
       // 清空上一帧
       this.stack.splice(this.sp + 1)
+      if (this.callingFunctionInfo.returnValue === NO_RETURN_SYMBOL) {
+        this.stack[0] = undefined
+      }
       this.callingFunctionInfos.pop()
       this.callingFunctionInfo = this.callingFunctionInfos[this.callingFunctionInfos.length - 1]
       //
@@ -438,7 +456,7 @@ export class VirtualMachine {
     case I.MOV_CTX: {
       const dst = this.nextOperant()
       const propKey = this.nextOperant()
-      const src = getByProp(this.ctx, propKey.value)
+      const src = this.ctx[propKey.value] // getByProp(this.ctx, propKey.value)
       // console.log(' ================ MOV_CTX STACK -> before', this.stack)
       this.setReg(dst, { value: src })
       // console.log(' ================ MOV_CTX STACK -> after', this.stack)
@@ -509,7 +527,7 @@ export class VirtualMachine {
       const dst = this.nextOperant()
       const o = this.nextOperant()
       const k = this.nextOperant()
-      const v = getByProp(o.value, k.value)
+      const v = o.value[k.value] // getByProp(o.value, k.value)
       this.setReg(dst, { value: v })
       break
     }
@@ -666,6 +684,9 @@ export class VirtualMachine {
       while (true) {
         try {
           const o = this.fetchAndExecute()[0]
+          if (o === I.RET) {
+            break
+          }
           if (o === I.TRY_END) {
             this.ip = endAddress.value
             break
@@ -804,7 +825,14 @@ export class VirtualMachine {
     case IOperatantType.CLOSURE_REGISTER:
       return this.callingFunctionInfo.closureScope.get(value) // [this.callingFunctionInfo.closureTable[value]]
     case IOperatantType.REGISTER:
-      // console.log(this.fp, value)
+      // 参数数量控制
+      if (value <= -4) {
+        if ((-4 - value) < this.callingFunctionInfo.args.length)  {
+          return this.callingFunctionInfo.args[-4 - value]
+        } else {
+          return void 0
+        }
+      }
       return this.stack[this.fp + value]
     case IOperatantType.ARG_COUNT:
     case IOperatantType.NUMBER:
@@ -826,7 +854,6 @@ export class VirtualMachine {
       return void 0
     case IOperatantType.VAR_SYMBOL:
       return this.callingFunctionInfo.variables.get(value)
-      return ''
     default:
       throw new VMRunTimeError("Unknown operant " + valueType)
     }
@@ -893,6 +920,7 @@ export class VirtualMachine {
           console.log(`Calling function "${funcName}" failed.`, typeof o)
           // console.trace(e)
           // if (!(e instanceof VMRunTimeError)) {
+          console.error(e)
           throw new VMRunTimeError(e)
           // }
           // console.log(o[funcName]())
@@ -925,6 +953,8 @@ export class VirtualMachine {
         args.reverse()
         args.forEach((arg: any): void => vm.push(arg))
         numArgs = args.length
+        args.reverse()
+        // args.forEach((arg: any): void => vm.push(arg))
         allArgs = [...args]
       } else {
         numArgs = n.numArgs
@@ -933,7 +963,13 @@ export class VirtualMachine {
           allArgs.push(vm.stack[vm.sp - i])
         }
       }
-      vm.callingFunctionInfo = { closureScope: closureScope.fork(), variables: new Scope() }
+      // console.log(allArgs)
+      const currentCallingFunctionInfo: ICallingFunctionInfo =  vm.callingFunctionInfo = {
+        closureScope: closureScope.fork(),
+        variables: new Scope(),
+        args: allArgs,
+        returnValue: NO_RETURN_SYMBOL,
+      }
       vm.callingFunctionInfos.push(vm.callingFunctionInfo)
       // console.log(vm.callingFunctionInfo.variables, 'start variables..')
       if (vm.allThis.length === 0) {
@@ -978,10 +1014,13 @@ export class VirtualMachine {
             callCount--
           }
         }
-        return stack[0]
+        if (currentCallingFunctionInfo.returnValue !== NO_RETURN_SYMBOL) {
+          return currentCallingFunctionInfo.returnValue
+        }
       }
     }
     Object.setPrototypeOf(func, Callable.prototype)
+    Object.defineProperty(func, 'length', { value: meta[1] })
     vm.setMetaToFunc(func, meta)
     return func
   }

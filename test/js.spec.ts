@@ -329,6 +329,20 @@ describe('function', (): void => {
     `)
   })
 
+  it(`not passing parameter`, (): void => {
+    tm(`
+    const main = (a, b, c) => {
+      expect(a).equal('ok')
+      expect(b).equal(undefined)
+      expect(c).equal(undefined)
+      b = 'ok2'
+      expect(b).equal('ok2')
+    }
+    console.log("OK")
+    main('ok')
+    `)
+  })
+
   it('call function of raw js', (): void => {
     tm(`
     const a = console.log
@@ -474,6 +488,14 @@ describe('function', (): void => {
         expect(this instanceof Locale).equal(true)
       }
       const l = new Locale()
+    `)
+
+    tm(`
+    function Hash(entries) {
+      this.name = 'jerry'
+      new Date()
+    }
+    expect(new Hash().name).to.equal('jerry')
     `)
   })
 
