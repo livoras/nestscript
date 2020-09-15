@@ -22,7 +22,7 @@ const SET_GET = [OU.SET, OU.GET]
 const BOTH_GET = [OU.BOTH, OU.GET]
 const THREE_GET = [OU.GET, OU.GET, OU.GET]
 const TWO_GET = [OU.GET, OU.GET]
-const codeToUseAge: { [x in I]: OU[] } = {
+const codeToUseAge: { [x in any]: OU[] } = {
   [I.MOV]: SET_GET,
   [I.ADD]: BOTH_GET,
   [I.SUB]: BOTH_GET,
