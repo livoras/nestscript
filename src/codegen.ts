@@ -670,6 +670,7 @@ const parseToCode = (ast: any): void => {
       if (node.object.type === 'MemberExpression') {
         s.r0 = objReg
         s.r1 = newRegister()
+        s.r2 = null
         c(node.object, s)
         freeRegister()
       } else if (node.object.type === 'Identifier') {
@@ -681,6 +682,7 @@ const parseToCode = (ast: any): void => {
 
       if (node.property.type === 'MemberExpression') {
         s.r0 = keyReg
+        s.r1 = null
         s.r2 = newRegister()
         c(node.property, s)
         freeRegister()
