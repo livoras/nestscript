@@ -1,6 +1,7 @@
 // tslint:disable: no-bitwise
 import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from '../utils'
 import { Scope } from '../scope'
+import { count } from 'console'
 
 export enum I {
  VAR, CLS,
@@ -303,7 +304,7 @@ export class VirtualMachine {
     const op = this.nextOperator()
     // 用来判断是否嵌套调用 vm 函数
     let isCallVMFunction = false
-    // console.log(, op, I[op])
+    // console.log(op, I[op])
     // tslint:disable-next-line: max-switch-cases
     switch (op) {
     case I.VAR:
@@ -681,28 +682,37 @@ export class VirtualMachine {
     case I.TRY: {
       const catchAddress = this.nextOperant()
       const endAddress = this.nextOperant()
-      while (true) {
+      let callCount = 1
+      while (callCount > 0 && this.isRunning) {
         try {
-          const o = this.fetchAndExecute()[0]
-          if (o === I.RET) {
-            break
+          const [o, isCallVMFunc] = this.fetchAndExecute()
+          if (isCallVMFunc) {
+            console.log('===========>', o, isCallVMFunc, callCount)
+            callCount++
           }
-          if (o === I.TRY_END) {
+          if (o === I.RET) {
+            callCount--
+            if (callCount === 0) {
+              console.log('break........')
+              break
+            }
+          }
+          if (o === I.TRY_END && callCount === 1) {
             this.ip = endAddress.value
             break
           }
         } catch(e) {
+          console.log('catching .... the fucking errror', e)
           if (e instanceof VMRunTimeError) {
             throw e
           }
           this.error = e
+          // console.log(this.callingFunctionInfo.closureScope)
           this.ip = catchAddress.value
           break
-          // } else {
-          //   throw e
-          // }
         }
       }
+      console.log('EXIST TRY ........˘')
       break
     }
     case I.THROW: {
@@ -912,21 +922,22 @@ export class VirtualMachine {
       }
       // console.log(stack, args, 'good....')
       if (o) {
-        try {
-          stack[0] = isNewExpression
-            ? new o[funcName](...args)
-            : o[funcName](...args)
-        } catch(e) {
-          console.log(`Calling function "${funcName}" failed.`, typeof o)
+        // try {
+        stack[0] = isNewExpression
+          ? new o[funcName](...args)
+          : o[funcName](...args)
+        // } catch(e) {
+        //   throw e
+          // console.log(`Calling function "${funcName}" failed.`, typeof o)
           // console.trace(e)
           // if (!(e instanceof VMRunTimeError)) {
-          console.error(e)
-          throw new VMRunTimeError(e)
+          // console.error(e)
+          // throw new VMRunTimeError(e)
           // }
           // console.log(o[funcName]())
           // console.error(`Function '${funcName}' is not found.`, o)
           // throw e
-        }
+        // }
       } else {
         stack[0] = isNewExpression
           ? new f(...args)
@@ -1006,6 +1017,7 @@ export class VirtualMachine {
       if (isCalledFromJs) {
         /** 嵌套 vm 函数调 vm 函数，需要知道嵌套多少层，等到当前层完结再返回 */
         let callCount = 1
+        console.log('============================= ENTER LOOP ========================')
         while (callCount > 0 && vm.isRunning) {
           const [op, isCallVMFunction] = vm.fetchAndExecute()
           if (isCallVMFunction) {
