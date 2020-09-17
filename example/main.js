@@ -1,7 +1,3 @@
-function isF() {
-  return 'ok'
-}
-
 function b() {
   console.log('talk is cheep 1')
   throw new Error('danm')
@@ -9,16 +5,18 @@ function b() {
 }
 
 function c() {
+  console.log('CALLING FUNCTION C ==================')
   console.log(isF)
   try {
     console.log('talk is cheep 3')
     b()
     console.log('talk is cheep 4')
     console.log('show me fucking again....')
+    // throw new Error('should not run')
   } catch(e) {
-    console.log('get error ...........................................')
-    console.log(isF(), e)
+    console.log('get error ...........................................', e)
   }
+  console.log('END OF FUNCTION C ===================')
 }
 
 c()

@@ -233,6 +233,7 @@ export class VirtualMachine {
     console.log("start stack", this.stack)
     this.isRunning = true
     while (this.isRunning) {
+      console.log('running in main stream.....')
       this.fetchAndExecute()
     }
   }
@@ -304,7 +305,7 @@ export class VirtualMachine {
     const op = this.nextOperator()
     // 用来判断是否嵌套调用 vm 函数
     let isCallVMFunction = false
-    // console.log(op, I[op])
+    console.log(op, I[op], this.ip)
     // tslint:disable-next-line: max-switch-cases
     switch (op) {
     case I.VAR:
@@ -685,6 +686,7 @@ export class VirtualMachine {
       let callCount = 1
       while (callCount > 0 && this.isRunning) {
         try {
+          console.log('running in try.')
           const [o, isCallVMFunc] = this.fetchAndExecute()
           if (isCallVMFunc) {
             console.log('===========>', o, isCallVMFunc, callCount)
@@ -783,11 +785,11 @@ export class VirtualMachine {
     case I.END_BLOCK: {
       const o = this.nextOperant()
       // console.log('===================== end block ===================', o.value)
-      console.log('before -> ', this.callingFunctionInfo.variables.printScope())
+      // console.log('before -> ', this.callingFunctionInfo.variables.printScope())
       this.callingFunctionInfo.closureScope.back(o.value)
       this.callingFunctionInfo.variables.back(o.value)
-      console.log('after -> ', this.callingFunctionInfo.variables.printScope())
-      console.log('\n')
+      // console.log('after -> ', this.callingFunctionInfo.variables.printScope())
+      // console.log('\n')
       break
     }
     // case I.END_BLOCK: {
@@ -953,6 +955,7 @@ export class VirtualMachine {
     // console.log('meta -->', meta)
     const vm = this
     const func = function (this: any, ...args: any[]): any {
+      console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~> calling....')
       const [ip, _, localSize] = meta
       // console.log('running ip', ip)
       vm.isRunning = true
