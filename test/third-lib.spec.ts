@@ -1226,6 +1226,15 @@ describe('curry', function() {
 
 describe('attempt', function() {
   const attempt = _.attempt
+
+  it('should return a wrapped value when explicitly chaining', function() {
+    assert.ok(_(lodashStable.constant('x')).chain().attempt() instanceof _)
+  })
+
+  it('should return an unwrapped value when implicitly chaining', function() {
+    assert.strictEqual(_(lodashStable.constant('x')).attempt(), 'x')
+  })
+
   it('should return the result of `func`', function() {
     assert.strictEqual(attempt(lodashStable.constant('x')), 'x')
   })
@@ -1265,14 +1274,6 @@ describe('attempt', function() {
 
       assert.deepStrictEqual(actual, expected)
     }
-  })
-
-  it('should return an unwrapped value when implicitly chaining', function() {
-    assert.strictEqual(_(lodashStable.constant('x')).attempt(), 'x')
-  })
-
-  it('should return a wrapped value when explicitly chaining', function() {
-    assert.ok(_(lodashStable.constant('x')).chain().attempt() instanceof _)
   })
 })
 

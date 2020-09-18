@@ -109,11 +109,14 @@ func main() {
   - [x] try catch block
   - [ ] error 对象获取
 - [x] ForInStatement
-  
+- [x] 支持 function.length
 
 * * *
 
 ## Change Log
+## 2020-09-18
+* 解决 try catch 调用栈退出到 catch 的函数的地方
+
 ## 2020-09-08
 * 重新设计闭包、普通变量的实现方式，使用 scope chain、block chain
 * 实现块级作用域

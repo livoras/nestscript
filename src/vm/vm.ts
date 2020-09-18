@@ -166,9 +166,6 @@ export class VirtualMachine {
     public globalSize: number,
     public ctx: any,
   ) {
-    // this.closureScope = new Scope()
-    // this.closureScope.isRestoreWhenChange = false
-    // console.log(this.entryIndx, 'entry....')
     const mainClosureScope = new Scope()
     mainClosureScope.isRestoreWhenChange = false
     this.mainFunction = this.parseToJsFunc(functionsTable[this.entryIndx], mainClosureScope)
@@ -233,7 +230,7 @@ export class VirtualMachine {
     console.log("start stack", this.stack)
     this.isRunning = true
     while (this.isRunning) {
-      console.log('running in main stream.....')
+      // console.log('running in main stream.....')
       this.fetchAndExecute()
     }
   }
@@ -302,10 +299,13 @@ export class VirtualMachine {
       throw new VMRunTimeError('try to run again...')
     }
     const stack = this.stack
-    const op = this.nextOperator()
+    if (this.ip === 28) {
+      console.log('running .... ip -> ', this.ip)
+    }
+    let op = this.nextOperator()
     // 用来判断是否嵌套调用 vm 函数
     let isCallVMFunction = false
-    console.log(op, I[op], this.ip)
+    // console.log(op, I[op])
     // tslint:disable-next-line: max-switch-cases
     switch (op) {
     case I.VAR:
@@ -354,22 +354,7 @@ export class VirtualMachine {
     //   break
     // }
     case I.RET: {
-      const fp = this.fp
-      this.fp = stack[fp]
-      this.ip = stack[fp - 1]
-      // 减去参数数量，减去三个 fp ip numArgs args
-      // console.log("args --- .leng", stack[fp -2], stack, stack[fp])
-      this.sp = fp - stack[fp - 2] - 4
-      // 清空上一帧
-      this.stack.splice(this.sp + 1)
-      if (this.callingFunctionInfo.returnValue === NO_RETURN_SYMBOL) {
-        this.stack[0] = undefined
-      }
-      this.callingFunctionInfos.pop()
-      this.callingFunctionInfo = this.callingFunctionInfos[this.callingFunctionInfos.length - 1]
-      //
-      this.allThis.pop()
-      this.currentThis = this.allThis[this.allThis.length - 1]
+      this.returnCurrentFunction()
       break
     }
     case I.PRINT: {
@@ -482,6 +467,7 @@ export class VirtualMachine {
       const flags = this.nextOperant()
       // console.log(dst, pattern, flags)
       try {
+        // console.log(pattern, flags, '---------?')
         this.setReg(dst, { value: new RegExp(pattern.value, flags.value) })
       } catch(e) {
         console.log("================== pattern\n")
@@ -684,18 +670,17 @@ export class VirtualMachine {
       const catchAddress = this.nextOperant()
       const endAddress = this.nextOperant()
       let callCount = 1
+      const currentFunctionInfo = this.callingFunctionInfo
       while (callCount > 0 && this.isRunning) {
         try {
-          console.log('running in try.')
           const [o, isCallVMFunc] = this.fetchAndExecute()
+          op = o
           if (isCallVMFunc) {
-            console.log('===========>', o, isCallVMFunc, callCount)
             callCount++
           }
           if (o === I.RET) {
             callCount--
             if (callCount === 0) {
-              console.log('break........')
               break
             }
           }
@@ -704,17 +689,17 @@ export class VirtualMachine {
             break
           }
         } catch(e) {
-          console.log('catching .... the fucking errror', e)
+          // console.log('catching .... the fucking errror', e)
           if (e instanceof VMRunTimeError) {
             throw e
           }
+          this.popToFunction(currentFunctionInfo)
           this.error = e
           // console.log(this.callingFunctionInfo.closureScope)
           this.ip = catchAddress.value
           break
         }
       }
-      console.log('EXIST TRY ........˘')
       break
     }
     case I.THROW: {
@@ -804,6 +789,24 @@ export class VirtualMachine {
     }
 
     return [op, isCallVMFunction]
+  }
+
+  public returnCurrentFunction(): void {
+    const stack = this.stack
+    const fp = this.fp
+    this.fp = stack[fp]
+    this.ip = stack[fp - 1]
+    // 减去参数数量，减去三个 fp ip numArgs args
+    this.sp = fp - stack[fp - 2] - 4
+    // 清空上一帧
+    this.stack.splice(this.sp + 1)
+    if (this.callingFunctionInfo.returnValue === NO_RETURN_SYMBOL) {
+      this.stack[0] = undefined
+    }
+    this.allThis.pop()
+    this.currentThis = this.allThis[this.allThis.length - 1]
+    this.callingFunctionInfos.pop()
+    this.callingFunctionInfo = this.callingFunctionInfos[this.callingFunctionInfos.length - 1]
   }
 
   public push(val: any): void {
@@ -950,12 +953,18 @@ export class VirtualMachine {
     return isCallVMFunction
   }
 
+  public popToFunction(targetFunctionInfo: ICallingFunctionInfo): void {
+    while (this.callingFunctionInfos[this.callingFunctionInfos.length - 1] !== targetFunctionInfo) {
+      this.returnCurrentFunction()
+    }
+  }
+
   // tslint:disable-next-line: cognitive-complexity
   public parseToJsFunc (meta: FuncInfoMeta, closureScope: Scope): any {
     // console.log('meta -->', meta)
     const vm = this
     const func = function (this: any, ...args: any[]): any {
-      console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~> calling....')
+      // console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~> calling....')
       const [ip, _, localSize] = meta
       // console.log('running ip', ip)
       vm.isRunning = true
@@ -1020,7 +1029,6 @@ export class VirtualMachine {
       if (isCalledFromJs) {
         /** 嵌套 vm 函数调 vm 函数，需要知道嵌套多少层，等到当前层完结再返回 */
         let callCount = 1
-        console.log('============================= ENTER LOOP ========================')
         while (callCount > 0 && vm.isRunning) {
           const [op, isCallVMFunction] = vm.fetchAndExecute()
           if (isCallVMFunction) {
