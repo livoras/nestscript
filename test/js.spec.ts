@@ -886,6 +886,14 @@ describe("misc", (): void => {
       }
     `)
   })
+
+  it(`should passing before value`, (): void => {
+    tm(`
+    let a = 0
+    expect(a += 1).equal(1)
+    expect(a).equal(1)
+    `)
+  })
 })
 
 describe("closure", (): void => {

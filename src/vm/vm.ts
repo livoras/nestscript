@@ -923,7 +923,7 @@ export class VirtualMachine {
     } else {
       const args = []
       for (let i = 0; i < numArgs; i++) {
-        args.push(stack[this.sp--])
+        args.unshift(stack[this.sp--])
       }
       // console.log(stack, args, 'good....')
       if (o) {
@@ -973,17 +973,17 @@ export class VirtualMachine {
       let numArgs = 0
       let allArgs = []
       if (isCalledFromJs) {
-        args.reverse()
+        // args.reverse()
         args.forEach((arg: any): void => vm.push(arg))
         numArgs = args.length
-        args.reverse()
+        // args.reverse()
         // args.forEach((arg: any): void => vm.push(arg))
         allArgs = [...args]
       } else {
         numArgs = n.numArgs
         allArgs = []
         for (let i = 0; i < numArgs; i++) {
-          allArgs.push(vm.stack[vm.sp - i])
+          allArgs.unshift(vm.stack[vm.sp - i])
         }
       }
       // console.log(allArgs)
