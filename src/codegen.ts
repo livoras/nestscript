@@ -586,7 +586,7 @@ const parseToCode = (ast: any): void => {
       const isNewExpression = !!s.isNewExpression
       delete s.isNewExpression
       const args = [...node.arguments]
-      args.reverse()
+      // args.reverse()
       for (const arg of args) {
         const reg = s.r0 = newRegister()
         // if (arg.type === 'Identifier') {
