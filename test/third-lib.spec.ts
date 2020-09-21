@@ -76,6 +76,20 @@ var falsey = [, null, undefined, false, 0, NaN, '']
 /** Used to specify the emoji style glyph variant of characters. */
 var emojiVar = '\ufe0f'
 
+function setProperty(object: any, key: any, value: any) {
+  try {
+    defineProperty(object, key, {
+      'configurable': true,
+      'enumerable': false,
+      'writable': true,
+      'value': value,
+    })
+  } catch (e) {
+    object[key] = value
+  }
+  return object
+}
+
 var burredLetters = [
   // Latin-1 Supplement letters.
   '\xc0', '\xc1', '\xc2', '\xc3', '\xc4', '\xc5', '\xc6', '\xc7', '\xc8', '\xc9', '\xca', '\xcb', '\xcc', '\xcd', '\xce', '\xcf',
@@ -3454,3 +3468,657 @@ describe('deburr', function() {
   })
 })
 
+describe('defaults', function() {
+  const defaults = _.defaults
+  it('should assign source properties if missing on `object`', function() {
+    var actual = defaults({ 'a': 1 }, { 'a': 2, 'b': 2 })
+    assert.deepStrictEqual(actual, { 'a': 1, 'b': 2 })
+  })
+
+  it('should accept multiple sources', function() {
+    var expected = { 'a': 1, 'b': 2, 'c': 3 },
+      actual = defaults({ 'a': 1, 'b': 2 }, { 'b': 3 }, { 'c': 3 })
+
+    assert.deepStrictEqual(actual, expected)
+
+    actual = defaults({ 'a': 1, 'b': 2 }, { 'b': 3, 'c': 3 }, { 'c': 2 })
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it('should not overwrite `null` values', function() {
+    var actual = defaults({ 'a': null }, { 'a': 1 })
+    assert.strictEqual(actual.a, null)
+  })
+
+  it('should overwrite `undefined` values', function() {
+    var actual = defaults({ 'a': undefined }, { 'a': 1 })
+    assert.strictEqual(actual.a, 1)
+  })
+
+  it('should assign `undefined` values', function() {
+    var source = { 'a': undefined, 'b': 1 },
+      actual = defaults({}, source)
+
+    assert.deepStrictEqual(actual, { 'a': undefined, 'b': 1 })
+  })
+
+  it('should assign properties that shadow those on `Object.prototype`', function() {
+    var object = {
+      'constructor': objectProto.constructor,
+      'hasOwnProperty': objectProto.hasOwnProperty,
+      'isPrototypeOf': objectProto.isPrototypeOf,
+      'propertyIsEnumerable': objectProto.propertyIsEnumerable,
+      'toLocaleString': objectProto.toLocaleString,
+      'toString': objectProto.toString,
+      'valueOf': objectProto.valueOf,
+    }
+
+    var source = {
+      'constructor': 1,
+      'hasOwnProperty': 2,
+      'isPrototypeOf': 3,
+      'propertyIsEnumerable': 4,
+      'toLocaleString': 5,
+      'toString': 6,
+      'valueOf': 7,
+    }
+
+    var expected = lodashStable.clone(source)
+    assert.deepStrictEqual(defaults({}, source), expected)
+
+    expected = lodashStable.clone(object)
+    assert.deepStrictEqual(defaults({}, object, source), expected)
+  })
+})
+
+
+describe('defaultsDeep', function() {
+  const defaultsDeep = _.defaultsDeep
+  it('should deep assign source properties if missing on `object`', function() {
+    var object = { 'a': { 'b': 2 }, 'd': 4 },
+      source = { 'a': { 'b': 3, 'c': 3 }, 'e': 5 },
+      expected = { 'a': { 'b': 2, 'c': 3 }, 'd': 4, 'e': 5 }
+
+    assert.deepStrictEqual(defaultsDeep(object, source), expected)
+  })
+
+  it('should accept multiple sources', function() {
+    var source1 = { 'a': { 'b': 3 } },
+      source2 = { 'a': { 'c': 3 } },
+      source3 = { 'a': { 'b': 3, 'c': 3 } },
+      source4 = { 'a': { 'c': 4 } },
+      expected = { 'a': { 'b': 2, 'c': 3 } }
+
+    assert.deepStrictEqual(defaultsDeep({ 'a': { 'b': 2 } }, source1, source2), expected)
+    assert.deepStrictEqual(defaultsDeep({ 'a': { 'b': 2 } }, source3, source4), expected)
+  })
+
+  it('should not overwrite `null` values', function() {
+    var object = { 'a': { 'b': null } },
+      source = { 'a': { 'b': 2 } },
+      actual = defaultsDeep(object, source)
+
+    assert.strictEqual(actual.a.b, null)
+  })
+
+  it('should not overwrite regexp values', function() {
+    var object = { 'a': { 'b': /x/ } },
+      source = { 'a': { 'b': /y/ } },
+      actual = defaultsDeep(object, source)
+
+    assert.deepStrictEqual(actual.a.b, /x/)
+  })
+
+  it('should not convert function properties to objects', function() {
+    var actual = defaultsDeep({}, { 'a': noop })
+    assert.strictEqual(actual.a, noop)
+
+    actual = defaultsDeep({}, { 'a': { 'b': noop } })
+    assert.strictEqual(actual.a.b, noop)
+  })
+
+  it('should overwrite `undefined` values', function() {
+    var object = { 'a': { 'b': undefined } },
+      source = { 'a': { 'b': 2 } },
+      actual = defaultsDeep(object, source)
+
+    assert.strictEqual(actual.a.b, 2)
+  })
+
+  it('should assign `undefined` values', function() {
+    var source = { 'a': undefined, 'b': { 'c': undefined, 'd': 1 } },
+      expected = lodashStable.cloneDeep(source),
+      actual = defaultsDeep({}, source)
+
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it('should merge sources containing circular references', function() {
+    var object = {
+      'foo': { 'b': { 'c': { 'd': {} } } },
+      'bar': { 'a': 2 },
+    }
+
+    var source: any  = {
+      'foo': { 'b': { 'c': { 'd': {} } } },
+      'bar': {},
+    }
+
+    object.foo.b.c.d = object
+    source.foo.b.c.d = source
+    source.bar.b = source.foo.b
+
+    var actual = defaultsDeep(object, source)
+
+    assert.strictEqual(actual.bar.b, actual.foo.b)
+    assert.strictEqual(actual.foo.b.c.d, actual.foo.b.c.d.foo.b.c.d)
+  })
+
+  it('should not modify sources', function() {
+    var source1 = { 'a': 1, 'b': { 'c': 2 } },
+      source2 = { 'b': { 'c': 3, 'd': 3 } },
+      actual = defaultsDeep({}, source1, source2)
+
+    assert.deepStrictEqual(actual, { 'a': 1, 'b': { 'c': 2, 'd': 3 } })
+    assert.deepStrictEqual(source1, { 'a': 1, 'b': { 'c': 2 } })
+    assert.deepStrictEqual(source2, { 'b': { 'c': 3, 'd': 3 } })
+  })
+
+  it('should not attempt a merge of a string into an array', function() {
+    var actual = defaultsDeep({ 'a': ['abc'] }, { 'a': 'abc' })
+    assert.deepStrictEqual(actual.a, ['abc'])
+  })
+})
+
+describe('defaultTo', function() {
+  const defaultTo = _.defaultTo
+  it('should return a default value if `value` is `NaN` or nullish', function() {
+    var expected = lodashStable.map(falsey, function(value: null) {
+      return (value == null || value !== value) ? 1 : value
+    })
+
+    var actual = lodashStable.map(falsey, function(value: any) {
+      return defaultTo(value, 1)
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+})
+
+
+describe('defer', function() {
+  const defer = _.defer
+  it('should defer `func` execution', function(done) {
+    var pass = false
+    defer(function() { pass = true })
+
+    setTimeout(function() {
+      assert.ok(pass)
+      done()
+    }, 32)
+  })
+
+  it('should provide additional arguments to `func`', function(done) {
+    var args: any
+
+    defer(function() {
+      args = slice.call(arguments)
+    }, 1, 2)
+
+    setTimeout(function() {
+      assert.deepStrictEqual(args, [1, 2])
+      done()
+    }, 32)
+  })
+
+  it('should be cancelable', function(done) {
+    var pass = true,
+      timerId = defer(function() { pass = false })
+
+    clearTimeout(timerId)
+
+    setTimeout(function() {
+      assert.ok(pass)
+      done()
+    }, 32)
+  })
+})
+
+describe('delay', function() {
+  const delay = _.delay
+  it('should delay `func` execution', function(done) {
+    var pass = false
+    delay(function() { pass = true }, 32)
+
+    setTimeout(function() {
+      assert.ok(!pass)
+    }, 1)
+
+    setTimeout(function() {
+      assert.ok(pass)
+      done()
+    }, 64)
+  })
+
+  it('should provide additional arguments to `func`', function(done) {
+    var args: any
+
+    delay(function() {
+      args = slice.call(arguments)
+    }, 32, 1, 2)
+
+    setTimeout(function() {
+      assert.deepStrictEqual(args, [1, 2])
+      done()
+    }, 64)
+  })
+
+  it('should use a default `wait` of `0`', function(done) {
+    var pass = false
+    delay(function() { pass = true })
+
+    assert.ok(!pass)
+
+    setTimeout(function() {
+      assert.ok(pass)
+      done()
+    }, 0)
+  })
+
+  it('should be cancelable', function(done) {
+    var pass = true,
+      timerId = delay(function() { pass = false }, 32)
+
+    clearTimeout(timerId)
+
+    setTimeout(function() {
+      assert.ok(pass)
+      done()
+    }, 64)
+  })
+
+  it('should work with mocked `setTimeout`', function() {
+    var pass = false,
+      setTimeout = root.setTimeout
+
+    setProperty(root, 'setTimeout', function(func: any) { func() })
+    delay(function() { pass = true }, 32)
+    setProperty(root, 'setTimeout', setTimeout)
+
+    assert.ok(pass)
+  })
+})
+
+describe('difference methods', function() {
+  lodashStable.each(['difference', 'differenceBy', 'differenceWith'], function(methodName: string) {
+    var func = _[methodName]
+
+    it('`_.' + methodName + '` should return the difference of two arrays', function() {
+      var actual = func([2, 1], [2, 3])
+      assert.deepStrictEqual(actual, [1])
+    })
+
+    it('`_.' + methodName + '` should return the difference of multiple arrays', function() {
+      var actual = func([2, 1, 2, 3], [3, 4], [3, 2])
+      assert.deepStrictEqual(actual, [1])
+    })
+
+    it('`_.' + methodName + '` should treat `-0` as `0`', function() {
+      var array = [-0, 0]
+
+      var actual = lodashStable.map(array, function(value: any) {
+        return func(array, [value])
+      })
+
+      assert.deepStrictEqual(actual, [[], []])
+
+      actual = lodashStable.map(func([-0, 1], [1]), lodashStable.toString)
+      assert.deepStrictEqual(actual, ['0'])
+    })
+
+    it('`_.' + methodName + '` should match `NaN`', function() {
+      assert.deepStrictEqual(func([1, NaN, 3], [NaN, 5, NaN]), [1, 3])
+    })
+
+    it('`_.' + methodName + '` should work with large arrays', function() {
+      var array1 = lodashStable.range(LARGE_ARRAY_SIZE + 1),
+        array2 = lodashStable.range(LARGE_ARRAY_SIZE),
+        a = {},
+        b = {},
+        c = {}
+
+      array1.push(a, b, c)
+      array2.push(b, c, a)
+
+      assert.deepStrictEqual(func(array1, array2), [LARGE_ARRAY_SIZE])
+    })
+
+    it('`_.' + methodName + '` should work with large arrays of `-0` as `0`', function() {
+      var array = [-0, 0]
+
+      var actual = lodashStable.map(array, function(value: any) {
+        var largeArray = lodashStable.times(LARGE_ARRAY_SIZE, lodashStable.constant(value))
+        return func(array, largeArray)
+      })
+
+      assert.deepStrictEqual(actual, [[], []])
+
+      var largeArray = lodashStable.times(LARGE_ARRAY_SIZE, stubOne)
+      actual = lodashStable.map(func([-0, 1], largeArray), lodashStable.toString)
+      assert.deepStrictEqual(actual, ['0'])
+    })
+
+    it('`_.' + methodName + '` should work with large arrays of `NaN`', function() {
+      var largeArray = lodashStable.times(LARGE_ARRAY_SIZE, stubNaN)
+      assert.deepStrictEqual(func([1, NaN, 3], largeArray), [1, 3])
+    })
+
+    it('`_.' + methodName + '` should work with large arrays of objects', function() {
+      var object1 = {},
+        object2 = {},
+        largeArray = lodashStable.times(LARGE_ARRAY_SIZE, lodashStable.constant(object1))
+
+      assert.deepStrictEqual(func([object1, object2], largeArray), [object2])
+    })
+
+    it('`_.' + methodName + '` should ignore values that are not array-like', function() {
+      var array = [1, null, 3]
+
+      assert.deepStrictEqual(func(args, 3, { '0': 1 }), [1, 2, 3])
+      assert.deepStrictEqual(func(null, array, 1), [])
+      assert.deepStrictEqual(func(array, args, null), [null])
+    })
+  })
+})
+
+describe('differenceBy', function() {
+  const differenceBy = _.differenceBy
+  it('should accept an `iteratee`', function() {
+    var actual = differenceBy([2.1, 1.2], [2.3, 3.4], Math.floor)
+    assert.deepStrictEqual(actual, [1.2])
+
+    actual = differenceBy([{ 'x': 2 }, { 'x': 1 }], [{ 'x': 1 }], 'x')
+    assert.deepStrictEqual(actual, [{ 'x': 2 }])
+  })
+
+  it('should provide correct `iteratee` arguments', function() {
+    var args: any
+
+    differenceBy([2.1, 1.2], [2.3, 3.4], function() {
+      args || (args = slice.call(arguments))
+    })
+
+    assert.deepStrictEqual(args, [2.3])
+  })
+})
+
+describe('differenceWith', function() {
+  const differenceWith = _.differenceWith
+  it('should work with a `comparator`', function() {
+    var objects = [{ 'x': 1, 'y': 2 }, { 'x': 2, 'y': 1 }],
+      actual = differenceWith(objects, [{ 'x': 1, 'y': 2 }], lodashStable.isEqual)
+
+    assert.deepStrictEqual(actual, [objects[1]])
+  })
+
+  it('should preserve the sign of `0`', function() {
+    var array = [-0, 1],
+      largeArray = lodashStable.times(LARGE_ARRAY_SIZE, stubOne),
+      others = [[1], largeArray],
+      expected = lodashStable.map(others, lodashStable.constant(['-0']))
+
+    var actual = lodashStable.map(others, function(other: any) {
+      return lodashStable.map(differenceWith(array, other, lodashStable.eq), lodashStable.toString)
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+})
+
+describe('divide', function() {
+  const divide = _.divide
+  it('should divide two numbers', function() {
+    assert.strictEqual(divide(6, 4), 1.5)
+    assert.strictEqual(divide(-6, 4), -1.5)
+    assert.strictEqual(divide(-6, -4), 1.5)
+  })
+
+  it('should coerce arguments to numbers', function() {
+    assert.strictEqual(divide('6', '4'), 1.5)
+    assert.deepStrictEqual(divide('x', 'y'), NaN)
+  })
+})
+
+describe('drop', function() {
+  const drop = _.drop
+  var array = [1, 2, 3]
+
+  it('should drop the first two elements', function() {
+    assert.deepStrictEqual(drop(array, 2), [3])
+  })
+
+  it('should treat falsey `n` values, except `undefined`, as `0`', function() {
+    var expected = lodashStable.map(falsey, function(value: undefined) {
+      return value === undefined ? [2, 3] : array
+    })
+
+    var actual = lodashStable.map(falsey, function(n: any) {
+      return drop(array, n)
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it('should return all elements when `n` < `1`', function() {
+    lodashStable.each([0, -1, -Infinity], function(n: any) {
+      assert.deepStrictEqual(drop(array, n), array)
+    })
+  })
+
+  it('should return an empty array when `n` >= `length`', function() {
+    lodashStable.each([3, 4, Math.pow(2, 32), Infinity], function(n: any) {
+      assert.deepStrictEqual(drop(array, n), [])
+    })
+  })
+
+  it('should coerce `n` to an integer', function() {
+    assert.deepStrictEqual(drop(array, 1.6), [2, 3])
+  })
+
+  it('should work in a lazy sequence', function() {
+    var array = lodashStable.range(1, LARGE_ARRAY_SIZE + 1),
+      predicate = function(value: number) { values.push(value); return isEven(value) },
+      values: any[] = [],
+      actual = _(array).drop(2).drop().value()
+
+    assert.deepEqual(actual, array.slice(3))
+
+    actual = _(array).filter(predicate).drop(2).drop().value()
+    assert.deepEqual(values, array)
+    assert.deepEqual(actual, drop(drop(_.filter(array, predicate), 2)))
+
+    actual = _(array).drop(2).dropRight().drop().dropRight(2).value()
+    assert.deepEqual(actual, _.dropRight(drop(_.dropRight(drop(array, 2))), 2))
+
+    values = []
+
+    actual = _(array).drop().filter(predicate).drop(2).dropRight().drop().dropRight(2).value()
+    assert.deepEqual(values, array.slice(1))
+    assert.deepEqual(actual, _.dropRight(drop(_.dropRight(drop(_.filter(drop(array), predicate), 2))), 2))
+  })
+})
+
+describe('dropRight', function() {
+  const dropRight = _.dropRight
+  var array = [1, 2, 3]
+
+  it('should drop the last two elements', function() {
+    assert.deepStrictEqual(dropRight(array, 2), [1])
+  })
+
+  it('should treat falsey `n` values, except `undefined`, as `0`', function() {
+    var expected = lodashStable.map(falsey, function(value: undefined) {
+      return value === undefined ? [1, 2] : array
+    })
+
+    var actual = lodashStable.map(falsey, function(n: any) {
+      return dropRight(array, n)
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it('should return all elements when `n` < `1`', function() {
+    lodashStable.each([0, -1, -Infinity], function(n: any) {
+      assert.deepStrictEqual(dropRight(array, n), array)
+    })
+  })
+
+  it('should return an empty array when `n` >= `length`', function() {
+    lodashStable.each([3, 4, Math.pow(2, 32), Infinity], function(n: any) {
+      assert.deepStrictEqual(dropRight(array, n), [])
+    })
+  })
+
+  it('should coerce `n` to an integer', function() {
+    assert.deepStrictEqual(dropRight(array, 1.6), [1, 2])
+  })
+
+  it('should work in a lazy sequence', function() {
+    var array = lodashStable.range(1, LARGE_ARRAY_SIZE + 1),
+      predicate = function(value: number) { values.push(value); return isEven(value) },
+      values: any[] = [],
+      actual = _(array).dropRight(2).dropRight().value()
+
+    assert.deepEqual(actual, array.slice(0, -3))
+
+    actual = _(array).filter(predicate).dropRight(2).dropRight().value()
+    assert.deepEqual(values, array)
+    assert.deepEqual(actual, dropRight(dropRight(_.filter(array, predicate), 2)))
+
+    actual = _(array).dropRight(2).drop().dropRight().drop(2).value()
+    assert.deepEqual(actual, _.drop(dropRight(_.drop(dropRight(array, 2))), 2))
+
+    values = []
+
+    actual = _(array).dropRight().filter(predicate).dropRight(2).drop().dropRight().drop(2).value()
+    assert.deepEqual(values, array.slice(0, -1))
+    assert.deepEqual(actual, _.drop(dropRight(_.drop(dropRight(_.filter(dropRight(array), predicate), 2))), 2))
+  })
+})
+
+describe('dropRightWhile', function() {
+  const dropRightWhile = _.dropRightWhile
+  var array = [1, 2, 3, 4]
+
+  var objects = [
+    { 'a': 0, 'b': 0 },
+    { 'a': 1, 'b': 1 },
+    { 'a': 2, 'b': 2 },
+  ]
+
+  it('should drop elements while `predicate` returns truthy', function() {
+    var actual = dropRightWhile(array, function(n: number) {
+      return n > 2
+    })
+
+    assert.deepStrictEqual(actual, [1, 2])
+  })
+
+  it('should provide correct `predicate` arguments', function() {
+    var args
+
+    dropRightWhile(array, function() {
+      args = slice.call(arguments)
+    })
+
+    assert.deepStrictEqual(args, [4, 3, array])
+  })
+
+  it('should work with `_.matches` shorthands', function() {
+    assert.deepStrictEqual(dropRightWhile(objects, { 'b': 2 }), objects.slice(0, 2))
+  })
+
+  it('should work with `_.matchesProperty` shorthands', function() {
+    assert.deepStrictEqual(dropRightWhile(objects, ['b', 2]), objects.slice(0, 2))
+  })
+
+  it('should work with `_.property` shorthands', function() {
+    assert.deepStrictEqual(dropRightWhile(objects, 'b'), objects.slice(0, 1))
+  })
+
+  it('should return a wrapped value when chaining', function() {
+    var wrapped = _(array).dropRightWhile(function(n: number) {
+      return n > 2
+    })
+
+    assert.ok(wrapped instanceof _)
+    assert.deepEqual(wrapped.value(), [1, 2])
+  })
+})
+
+describe('endsWith', function() {
+  const endsWith = _.endsWith
+  var string = 'abc'
+
+  it('should return `true` if a string ends with `target`', function() {
+    assert.strictEqual(endsWith(string, 'c'), true)
+  })
+
+  it('should return `false` if a string does not end with `target`', function() {
+    assert.strictEqual(endsWith(string, 'b'), false)
+  })
+
+  it('should work with a `position`', function() {
+    assert.strictEqual(endsWith(string, 'b', 2), true)
+  })
+
+  it('should work with `position` >= `length`', function() {
+    lodashStable.each([3, 5, MAX_SAFE_INTEGER, Infinity], function(position: any) {
+      assert.strictEqual(endsWith(string, 'c', position), true)
+    })
+  })
+
+  it('should treat falsey `position` values, except `undefined`, as `0`', function() {
+    var expected = lodashStable.map(falsey, stubTrue)
+
+    var actual = lodashStable.map(falsey, function(position: undefined) {
+      return endsWith(string, position === undefined ? 'c' : '', position)
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it('should treat a negative `position` as `0`', function() {
+    lodashStable.each([-1, -3, -Infinity], function(position: any) {
+      assert.ok(lodashStable.every(string, function(chr: any) {
+        return !endsWith(string, chr, position)
+      }))
+      assert.strictEqual(endsWith(string, '', position), true)
+    })
+  })
+
+  it('should coerce `position` to an integer', function() {
+    assert.strictEqual(endsWith(string, 'ab', 2.2), true)
+  })
+})
+
+describe('eq', function() {
+  const eq = _.eq
+  it('should perform a `SameValueZero` comparison of two values', function() {
+    assert.strictEqual(eq(), true)
+    assert.strictEqual(eq(undefined), true)
+    assert.strictEqual(eq(0, -0), true)
+    assert.strictEqual(eq(NaN, NaN), true)
+    assert.strictEqual(eq(1, 1), true)
+
+    assert.strictEqual(eq(null, undefined), false)
+    assert.strictEqual(eq(1, Object(1)), false)
+    assert.strictEqual(eq(1, '1'), false)
+    assert.strictEqual(eq(1, '1'), false)
+
+    var object = { 'a': 1 }
+    assert.strictEqual(eq(object, object), true)
+    assert.strictEqual(eq(object, { 'a': 1 }), false)
+  })
+})
