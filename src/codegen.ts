@@ -1092,7 +1092,9 @@ const parseToCode = (ast: any): void => {
       if (node.key.type === "Identifier") {
         key = `'${node.key.name}'`
       } else if (node.key.type === "Literal") {
-        key = node.key.raw
+        const keyReg = newReg()
+        getValueOfNode(node.key, keyReg, s, c)
+        key = keyReg
       }
       getValueOfNode(node.value, valReg, s, c)
       cg([`SET_KEY`, `${objReg}`, key, `${valReg}`])

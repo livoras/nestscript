@@ -93,6 +93,37 @@ var burredLetters = [
   '\u0170', '\u0171', '\u0172', '\u0173', '\u0174', '\u0175', '\u0176', '\u0177', '\u0178', '\u0179', '\u017a', '\u017b', '\u017c', '\u017d', '\u017e', '\u017f',
 ]
 
+var deburredLetters = [
+  // Converted Latin-1 Supplement letters.
+  'A',  'A', 'A', 'A', 'A', 'A', 'Ae', 'C',  'E', 'E', 'E', 'E', 'I', 'I', 'I',
+  'I',  'D', 'N', 'O', 'O', 'O', 'O',  'O',  'O', 'U', 'U', 'U', 'U', 'Y', 'Th',
+  'ss', 'a', 'a', 'a', 'a', 'a', 'a',  'ae', 'c', 'e', 'e', 'e', 'e', 'i', 'i',  'i',
+  'i',  'd', 'n', 'o', 'o', 'o', 'o',  'o',  'o', 'u', 'u', 'u', 'u', 'y', 'th', 'y',
+  // Converted Latin Extended-A letters.
+  'A', 'a', 'A', 'a', 'A', 'a', 'C', 'c', 'C', 'c', 'C', 'c', 'C', 'c',
+  'D', 'd', 'D', 'd', 'E', 'e', 'E', 'e', 'E', 'e', 'E', 'e', 'E', 'e',
+  'G', 'g', 'G', 'g', 'G', 'g', 'G', 'g', 'H', 'h', 'H', 'h',
+  'I', 'i', 'I', 'i', 'I', 'i', 'I', 'i', 'I', 'i', 'IJ', 'ij', 'J', 'j',
+  'K', 'k', 'k', 'L', 'l', 'L', 'l', 'L', 'l', 'L', 'l', 'L', 'l',
+  'N', 'n', 'N', 'n', 'N', 'n', "'n", 'N', 'n',
+  'O', 'o', 'O', 'o', 'O', 'o', 'Oe', 'oe',
+  'R', 'r', 'R', 'r', 'R', 'r', 'S', 's', 'S', 's', 'S', 's', 'S', 's',
+  'T', 't', 'T', 't', 'T', 't',
+  'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u',
+  'W', 'w', 'Y', 'y', 'Y', 'Z', 'z', 'Z', 'z', 'Z', 'z', 's',
+]
+
+var comboMarks = [
+  '\u0300', '\u0301', '\u0302', '\u0303', '\u0304', '\u0305', '\u0306', '\u0307', '\u0308', '\u0309', '\u030a', '\u030b', '\u030c', '\u030d', '\u030e', '\u030f',
+  '\u0310', '\u0311', '\u0312', '\u0313', '\u0314', '\u0315', '\u0316', '\u0317', '\u0318', '\u0319', '\u031a', '\u031b', '\u031c', '\u031d', '\u031e', '\u031f',
+  '\u0320', '\u0321', '\u0322', '\u0323', '\u0324', '\u0325', '\u0326', '\u0327', '\u0328', '\u0329', '\u032a', '\u032b', '\u032c', '\u032d', '\u032e', '\u032f',
+  '\u0330', '\u0331', '\u0332', '\u0333', '\u0334', '\u0335', '\u0336', '\u0337', '\u0338', '\u0339', '\u033a', '\u033b', '\u033c', '\u033d', '\u033e', '\u033f',
+  '\u0340', '\u0341', '\u0342', '\u0343', '\u0344', '\u0345', '\u0346', '\u0347', '\u0348', '\u0349', '\u034a', '\u034b', '\u034c', '\u034d', '\u034e', '\u034f',
+  '\u0350', '\u0351', '\u0352', '\u0353', '\u0354', '\u0355', '\u0356', '\u0357', '\u0358', '\u0359', '\u035a', '\u035b', '\u035c', '\u035d', '\u035e', '\u035f',
+  '\u0360', '\u0361', '\u0362', '\u0363', '\u0364', '\u0365', '\u0366', '\u0367', '\u0368', '\u0369', '\u036a', '\u036b', '\u036c', '\u036d', '\u036e', '\u036f',
+  '\ufe20', '\ufe21', '\ufe22', '\ufe23',
+]
+
 /** Used to provide empty values to methods. */
 var empties = [[], {}].concat(falsey.slice(1))
 var primitives = [null, undefined, false, true, 1, NaN, 'a']
@@ -3015,6 +3046,411 @@ describe('curryRight', function() {
 
     assert.deepStrictEqual(c(2), expected)
     assert.deepStrictEqual(d(), expected)
+  })
+})
+
+describe('debounce and throttle', function() {
+  lodashStable.each(['debounce', 'throttle'], function(methodName: string) {
+    var func = _[methodName],
+      isDebounce = methodName == 'debounce'
+
+    it('`_.' + methodName + '` should not error for non-object `options` values', function() {
+      func(noop, 32, 1)
+      assert.ok(true)
+    })
+
+    it('`_.' + methodName + '` should use a default `wait` of `0`', function(done) {
+      var callCount = 0,
+        funced = func(function() { callCount++ })
+
+      funced()
+
+      setTimeout(function() {
+        funced()
+        assert.strictEqual(callCount, isDebounce ? 1 : 2)
+        done()
+      }, 32)
+    })
+
+    it('`_.' + methodName + '` should invoke `func` with the correct `this` binding', function(done) {
+      var actual: any[] = [],
+        object = { 'funced': func(function(this: any) { actual.push(this) }, 32) },
+        expected = lodashStable.times(isDebounce ? 1 : 2, lodashStable.constant(object))
+
+      object.funced()
+      if (!isDebounce) {
+        object.funced()
+      }
+      setTimeout(function() {
+        assert.deepStrictEqual(actual, expected)
+        done()
+      }, 64)
+    })
+
+    it('`_.' + methodName + '` supports recursive calls', function(done) {
+      var actual: any[][] = [],
+        args = lodashStable.map(['a', 'b', 'c'], function(chr: any) { return [{}, chr] }),
+        expected = args.slice(),
+        queue = args.slice()
+
+      var funced = func(function(this: any) {
+        var current = [this]
+        push.apply(current, arguments as any)
+        actual.push(current)
+
+        var next = queue.shift()
+        if (next) {
+          funced.call(next[0], next[1])
+        }
+      }, 32)
+
+      var next = queue.shift()
+      funced.call(next[0], next[1])
+      assert.deepStrictEqual(actual, expected.slice(0, isDebounce ? 0 : 1))
+
+      setTimeout(function() {
+        assert.deepStrictEqual(actual, expected.slice(0, actual.length))
+        done()
+      }, 256)
+    })
+
+    it('`_.' + methodName + '` should support cancelling delayed calls', function(done) {
+      var callCount = 0
+
+      var funced = func(function() {
+        callCount++
+      }, 32, { 'leading': false })
+
+      funced()
+      funced.cancel()
+
+      setTimeout(function() {
+        assert.strictEqual(callCount, 0)
+        done()
+      }, 64)
+    })
+
+    it('`_.' + methodName + '` should reset `lastCalled` after cancelling', function(done) {
+      var callCount = 0
+
+      var funced = func(function() {
+        return ++callCount
+      }, 32, { 'leading': true })
+
+      assert.strictEqual(funced(), 1)
+      funced.cancel()
+
+      assert.strictEqual(funced(), 2)
+      funced()
+
+      setTimeout(function() {
+        assert.strictEqual(callCount, 3)
+        done()
+      }, 64)
+    })
+
+    it('`_.' + methodName + '` should support flushing delayed calls', function(done) {
+      var callCount = 0
+
+      var funced = func(function() {
+        return ++callCount
+      }, 32, { 'leading': false })
+
+      funced()
+      assert.strictEqual(funced.flush(), 1)
+
+      setTimeout(function() {
+        assert.strictEqual(callCount, 1)
+        done()
+      }, 64)
+    })
+
+    it('`_.' + methodName + '` should noop `cancel` and `flush` when nothing is queued', function(done) {
+      var callCount = 0,
+        funced = func(function() { callCount++ }, 32)
+
+      funced.cancel()
+      assert.strictEqual(funced.flush(), undefined)
+
+      setTimeout(function() {
+        assert.strictEqual(callCount, 0)
+        done()
+      }, 64)
+    })
+  })
+})
+
+describe('debounce', function() {
+  const debounce = _.debounce
+  it('should debounce a function', function(done) {
+    var callCount = 0
+
+    var debounced = debounce(function(value: any) {
+      ++callCount
+      return value
+    }, 32)
+
+    var results = [debounced('a'), debounced('b'), debounced('c')]
+    assert.deepStrictEqual(results, [undefined, undefined, undefined])
+    assert.strictEqual(callCount, 0)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 1)
+
+      var results = [debounced('d'), debounced('e'), debounced('f')]
+      assert.deepStrictEqual(results, ['c', 'c', 'c'])
+      assert.strictEqual(callCount, 1)
+    }, 128)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 2)
+      done()
+    }, 256)
+  })
+
+  it('subsequent debounced calls return the last `func` result', function(done) {
+    var debounced = debounce(identity, 32)
+    debounced('a')
+
+    setTimeout(function() {
+      assert.notStrictEqual(debounced('b'), 'b')
+    }, 64)
+
+    setTimeout(function() {
+      assert.notStrictEqual(debounced('c'), 'c')
+      done()
+    }, 128)
+  })
+
+  it('should not immediately call `func` when `wait` is `0`', function(done) {
+    var callCount = 0,
+      debounced = debounce(function() { ++callCount }, 0)
+
+    debounced()
+    debounced()
+    assert.strictEqual(callCount, 0)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 1)
+      done()
+    }, 5)
+  })
+
+  it('should apply default options', function(done) {
+    var callCount = 0,
+      debounced = debounce(function() { callCount++ }, 32, {})
+
+    debounced()
+    assert.strictEqual(callCount, 0)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 1)
+      done()
+    }, 64)
+  })
+
+  it('should support a `leading` option', function(done) {
+    var callCounts = [0, 0]
+
+    var withLeading = debounce(function() {
+      callCounts[0]++
+    }, 32, { 'leading': true })
+
+    var withLeadingAndTrailing = debounce(function() {
+      callCounts[1]++
+    }, 32, { 'leading': true })
+
+    withLeading()
+    assert.strictEqual(callCounts[0], 1)
+
+    withLeadingAndTrailing()
+    withLeadingAndTrailing()
+    assert.strictEqual(callCounts[1], 1)
+
+    setTimeout(function() {
+      assert.deepStrictEqual(callCounts, [1, 2])
+
+      withLeading()
+      assert.strictEqual(callCounts[0], 2)
+
+      done()
+    }, 64)
+  })
+
+  it('subsequent leading debounced calls return the last `func` result', function(done) {
+    var debounced = debounce(identity, 32, { 'leading': true, 'trailing': false }),
+      results = [debounced('a'), debounced('b')]
+
+    assert.deepStrictEqual(results, ['a', 'a'])
+
+    setTimeout(function() {
+      var results = [debounced('c'), debounced('d')]
+      assert.deepStrictEqual(results, ['c', 'c'])
+      done()
+    }, 64)
+  })
+
+  it('should support a `trailing` option', function(done) {
+    var withCount = 0,
+      withoutCount = 0
+
+    var withTrailing = debounce(function() {
+      withCount++
+    }, 32, { 'trailing': true })
+
+    var withoutTrailing = debounce(function() {
+      withoutCount++
+    }, 32, { 'trailing': false })
+
+    withTrailing()
+    assert.strictEqual(withCount, 0)
+
+    withoutTrailing()
+    assert.strictEqual(withoutCount, 0)
+
+    setTimeout(function() {
+      assert.strictEqual(withCount, 1)
+      assert.strictEqual(withoutCount, 0)
+      done()
+    }, 64)
+  })
+
+  it('should support a `maxWait` option', function(done) {
+    var callCount = 0
+
+    var debounced = debounce(function(value: any) {
+      ++callCount
+      return value
+    }, 32, { 'maxWait': 64 })
+
+    debounced()
+    debounced()
+    assert.strictEqual(callCount, 0)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 1)
+      debounced()
+      debounced()
+      assert.strictEqual(callCount, 1)
+    }, 128)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 2)
+      done()
+    }, 256)
+  })
+
+  it('should support `maxWait` in a tight loop', function(done) {
+    var limit = 1000,
+      withCount = 0,
+      withoutCount = 0
+
+    var withMaxWait = debounce(function() {
+      withCount++
+    }, 64, { 'maxWait': 128 })
+
+    var withoutMaxWait = debounce(function() {
+      withoutCount++
+    }, 96)
+
+    var start = +new Date
+    while ((new (Date as any) - start) < limit) {
+      withMaxWait()
+      withoutMaxWait()
+    }
+    var actual = [Boolean(withoutCount), Boolean(withCount)]
+    setTimeout(function() {
+      assert.deepStrictEqual(actual, [false, true])
+      done()
+    }, 1)
+  })
+
+  it('should queue a trailing call for subsequent debounced calls after `maxWait`', function(done) {
+    var callCount = 0
+
+    var debounced = debounce(function() {
+      ++callCount
+    }, 200, { 'maxWait': 200 })
+
+    debounced()
+
+    setTimeout(debounced, 190)
+    setTimeout(debounced, 200)
+    setTimeout(debounced, 210)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 2)
+      done()
+    }, 500)
+  })
+
+  it('should cancel `maxDelayed` when `delayed` is invoked', function(done) {
+    var callCount = 0
+
+    var debounced = debounce(function() {
+      callCount++
+    }, 32, { 'maxWait': 64 })
+
+    debounced()
+
+    setTimeout(function() {
+      debounced()
+      assert.strictEqual(callCount, 1)
+    }, 128)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 2)
+      done()
+    }, 192)
+  })
+
+  it('should invoke the trailing call with the correct arguments and `this` binding', function(done) {
+    var actual: any[],
+      callCount = 0,
+      object = {}
+
+    var debounced = debounce(function(this: any, value: any) {
+      actual = [this]
+      push.apply(actual, arguments as any)
+      return ++callCount != 2
+    }, 32, { 'leading': true, 'maxWait': 64 })
+
+    while (true) {
+      if (!debounced.call(object, 'a')) {
+        break
+      }
+    }
+    setTimeout(function() {
+      assert.strictEqual(callCount, 2)
+      assert.deepStrictEqual(actual, [object, 'a'])
+      done()
+    }, 64)
+  })
+})
+
+
+describe('deburr', function() {
+  const deburr = _.deburr
+  it('should convert Latin Unicode letters to basic Latin', function() {
+    var actual = lodashStable.map(burredLetters, deburr)
+    assert.deepStrictEqual(actual, deburredLetters)
+  })
+
+  it('should not deburr Latin mathematical operators', function() {
+    var operators = ['\xd7', '\xf7'],
+      actual = lodashStable.map(operators, deburr)
+
+    assert.deepStrictEqual(actual, operators)
+  })
+
+  it('should deburr combining diacritical marks', function() {
+    var expected = lodashStable.map(comboMarks, lodashStable.constant('ei'))
+
+    var actual = lodashStable.map(comboMarks, function(chr: string) {
+      return deburr('e' + chr + 'i')
+    })
+
+    assert.deepStrictEqual(actual, expected)
   })
 })
 
