@@ -848,6 +848,25 @@ describe('switch case and break', (): void => {
     expect(spy).on.nth(1).be.called.with('ok')
     `, { spy })
   })
+
+  it('falling switch case', (): void => {
+    tm(`
+    const a = (i) => {
+      switch(i) {
+        case 1:
+        case 2:
+        case 3:
+          return 'a'
+        case 4:
+          return 'b'
+      }
+    }
+    expect(a(1)).equal('a')
+    expect(a(2)).equal('a')
+    expect(a(3)).equal('a')
+    expect(a(4)).equal('b')
+    `)
+  })
 })
 
 describe("misc", (): void => {

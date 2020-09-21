@@ -465,7 +465,12 @@ const parseToCode = (ast: any): void => {
       }
     } else {
       s.r0 = reg
+      s.r1 = null
+      s.r2 = null
       c(node, s)
+      s.r0 = null
+      s.r1 = null
+      s.r2 = null
     }
   }
 
@@ -676,8 +681,9 @@ const parseToCode = (ast: any): void => {
       } else if (node.object.type === 'Identifier') {
         getValueOfNode(node.object, objReg, s, c)
       } else {
-        s.r0 = objReg
-        c(node.object, s)
+        // s.r0 = objReg
+        // c(node.object, s)
+        getValueOfNode(node.object, objReg, s, c)
       }
 
       if (node.property.type === 'MemberExpression') {
@@ -694,8 +700,7 @@ const parseToCode = (ast: any): void => {
           cg([`MOV`, keyReg, `"${node.property.name}"`])
         }
       } else {
-        s.r0 = keyReg
-        c(node.property, s)
+        getValueOfNode(node.property, keyReg, s, c)
       }
 
       if (valReg) {
@@ -734,6 +739,7 @@ const parseToCode = (ast: any): void => {
       const [newReg, freeReg] = newRegisterController()
 
       const leftReg = s.r0 || newReg()
+      s.r0 = null
       const rightReg = newReg()
 
       getValueOfNode(node.left, leftReg, s, c)
@@ -1086,7 +1092,9 @@ const parseToCode = (ast: any): void => {
       if (node.key.type === "Identifier") {
         key = `'${node.key.name}'`
       } else if (node.key.type === "Literal") {
-        key = node.key.raw
+        const keyReg = newReg()
+        getValueOfNode(node.key, keyReg, s, c)
+        key = keyReg
       }
       getValueOfNode(node.value, valReg, s, c)
       cg([`SET_KEY`, `${objReg}`, key, `${valReg}`])
@@ -1163,8 +1171,23 @@ const parseToCode = (ast: any): void => {
         startBlock: s.blockChain.getCurrentBlock(),
       }
       pushLoopLabels(label)
+      let caseStartlabel: string = ''
+      const fetchCaseLabel = (): string => {
+        if (!caseStartlabel) {
+          caseStartlabel = newLabelName()
+        }
+        return caseStartlabel
+      }
+      const useCaseLabel = (): string => {
+        const ret = caseStartlabel
+        caseStartlabel = ''
+        return ret
+        // caseStartlabel = ''
+        // caseEndlabel = ''
+        // return ret
+      }
       node.cases.forEach((cs: et.SwitchCase): void => {
-        const startLabel = newLabelName()
+        let startLabel = fetchCaseLabel()
         const endLabel = newLabelName()
         if (cs.test) {
           const testReg = newReg()
@@ -1172,12 +1195,20 @@ const parseToCode = (ast: any): void => {
           cg([`JE`, `${discriminantReg}`, `${testReg}`, `${startLabel}`])
           cg([`JMP`, `${endLabel}`])
         }
-        cg([`LABEL ${startLabel}:`])
-        cs.consequent.forEach((n: any): void => {
-          c(n, s)
-        })
+        if (cs.consequent && cs.consequent.length > 0) {
+          startLabel = useCaseLabel()
+          cg([`LABEL ${startLabel}:`])
+          cs.consequent.forEach((n: any): void => {
+            c(n, s)
+          })
+          const nextStart = fetchCaseLabel()
+          cg([`JMP ${nextStart}`])
+        }
         cg([`LABEL ${endLabel}:`])
       })
+      if (caseStartlabel) {
+        cg([`LABEL ${caseStartlabel}:`])
+      }
       cg([`LABEL ${switchEndLabel}:`])
       popLoopLabels()
       freeReg()

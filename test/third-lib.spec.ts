@@ -25,6 +25,18 @@ var errors = [
   new URIError,
 ]
 
+var typedArrays = [
+  'Float32Array',
+  'Float64Array',
+  'Int8Array',
+  'Int16Array',
+  'Int32Array',
+  'Uint8Array',
+  'Uint8ClampedArray',
+  'Uint16Array',
+  'Uint32Array',
+]
+
 function CustomError(this: any, message: any) {
   this.name = 'CustomError'
   this.message = message
@@ -81,8 +93,40 @@ var burredLetters = [
   '\u0170', '\u0171', '\u0172', '\u0173', '\u0174', '\u0175', '\u0176', '\u0177', '\u0178', '\u0179', '\u017a', '\u017b', '\u017c', '\u017d', '\u017e', '\u017f',
 ]
 
+var deburredLetters = [
+  // Converted Latin-1 Supplement letters.
+  'A',  'A', 'A', 'A', 'A', 'A', 'Ae', 'C',  'E', 'E', 'E', 'E', 'I', 'I', 'I',
+  'I',  'D', 'N', 'O', 'O', 'O', 'O',  'O',  'O', 'U', 'U', 'U', 'U', 'Y', 'Th',
+  'ss', 'a', 'a', 'a', 'a', 'a', 'a',  'ae', 'c', 'e', 'e', 'e', 'e', 'i', 'i',  'i',
+  'i',  'd', 'n', 'o', 'o', 'o', 'o',  'o',  'o', 'u', 'u', 'u', 'u', 'y', 'th', 'y',
+  // Converted Latin Extended-A letters.
+  'A', 'a', 'A', 'a', 'A', 'a', 'C', 'c', 'C', 'c', 'C', 'c', 'C', 'c',
+  'D', 'd', 'D', 'd', 'E', 'e', 'E', 'e', 'E', 'e', 'E', 'e', 'E', 'e',
+  'G', 'g', 'G', 'g', 'G', 'g', 'G', 'g', 'H', 'h', 'H', 'h',
+  'I', 'i', 'I', 'i', 'I', 'i', 'I', 'i', 'I', 'i', 'IJ', 'ij', 'J', 'j',
+  'K', 'k', 'k', 'L', 'l', 'L', 'l', 'L', 'l', 'L', 'l', 'L', 'l',
+  'N', 'n', 'N', 'n', 'N', 'n', "'n", 'N', 'n',
+  'O', 'o', 'O', 'o', 'O', 'o', 'Oe', 'oe',
+  'R', 'r', 'R', 'r', 'R', 'r', 'S', 's', 'S', 's', 'S', 's', 'S', 's',
+  'T', 't', 'T', 't', 'T', 't',
+  'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u',
+  'W', 'w', 'Y', 'y', 'Y', 'Z', 'z', 'Z', 'z', 'Z', 'z', 's',
+]
+
+var comboMarks = [
+  '\u0300', '\u0301', '\u0302', '\u0303', '\u0304', '\u0305', '\u0306', '\u0307', '\u0308', '\u0309', '\u030a', '\u030b', '\u030c', '\u030d', '\u030e', '\u030f',
+  '\u0310', '\u0311', '\u0312', '\u0313', '\u0314', '\u0315', '\u0316', '\u0317', '\u0318', '\u0319', '\u031a', '\u031b', '\u031c', '\u031d', '\u031e', '\u031f',
+  '\u0320', '\u0321', '\u0322', '\u0323', '\u0324', '\u0325', '\u0326', '\u0327', '\u0328', '\u0329', '\u032a', '\u032b', '\u032c', '\u032d', '\u032e', '\u032f',
+  '\u0330', '\u0331', '\u0332', '\u0333', '\u0334', '\u0335', '\u0336', '\u0337', '\u0338', '\u0339', '\u033a', '\u033b', '\u033c', '\u033d', '\u033e', '\u033f',
+  '\u0340', '\u0341', '\u0342', '\u0343', '\u0344', '\u0345', '\u0346', '\u0347', '\u0348', '\u0349', '\u034a', '\u034b', '\u034c', '\u034d', '\u034e', '\u034f',
+  '\u0350', '\u0351', '\u0352', '\u0353', '\u0354', '\u0355', '\u0356', '\u0357', '\u0358', '\u0359', '\u035a', '\u035b', '\u035c', '\u035d', '\u035e', '\u035f',
+  '\u0360', '\u0361', '\u0362', '\u0363', '\u0364', '\u0365', '\u0366', '\u0367', '\u0368', '\u0369', '\u036a', '\u036b', '\u036c', '\u036d', '\u036e', '\u036f',
+  '\ufe20', '\ufe21', '\ufe22', '\ufe23',
+]
+
 /** Used to provide empty values to methods. */
 var empties = [[], {}].concat(falsey.slice(1))
+var primitives = [null, undefined, false, true, 1, NaN, 'a']
 
 /** Used for native method references. */
 let arrayProto = Array.prototype,
@@ -120,11 +164,11 @@ let ArrayBuffer = root.ArrayBuffer,
   WeakMap = root.WeakMap,
   WeakSet = root.WeakSet
 
-let arrayBuffer = ArrayBuffer ? new ArrayBuffer(2) : undefined,
+let arrayBuffer: any = ArrayBuffer ? new ArrayBuffer(2) : undefined,
   map = Map ? new Map : undefined,
   promise = Promise ? Promise.resolve(1) : undefined,
   set = Set ? new Set : undefined,
-  symbol = Symbol ? Symbol('a') : undefined,
+  symbol: any = Symbol ? Symbol('a') : undefined,
   weakMap = WeakMap ? new WeakMap : undefined,
   weakSet = WeakSet ? new WeakSet : undefined
 
@@ -181,7 +225,7 @@ const assert = {
   deepEqual: deepStrictEqual,
   ok: (v: any, msg?: string) => {
     if (!v) {
-      throw new Error('should be true' + msg)
+      throw new Error('should be true ' + v)
     }
   },
   strictEqual: (a: any, b: any, msg?: string): void => {
@@ -1927,6 +1971,1486 @@ describe('chunk', function() {
 
   it('should coerce `size` to an integer', function() {
     assert.deepStrictEqual(chunk(array, array.length / 4), [[0], [1], [2], [3], [4], [5]])
+  })
+})
+
+describe('clamp', function() {
+  const clamp = _.clamp
+  it('should work with a `max`', function() {
+    assert.strictEqual(clamp(5, 3), 3)
+    assert.strictEqual(clamp(1, 3), 1)
+  })
+
+  it('should clamp negative numbers', function() {
+    assert.strictEqual(clamp(-10, -5, 5), -5)
+    assert.strictEqual(clamp(-10.2, -5.5, 5.5), -5.5)
+    assert.strictEqual(clamp(-Infinity, -5, 5), -5)
+  })
+
+  it('should clamp positive numbers', function() {
+    assert.strictEqual(clamp(10, -5, 5), 5)
+    assert.strictEqual(clamp(10.6, -5.6, 5.4), 5.4)
+    assert.strictEqual(clamp(Infinity, -5, 5), 5)
+  })
+
+  it('should not alter negative numbers in range', function() {
+    assert.strictEqual(clamp(-4, -5, 5), -4)
+    assert.strictEqual(clamp(-5, -5, 5), -5)
+    assert.strictEqual(clamp(-5.5, -5.6, 5.6), -5.5)
+  })
+
+  it('should not alter positive numbers in range', function() {
+    assert.strictEqual(clamp(4, -5, 5), 4)
+    assert.strictEqual(clamp(5, -5, 5), 5)
+    assert.strictEqual(clamp(4.5, -5.1, 5.2), 4.5)
+  })
+
+  it('should not alter `0` in range', function() {
+    assert.strictEqual(1 / clamp(0, -5, 5), Infinity)
+  })
+
+  it('should clamp to `0`', function() {
+    assert.strictEqual(1 / clamp(-10, 0, 5), Infinity)
+  })
+
+  it('should not alter `-0` in range', function() {
+    assert.strictEqual(1 / clamp(-0, -5, 5), -Infinity)
+  })
+
+  it('should clamp to `-0`', function() {
+    assert.strictEqual(1 / clamp(-10, -0, 5), -Infinity)
+  })
+
+  it('should return `NaN` when `number` is `NaN`', function() {
+    assert.deepStrictEqual(clamp(NaN, -5, 5), NaN)
+  })
+
+  it('should coerce `min` and `max` of `NaN` to `0`', function() {
+    assert.deepStrictEqual(clamp(1, -5, NaN), 0)
+    assert.deepStrictEqual(clamp(-1, NaN, 5), 0)
+  })
+})
+
+
+describe('clone methods', function() {
+  const cloneDeep = _.cloneDeep
+  const cloneDeepWith = _.cloneDeepWith
+  const last = _.last
+    /** Used to test async functions. */
+  var asyncFunc = lodashStable.attempt(function() {
+    return Function('return async () => {}')
+  })
+
+  function Foo(this: any) {
+    this.a = 1
+  }
+    /** Used to test generator functions. */
+  var genFunc = lodashStable.attempt(function() {
+    return Function('return function*(){}')
+  })
+
+  Foo.prototype.b = 1
+  Foo.c = function() {}
+  var map: any
+  var set: any
+
+  if (Map) {
+    map = new Map
+    map.set('a', 1)
+    map.set('b', 2)
+  }
+  if (Set) {
+    set = new Set
+    set.add(1)
+    set.add(2)
+  }
+  var objects = {
+    '`arguments` objects': arguments,
+    'arrays': ['a', ''],
+    'array-like objects': { '0': 'a', 'length': 1 },
+    'booleans': false,
+    'boolean objects': Object(false),
+    'date objects': new Date,
+    'Foo instances': new (Foo as any),
+    'objects': { 'a': 0, 'b': 1, 'c': 2 },
+    'objects with object values': { 'a': /a/, 'b': ['B'], 'c': { 'C': 1 } },
+    'objects from another document': realm.object || {},
+    'maps': map,
+    'null values': null,
+    'numbers': 0,
+    'number objects': Object(0),
+    'regexes': /a/gim,
+    'sets': set,
+    'strings': 'a',
+    'string objects': Object('a'),
+    'undefined values': undefined,
+  }
+
+  objects.arrays.length = 3
+
+  var uncloneable = {
+    'DOM elements': body,
+    'functions': Foo,
+    'async functions': asyncFunc,
+    'generator functions': genFunc,
+    'the `Proxy` constructor': Proxy,
+  }
+
+  lodashStable.each(errors, function(error: { name: string }) {
+    uncloneable[error.name + 's'] = error
+  })
+
+  it('`_.clone` should perform a shallow clone', function() {
+    var array = [{ 'a': 0 }, { 'b': 1 }],
+      actual = _.clone(array)
+
+    assert.deepStrictEqual(actual, array)
+    assert.ok(actual !== array && actual[0] === array[0])
+  })
+
+  it('`_.cloneDeep` should deep clone objects with circular references', function() {
+    var object = {
+      'foo': { 'b': { 'c': { 'd': {} } } },
+      'bar': {},
+    }
+
+    object.foo.b.c.d = object;
+    (object.bar as any).b = object.foo.b
+
+    var actual = cloneDeep(object)
+    assert.ok(actual.bar.b === actual.foo.b && actual === actual.foo.b.c.d && actual !== object)
+  })
+
+  it('`_.cloneDeep` should deep clone objects with lots of circular references', function() {
+    var cyclical = {}
+    lodashStable.times(LARGE_ARRAY_SIZE + 1, function(index: any) {
+      cyclical['v' + index] = [index ? cyclical['v' + (index - 1)] : cyclical]
+    })
+
+    var clone = cloneDeep(cyclical),
+      actual = clone['v' + LARGE_ARRAY_SIZE][0]
+
+    assert.strictEqual(actual, clone['v' + (LARGE_ARRAY_SIZE - 1)])
+    assert.notStrictEqual(actual, cyclical['v' + (LARGE_ARRAY_SIZE - 1)])
+  })
+
+
+  lodashStable.each(['clone', 'cloneDeep'], function(methodName: string) {
+    var func = _[methodName],
+      isDeep = methodName == 'cloneDeep'
+
+    lodashStable.forOwn(objects, function(object: any, kind: string) {
+      it('`_.' + methodName + '` should clone ' + kind, function() {
+        var actual = func(object)
+        if (!lodashStable.isEqual(actual, object)) {
+          console.log('====================================>', actual, object)
+        }
+        assert.ok(lodashStable.isEqual(actual, object))
+
+        if (lodashStable.isObject(object)) {
+          assert.notStrictEqual(actual, object)
+        } else {
+          assert.strictEqual(actual, object)
+        }
+      })
+    })
+
+    it('`_.' + methodName + '` should clone array buffers', function() {
+      if (ArrayBuffer) {
+        var actual = func(arrayBuffer)
+        assert.strictEqual(actual.byteLength, arrayBuffer.byteLength)
+        assert.notStrictEqual(actual, arrayBuffer)
+      }
+    })
+
+
+    it('`_.' + methodName + '` should clone `index` and `input` array properties', function() {
+      var array = /c/.exec('abcde'),
+        actual = func(array)
+
+      assert.strictEqual(actual.index, 2)
+      assert.strictEqual(actual.input, 'abcde')
+    })
+
+    it('`_.' + methodName + '` should clone `lastIndex` regexp property', function() {
+      var regexp = /c/g
+      regexp.exec('abcde')
+
+      assert.strictEqual(func(regexp).lastIndex, 3)
+    })
+
+    it('`_.' + methodName + '` should clone expando properties', function() {
+      var values = lodashStable.map([false, true, 1, 'a'], function(value: any) {
+        var object = Object(value)
+        object.a = 1
+        return object
+      })
+
+      var expected = lodashStable.map(values, stubTrue)
+
+      var actual = lodashStable.map(values, function(value: any) {
+        return func(value).a === 1
+      })
+
+      assert.deepStrictEqual(actual, expected)
+    })
+
+    it('`_.' + methodName + '` should clone prototype objects', function() {
+      var actual = func(Foo.prototype)
+
+      assert.ok(!(actual instanceof Foo))
+      assert.deepStrictEqual(actual, { 'b': 1 })
+    })
+
+    it('`_.' + methodName + '` should set the `[[Prototype]]` of a clone', function() {
+      assert.ok(func(new (Foo as any)) instanceof Foo)
+    })
+
+    it('`_.' + methodName + '` should set the `[[Prototype]]` of a clone even when the `constructor` is incorrect', function() {
+      Foo.prototype.constructor = Object
+      assert.ok(func(new (Foo as any)) instanceof Foo)
+      Foo.prototype.constructor = Foo
+    })
+
+    it('`_.' + methodName + '` should ensure `value` constructor is a function before using its `[[Prototype]]`', function() {
+      Foo.prototype.constructor = null
+      assert.ok(!(func(new (Foo as any)) instanceof Foo))
+      Foo.prototype.constructor = Foo
+    })
+
+    it('`_.' + methodName + '` should clone properties that shadow those on `Object.prototype`', function() {
+      var object = {
+        'constructor': objectProto.constructor,
+        'hasOwnProperty': objectProto.hasOwnProperty,
+        'isPrototypeOf': objectProto.isPrototypeOf,
+        'propertyIsEnumerable': objectProto.propertyIsEnumerable,
+        'toLocaleString': objectProto.toLocaleString,
+        'toString': objectProto.toString,
+        'valueOf': objectProto.valueOf,
+      }
+
+      var actual = func(object)
+
+      assert.deepStrictEqual(actual, object)
+      assert.notStrictEqual(actual, object)
+    })
+
+    it('`_.' + methodName + '` should clone symbol properties', function() {
+      function Foo(this: any) {
+        this[symbol as any] = { 'c': 1 }
+      }
+
+      if (Symbol) {
+        var symbol2 = Symbol('b')
+        Foo.prototype[symbol2] = 2
+
+        var symbol3 = Symbol('c')
+        defineProperty(Foo.prototype, symbol3, {
+          'configurable': true,
+          'enumerable': false,
+          'writable': true,
+          'value': 3,
+        })
+
+        var object = { 'a': { 'b': new (Foo as any) } }
+        object[symbol] = { 'b': 1 }
+
+        var actual = func(object)
+        if (isDeep) {
+          assert.notStrictEqual(actual[symbol], object[symbol])
+          assert.notStrictEqual(actual.a, object.a)
+        } else {
+          assert.strictEqual(actual[symbol], object[symbol])
+          assert.strictEqual(actual.a, object.a)
+        }
+        assert.deepStrictEqual(actual[symbol], object[symbol])
+        assert.deepStrictEqual(getSymbols(actual.a.b), [symbol])
+        assert.deepStrictEqual(actual.a.b[symbol], object.a.b[symbol])
+        assert.deepStrictEqual(actual.a.b[symbol2], object.a.b[symbol2])
+        assert.deepStrictEqual(actual.a.b[symbol3], object.a.b[symbol3])
+      }
+    })
+
+    it('`_.' + methodName + '` should clone symbol objects', function() {
+      assert.strictEqual(func(symbol), symbol)
+
+      var object = Object(symbol),
+        actual = func(object)
+
+      assert.strictEqual(typeof actual, 'object')
+      assert.strictEqual(typeof actual.valueOf(), 'symbol')
+      assert.notStrictEqual(actual, object)
+    })
+
+    it('`_.' + methodName + '` should not clone symbol primitives', function() {
+      assert.strictEqual(func(symbol), symbol)
+    })
+
+    it('`_.' + methodName + '` should create an object from the same realm as `value`', function() {
+      var props: any[] = []
+
+      var objects = lodashStable.transform(_, function(result: any[], value: any, key: any) {
+        if (lodashStable.startsWith(key, '_') && lodashStable.isObject(value) &&
+            !lodashStable.isArguments(value) && !lodashStable.isElement(value) &&
+            !lodashStable.isFunction(value)) {
+          props.push(lodashStable.capitalize(lodashStable.camelCase(key)))
+          result.push(value)
+        }
+      }, [])
+
+      var expected = lodashStable.map(objects, stubTrue)
+
+      var actual = lodashStable.map(objects, function(object: { constructor: any }) {
+        var Ctor = object.constructor,
+          result = func(object)
+
+        return result !== object && ((result instanceof Ctor) || !(new Ctor instanceof Ctor))
+      })
+
+      assert.deepStrictEqual(actual, expected, props.join(', '))
+    })
+
+    it('`_.' + methodName + '` should perform a ' + (isDeep ? 'deep' : 'shallow') + ' clone when used as an iteratee for methods like `_.map`', function() {
+      var expected = [{ 'a': [0] }, { 'b': [1] }],
+        actual = lodashStable.map(expected, func)
+
+      assert.deepStrictEqual(actual, expected)
+
+      if (isDeep) {
+        assert.ok(actual[0] !== expected[0] && actual[0].a !== expected[0].a && actual[1].b !== expected[1].b)
+      } else {
+        assert.ok(actual[0] !== expected[0] && actual[0].a === expected[0].a && actual[1].b === expected[1].b)
+      }
+    })
+
+    it('`_.' + methodName + '` should return a unwrapped value when chaining', function() {
+      var object = objects.objects,
+        actual = _(object)[methodName]()
+
+      assert.deepEqual(actual, object)
+      assert.notStrictEqual(actual, object)
+    })
+
+    var arrayViews = typedArrays.concat('DataView')
+    lodashStable.each(arrayViews, function(type: string) {
+      it('`_.' + methodName + '` should clone ' + type + ' values', function() {
+        var Ctor = root[type]
+
+        lodashStable.times(2, function(index: any) {
+          if (Ctor) {
+            var buffer = new ArrayBuffer(24),
+              view = index ? new Ctor(buffer, 8, 1) : new Ctor(buffer),
+              actual = func(view)
+
+            assert.deepStrictEqual(actual, view)
+            assert.notStrictEqual(actual, view)
+            assert.strictEqual(actual.buffer === view.buffer, !isDeep)
+            assert.strictEqual(actual.byteOffset, view.byteOffset)
+            assert.strictEqual(actual.length, view.length)
+          }
+        })
+      })
+    })
+
+    lodashStable.forOwn(uncloneable, function(value: { (): void; c(): void }, key: string) {
+      it('`_.' + methodName + '` should not clone ' + key, function() {
+        if (value) {
+          var object = { 'a': value, 'b': { 'c': value } },
+            actual = func(object),
+            expected = value === Foo ? { 'c': Foo.c } : {}
+
+          assert.deepStrictEqual(actual, object)
+          assert.notStrictEqual(actual, object)
+          assert.deepStrictEqual(func(value), expected)
+        }
+      })
+    })
+  })
+
+  lodashStable.each(['cloneWith', 'cloneDeepWith'], function(methodName: string) {
+    var func = _[methodName],
+      isDeep = methodName == 'cloneDeepWith'
+
+    it('`_.' + methodName + '` should provide correct `customizer` arguments', function() {
+      var argsList: any[][] = [],
+        object = new (Foo as any)
+
+      func(object, function() {
+        var length = arguments.length,
+          args = slice.call(arguments, 0, length - (length > 1 ? 1 : 0))
+
+        argsList.push(args)
+      })
+
+      assert.deepStrictEqual(argsList, isDeep ? [[object], [1, 'a', object]] : [[object]])
+    })
+
+    it('`_.' + methodName + '` should handle cloning when `customizer` returns `undefined`', function() {
+      var actual = func({ 'a': { 'b': 'c' } }, noop)
+      assert.deepStrictEqual(actual, { 'a': { 'b': 'c' } })
+    })
+
+    lodashStable.forOwn(uncloneable, function(value: any, key: string) {
+      it('`_.' + methodName + '` should work with a `customizer` callback and ' + key, function() {
+        var customizer = function(value: any) {
+          return lodashStable.isPlainObject(value) ? undefined : value
+        }
+
+        var actual = func(value, customizer)
+        assert.strictEqual(actual, value)
+
+        var object = { 'a': value, 'b': { 'c': value } }
+        actual = func(object, customizer)
+
+        assert.deepStrictEqual(actual, object)
+        assert.notStrictEqual(actual, object)
+      })
+    })
+  })
+})
+
+describe('concat', function() {
+  const concat = _.concat
+  it('should shallow clone `array`', function() {
+    var array = [1, 2, 3],
+      actual = concat(array)
+
+    assert.deepStrictEqual(actual, array)
+    assert.notStrictEqual(actual, array)
+  })
+
+  it('should concat arrays and values', function() {
+    var array = [1],
+      actual = concat(array, 2, [3], [[4]])
+
+    assert.deepStrictEqual(actual, [1, 2, 3, [4]])
+    assert.deepStrictEqual(array, [1])
+  })
+
+  it('should cast non-array `array` values to arrays', function() {
+    var values = [, null, undefined, false, true, 1, NaN, 'a']
+
+    var expected = lodashStable.map(values, function(value: any, index: any) {
+      return index ? [value] : []
+    })
+
+    var actual = lodashStable.map(values, function(value: any, index: any) {
+      return index ? concat(value) : concat()
+    })
+
+    assert.deepStrictEqual(actual, expected)
+
+    expected = lodashStable.map(values, function(value: any) {
+      return [value, 2, [3]]
+    })
+
+    actual = lodashStable.map(values, function(value: any) {
+      return concat(value, [2], [[3]])
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it('should treat sparse arrays as dense', function() {
+    var expected = [],
+      actual = concat(Array(1), Array(1))
+
+    expected.push(undefined, undefined)
+
+    assert.ok('0'in actual)
+    assert.ok('1' in actual)
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it('should return a new wrapped array', function() {
+    var array = [1],
+      wrapped = _(array).concat([2, 3]),
+      actual = wrapped.value()
+
+    assert.deepEqual(array, [1])
+    assert.deepEqual(actual, [1, 2, 3])
+  })
+})
+
+describe('cond', function() {
+  it('should create a conditional function', function() {
+    var cond = _.cond([
+      [lodashStable.matches({ 'a': 1 }),     stubA],
+      [lodashStable.matchesProperty('b', 1), stubB],
+      [lodashStable.property('c'),           stubC],
+    ])
+
+    assert.strictEqual(cond({ 'a':  1, 'b': 2, 'c': 3 }), 'a')
+    assert.strictEqual(cond({ 'a':  0, 'b': 1, 'c': 2 }), 'b')
+    assert.strictEqual(cond({ 'a': -1, 'b': 0, 'c': 1 }), 'c')
+  })
+
+  it('should provide arguments to functions', function() {
+    var args1: any,
+      args2: any,
+      expected = ['a', 'b', 'c']
+
+    var cond = _.cond([[
+      function() { args1 || (args1 = slice.call(arguments)); return true },
+      function() { args2 || (args2 = slice.call(arguments)) },
+    ]])
+
+    cond('a', 'b', 'c')
+
+    assert.deepStrictEqual(args1, expected)
+    assert.deepStrictEqual(args2, expected)
+  })
+
+  it('should work with predicate shorthands', function() {
+    var cond = _.cond([
+      [{ 'a': 1 }, stubA],
+      [['b', 1],   stubB],
+      ['c',        stubC],
+    ])
+
+    assert.strictEqual(cond({ 'a':  1, 'b': 2, 'c': 3 }), 'a')
+    assert.strictEqual(cond({ 'a':  0, 'b': 1, 'c': 2 }), 'b')
+    assert.strictEqual(cond({ 'a': -1, 'b': 0, 'c': 1 }), 'c')
+  })
+
+  it('should return `undefined` when no condition is met', function() {
+    var cond = _.cond([[stubFalse, stubA]])
+    assert.strictEqual(cond({ 'a': 1 }), undefined)
+  })
+
+
+  it('should use `this` binding of function for `pairs`', function(this: any) {
+    var cond = _.cond([
+      [function(this: any, a: string | number) { return this[a] },
+        function(this: any, a: any, b: string | number) { return this[b] }],
+    ])
+
+    var object = { 'cond': cond, 'a': 1, 'b': 2 }
+    assert.strictEqual(object.cond('a', 'b'), 2)
+  })
+})
+
+describe('conforms methods', function() {
+  const conformsTo = _.conformsTo
+  lodashStable.each(['conforms', 'conformsTo'], function(methodName: string) {
+    var isConforms = methodName == 'conforms'
+
+    function conforms(source: any) {
+      return isConforms ? _.conforms(source) : function(object: any) {
+        return conformsTo(object, source)
+      }
+    }
+
+    it('`_.' + methodName + '` should check if `object` conforms to `source`', function() {
+      var objects = [
+        { 'a': 1, 'b': 8 },
+        { 'a': 2, 'b': 4 },
+        { 'a': 3, 'b': 16 },
+      ]
+
+      var par = conforms({
+        'b'(value: number) { return value > 4 },
+      })
+
+      var actual = lodashStable.filter(objects, par)
+      assert.deepStrictEqual(actual, [objects[0], objects[2]])
+
+      par = conforms({
+        'b'(value: number) { return value > 8 },
+        'a'(value: number) { return value > 1 },
+      })
+
+      actual = lodashStable.filter(objects, par)
+      assert.deepStrictEqual(actual, [objects[2]])
+    })
+
+    it('`_.' + methodName + '` should not match by inherited `source` properties', function() {
+      function Foo(this: any) {
+        this.a = function(value: number) {
+          return value > 1
+        }
+      }
+      Foo.prototype.b = function(value: number) {
+        return value > 8
+      }
+
+      var objects = [
+        { 'a': 1, 'b': 8 },
+        { 'a': 2, 'b': 4 },
+        { 'a': 3, 'b': 16 },
+      ]
+
+      var par = conforms(new (Foo as any)),
+        actual = lodashStable.filter(objects, par)
+
+      assert.deepStrictEqual(actual, [objects[1], objects[2]])
+    })
+
+    it('`_.' + methodName + '` should not invoke `source` predicates for missing `object` properties', function() {
+      var count = 0
+
+      var par = conforms({
+        'a'() { count++; return true },
+      } as any)
+
+      assert.strictEqual(par({}), false)
+      assert.strictEqual(count, 0)
+    })
+
+    it('`_.' + methodName + '` should work with a function for `object`', function() {
+      function Foo() {}
+      Foo.a = 1
+
+      function Bar() {}
+      Bar.a = 2
+
+      var par = conforms({
+        'a'(value: number) { return value > 1 },
+      })
+
+      assert.strictEqual(par(Foo), false)
+      assert.strictEqual(par(Bar), true)
+    })
+
+    it('`_.' + methodName + '` should work with a function for `source`', function() {
+      function Foo() {}
+      Foo.a = function(value: number) { return value > 1 }
+
+      var objects = [{ 'a': 1 }, { 'a': 2 }],
+        actual = lodashStable.filter(objects, conforms(Foo))
+
+      assert.deepStrictEqual(actual, [objects[1]])
+    })
+
+    it('`_.' + methodName + '` should work with a non-plain `object`', function() {
+      function Foo(this: any) {
+        this.a = 1
+      }
+      Foo.prototype.b = 2
+
+      var par = conforms({
+        'b'(value: number) { return value > 1 },
+      })
+
+      assert.strictEqual(par(new (Foo as any)), true)
+    })
+
+    it('`_.' + methodName + '` should return `false` when `object` is nullish', function() {
+      var values = [, null, undefined],
+        expected = lodashStable.map(values, stubFalse)
+
+      var par = conforms({
+        'a'(value: number) { return value > 1 },
+      })
+
+      var actual = lodashStable.map(values, function(value: any, index: any) {
+        try {
+          return index ? par(value) : par()
+        } catch (e) {}
+      })
+
+      assert.deepStrictEqual(actual, expected)
+    })
+
+    it('`_.' + methodName + '` should return `true` when comparing an empty `source` to a nullish `object`', function() {
+      var values = [, null, undefined],
+        expected = lodashStable.map(values, stubTrue),
+        par = conforms({})
+
+      var actual = lodashStable.map(values, function(value: any, index: any) {
+        try {
+          return index ? par(value) : par()
+        } catch (e) {}
+      })
+
+      assert.deepStrictEqual(actual, expected)
+    })
+
+    it('`_.' + methodName + '` should return `true` when comparing an empty `source`', function() {
+      var object = { 'a': 1 },
+        expected = lodashStable.map(empties, stubTrue)
+
+      var actual = lodashStable.map(empties, function(value: any) {
+        var par = conforms(value)
+        return par(object)
+      })
+
+      assert.deepStrictEqual(actual, expected)
+    })
+  })
+})
+
+describe('constant', function() {
+  it('should create a function that returns `value`', function() {
+    var object = { 'a': 1 },
+      values = Array(2).concat(empties, true, 1, 'a'),
+      constant = _.constant(object)
+
+    var results = lodashStable.map(values, function(value: any, index: number) {
+      if (index < 2) {
+        return index ? constant.call({}) : constant()
+      }
+      return constant(value)
+    })
+
+    assert.ok(lodashStable.every(results, function(result: { a: number }) {
+      return result === object
+    }))
+  })
+
+  it('should work with falsey values', function() {
+    var expected = lodashStable.map(falsey, stubTrue)
+
+    var actual = lodashStable.map(falsey, function(value: any, index: any) {
+      var constant = index ? _.constant(value) : _.constant(),
+        result = constant()
+
+      return (result === value) || (result !== result && value !== value)
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it('should return a wrapped value when chaining', function() {
+    var wrapped = _(true).constant()
+    assert.ok(wrapped instanceof _)
+  })
+})
+
+describe('countBy', function() {
+  var array = [6.1, 4.2, 6.3]
+  const countBy = _.countBy
+
+  it('should transform keys by `iteratee`', function() {
+    var actual = countBy(array, Math.floor)
+    assert.deepStrictEqual(actual, { '4': 1, '6': 2 })
+  })
+
+  it('should use `_.identity` when `iteratee` is nullish', function() {
+    var array = [4, 6, 6],
+      values = [, null, undefined],
+      expected = lodashStable.map(values, lodashStable.constant({ '4': 1, '6':  2 }))
+
+    var actual = lodashStable.map(values, function(value: any, index: any) {
+      return index ? countBy(array, value) : countBy(array)
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it('should work with `_.property` shorthands', function() {
+    var actual = countBy(['one', 'two', 'three'], 'length')
+    assert.deepStrictEqual(actual, { '3': 2, '5': 1 })
+  })
+
+  it('should only add values to own, not inherited, properties', function() {
+    var actual = countBy(array, function(n: number) {
+      return Math.floor(n) > 4 ? 'hasOwnProperty' : 'constructor'
+    })
+
+    assert.deepStrictEqual(actual.constructor, 1)
+    assert.deepStrictEqual(actual.hasOwnProperty, 2)
+  })
+
+  it('should work with a number for `iteratee`', function() {
+    var array = [
+      [1, 'a'],
+      [2, 'a'],
+      [2, 'b'],
+    ]
+
+    assert.deepStrictEqual(countBy(array, 0), { '1': 1, '2': 2 })
+    assert.deepStrictEqual(countBy(array, 1), { 'a': 2, 'b': 1 })
+  })
+
+  it('should work with an object for `collection`', function() {
+    var actual = countBy({ 'a': 6.1, 'b': 4.2, 'c': 6.3 }, Math.floor)
+    assert.deepStrictEqual(actual, { '4': 1, '6': 2 })
+  })
+
+  it('should work in a lazy sequence', function() {
+    var array = lodashStable.range(LARGE_ARRAY_SIZE).concat(
+      lodashStable.range(Math.floor(LARGE_ARRAY_SIZE / 2), LARGE_ARRAY_SIZE),
+      lodashStable.range(Math.floor(LARGE_ARRAY_SIZE / 1.5), LARGE_ARRAY_SIZE),
+    )
+
+    var actual = _(array).countBy().map(square).filter(isEven).take().value()
+
+    assert.deepEqual(actual, _.take(_.filter(_.map(countBy(array), square), isEven)))
+  })
+})
+
+describe('create', function() {
+  const keys = _.keys
+  const create = _.create
+  function Shape(this: any) {
+    this.x = 0
+    this.y = 0
+  }
+
+  function Circle(this: any) {
+    Shape.call(this)
+  }
+
+  it('should create an object that inherits from the given `prototype` object', function() {
+    Circle.prototype = create(Shape.prototype)
+    Circle.prototype.constructor = Circle
+
+    var actual = new (Circle as any)
+
+    assert.ok(actual instanceof Circle)
+    assert.ok(actual instanceof Shape)
+    assert.notStrictEqual(Circle.prototype, Shape.prototype)
+  })
+
+  it('should assign `properties` to the created object', function() {
+    var expected = { 'constructor': Circle, 'radius': 0 }
+    var properties = Object.keys(expected)
+    Circle.prototype = create(Shape.prototype, expected)
+
+    var actual = new (Circle as any)
+
+    assert.ok(actual instanceof Circle)
+    assert.ok(actual instanceof Shape)
+    assert.deepStrictEqual(Object.keys(Circle.prototype), properties)
+    properties.forEach((property) => {
+      assert.strictEqual(Circle.prototype[property], expected[property])
+    })
+  })
+
+  it('should assign own properties', function() {
+    function Foo(this: any) {
+      this.a = 1
+      this.c = 3
+    }
+    Foo.prototype.b = 2
+
+    var actual = create({}, new (Foo as any))
+    var expected = { 'a': 1, 'c': 3 }
+    var properties = Object.keys(expected)
+
+    assert.deepStrictEqual(Object.keys(actual), properties)
+    properties.forEach((property) => {
+      assert.strictEqual(actual[property], expected[property])
+    })
+  })
+
+  it('should assign properties that shadow those of `prototype`', function() {
+    function Foo(this: any) {
+      this.a = 1
+    }
+    var object = create(new (Foo as any), { 'a': 1 })
+    assert.deepStrictEqual(lodashStable.keys(object), ['a'])
+  })
+
+  it('should accept a falsey `prototype`', function() {
+    var actual = lodashStable.map(falsey, function(prototype: object | null, index: any) {
+      return index ? create(prototype) : (create as any)()
+    })
+
+    actual.forEach((value: any) => {
+      assert.ok(lodashStable.isObject(value))
+    })
+  })
+
+  it('should accept a primitive `prototype`', function() {
+    var actual = lodashStable.map(primitives, function(value: object | null, index: any) {
+      return index ? create(value) : (create as any)()
+    })
+
+    actual.forEach((value: any) => {
+      assert.ok(lodashStable.isObject(value))
+    })
+  })
+
+  it('should work as an iteratee for methods like `_.map`', function() {
+    var array = [{ 'a': 1 }, { 'a': 1 }, { 'a': 1 }],
+      expected = lodashStable.map(array, stubTrue),
+      objects = lodashStable.map(array, create)
+
+    var actual = lodashStable.map(objects, function(object: { a: number }) {
+      return object.a === 1 && !keys(object).length
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+})
+
+describe('curry methods', function() {
+  const curry = _.curry
+  lodashStable.each(['curry', 'curryRight'], function(methodName: string) {
+    var func = _[methodName],
+      fn = function(a: any, b: any) { return slice.call(arguments) },
+      isCurry = methodName == 'curry'
+
+    it('`_.' + methodName + '` should not error on functions with the same name as lodash methods', function() {
+      function run(a: any, b: any) {
+        return a + b
+      }
+
+      var curried = func(run)
+
+      try {
+        var actual = curried(1)(2)
+      } catch (e) {}
+
+      assert.strictEqual(actual, 3)
+    })
+
+    it('`_.' + methodName + '` should work for function names that shadow those on `Object.prototype`', function() {
+      var curried = curry(function hasOwnProperty(a: any, b: any, c: any) {
+        return [a, b, c]
+      })
+
+      var expected = [1, 2, 3]
+
+      assert.deepStrictEqual(curried(1)(2)(3), expected)
+    })
+
+    it('`_.' + methodName + '` should work as an iteratee for methods like `_.map`', function() {
+      var array = [fn, fn, fn],
+        object = { 'a': fn, 'b': fn, 'c': fn }
+
+      lodashStable.each([array, object], function(collection: any) {
+        var curries = lodashStable.map(collection, func),
+          expected = lodashStable.map(collection, lodashStable.constant(isCurry ? ['a', 'b'] : ['b', 'a']))
+
+        var actual = lodashStable.map(curries, function(curried: (arg0: string) => { (arg0: string): any; new(): any }) {
+          return curried('a')('b')
+        })
+
+        assert.deepStrictEqual(actual, expected)
+      })
+    })
+  })
+})
+
+describe('curryRight', function() {
+  const curryRight = _.curryRight
+  const bind = _.bind
+  const partialRight = _.partialRight
+  const partial = _.partial
+  function fn(a: any, b: any, c: any, d: any) {
+    return slice.call(arguments)
+  }
+
+  it('should curry based on the number of arguments given', function() {
+    var curried = curryRight(fn),
+      expected = [1, 2, 3, 4]
+
+    assert.deepStrictEqual(curried(4)(3)(2)(1), expected)
+    assert.deepStrictEqual(curried(3, 4)(1, 2), expected)
+    assert.deepStrictEqual(curried(1, 2, 3, 4), expected)
+  })
+
+  it('should allow specifying `arity`', function() {
+    var curried = curryRight(fn, 3),
+      expected = [1, 2, 3]
+
+    assert.deepStrictEqual(curried(3)(1, 2), expected)
+    assert.deepStrictEqual(curried(2, 3)(1), expected)
+    assert.deepStrictEqual(curried(1, 2, 3), expected)
+  })
+
+  it('should coerce `arity` to an integer', function() {
+    var values = ['0', 0.6, 'xyz'],
+      expected = lodashStable.map(values, stubArray)
+
+    var actual = lodashStable.map(values, function(arity: any) {
+      return curryRight(fn, arity)()
+    })
+
+    assert.deepStrictEqual(actual, expected)
+    assert.deepStrictEqual(curryRight(fn, '2')(1)(2), [2, 1])
+  })
+
+  it('should support placeholders', function() {
+    var curried = curryRight(fn),
+      expected = [1, 2, 3, 4],
+      ph = curried.placeholder
+
+    assert.deepStrictEqual(curried(4)(2, ph)(1, ph)(3), expected)
+    assert.deepStrictEqual(curried(3, ph)(4)(1, ph)(2), expected)
+    assert.deepStrictEqual(curried(ph, ph, 4)(ph, 3)(ph, 2)(1), expected)
+    assert.deepStrictEqual(curried(ph, ph, ph, 4)(ph, ph, 3)(ph, 2)(1), expected)
+  })
+
+  it('should persist placeholders', function() {
+    var curried = curryRight(fn),
+      ph = curried.placeholder,
+      actual = curried('a', ph, ph, ph)('b')(ph)('c')('d')
+
+    assert.deepStrictEqual(actual, ['a', 'b', 'c', 'd'])
+  })
+
+
+  it('should provide additional arguments after reaching the target arity', function() {
+    var curried = curryRight(fn, 3)
+    assert.deepStrictEqual(curried(4)(1, 2, 3), [1, 2, 3, 4])
+    assert.deepStrictEqual(curried(4, 5)(1, 2, 3), [1, 2, 3, 4, 5])
+    assert.deepStrictEqual(curried(1, 2, 3, 4, 5, 6), [1, 2, 3, 4, 5, 6])
+  })
+
+  it('should create a function with a `length` of `0`', function() {
+    lodashStable.times(2, function(index: any) {
+      var curried = index ? curryRight(fn, 4) : curryRight(fn)
+      assert.strictEqual(curried.length, 0)
+      assert.strictEqual(curried(4).length, 0)
+      assert.strictEqual(curried(3, 4).length, 0)
+    })
+  })
+
+  it('should ensure `new curried` is an instance of `func`', function() {
+    function Foo(value: any) {
+      return value && object
+    }
+
+    var curried = curryRight(Foo),
+      object = {}
+
+    assert.ok(new curried(false) instanceof Foo)
+    assert.strictEqual(new curried(true), object)
+  })
+
+  it('should use `this` binding of function', function() {
+    var fn = function(this: any, a: string | number, b: string | number, c: string | number) {
+      var value = this || {}
+      return [value[a], value[b], value[c]]
+    }
+
+    var object: any = { 'a': 1, 'b': 2, 'c': 3 },
+      expected = [1, 2, 3]
+
+    assert.deepStrictEqual(curryRight(bind(fn, object), 3)('c')('b')('a'), expected)
+    assert.deepStrictEqual(curryRight(bind(fn, object), 3)('b', 'c')('a'), expected)
+    assert.deepStrictEqual(curryRight(bind(fn, object), 3)('a', 'b', 'c'), expected)
+
+    assert.deepStrictEqual(bind(curryRight(fn), object)('c')('b')('a'), Array(3))
+    assert.deepStrictEqual(bind(curryRight(fn), object)('b', 'c')('a'), Array(3))
+    assert.deepStrictEqual(bind(curryRight(fn), object)('a', 'b', 'c'), expected)
+
+    object.curried = curryRight(fn)
+    assert.deepStrictEqual(object.curried('c')('b')('a'), Array(3))
+    assert.deepStrictEqual(object.curried('b', 'c')('a'), Array(3))
+    assert.deepStrictEqual(object.curried('a', 'b', 'c'), expected)
+  })
+
+  it('should work with partialed methods', function() {
+    var curried = curryRight(fn),
+      expected = [1, 2, 3, 4]
+
+    var a = partialRight(curried, 4),
+      b = partialRight(a, 3),
+      c = bind(b, null, 1),
+      d = partial(b(2), 1)
+
+    assert.deepStrictEqual(c(2), expected)
+    assert.deepStrictEqual(d(), expected)
+  })
+})
+
+describe('debounce and throttle', function() {
+  lodashStable.each(['debounce', 'throttle'], function(methodName: string) {
+    var func = _[methodName],
+      isDebounce = methodName == 'debounce'
+
+    it('`_.' + methodName + '` should not error for non-object `options` values', function() {
+      func(noop, 32, 1)
+      assert.ok(true)
+    })
+
+    it('`_.' + methodName + '` should use a default `wait` of `0`', function(done) {
+      var callCount = 0,
+        funced = func(function() { callCount++ })
+
+      funced()
+
+      setTimeout(function() {
+        funced()
+        assert.strictEqual(callCount, isDebounce ? 1 : 2)
+        done()
+      }, 32)
+    })
+
+    it('`_.' + methodName + '` should invoke `func` with the correct `this` binding', function(done) {
+      var actual: any[] = [],
+        object = { 'funced': func(function(this: any) { actual.push(this) }, 32) },
+        expected = lodashStable.times(isDebounce ? 1 : 2, lodashStable.constant(object))
+
+      object.funced()
+      if (!isDebounce) {
+        object.funced()
+      }
+      setTimeout(function() {
+        assert.deepStrictEqual(actual, expected)
+        done()
+      }, 64)
+    })
+
+    it('`_.' + methodName + '` supports recursive calls', function(done) {
+      var actual: any[][] = [],
+        args = lodashStable.map(['a', 'b', 'c'], function(chr: any) { return [{}, chr] }),
+        expected = args.slice(),
+        queue = args.slice()
+
+      var funced = func(function(this: any) {
+        var current = [this]
+        push.apply(current, arguments as any)
+        actual.push(current)
+
+        var next = queue.shift()
+        if (next) {
+          funced.call(next[0], next[1])
+        }
+      }, 32)
+
+      var next = queue.shift()
+      funced.call(next[0], next[1])
+      assert.deepStrictEqual(actual, expected.slice(0, isDebounce ? 0 : 1))
+
+      setTimeout(function() {
+        assert.deepStrictEqual(actual, expected.slice(0, actual.length))
+        done()
+      }, 256)
+    })
+
+    it('`_.' + methodName + '` should support cancelling delayed calls', function(done) {
+      var callCount = 0
+
+      var funced = func(function() {
+        callCount++
+      }, 32, { 'leading': false })
+
+      funced()
+      funced.cancel()
+
+      setTimeout(function() {
+        assert.strictEqual(callCount, 0)
+        done()
+      }, 64)
+    })
+
+    it('`_.' + methodName + '` should reset `lastCalled` after cancelling', function(done) {
+      var callCount = 0
+
+      var funced = func(function() {
+        return ++callCount
+      }, 32, { 'leading': true })
+
+      assert.strictEqual(funced(), 1)
+      funced.cancel()
+
+      assert.strictEqual(funced(), 2)
+      funced()
+
+      setTimeout(function() {
+        assert.strictEqual(callCount, 3)
+        done()
+      }, 64)
+    })
+
+    it('`_.' + methodName + '` should support flushing delayed calls', function(done) {
+      var callCount = 0
+
+      var funced = func(function() {
+        return ++callCount
+      }, 32, { 'leading': false })
+
+      funced()
+      assert.strictEqual(funced.flush(), 1)
+
+      setTimeout(function() {
+        assert.strictEqual(callCount, 1)
+        done()
+      }, 64)
+    })
+
+    it('`_.' + methodName + '` should noop `cancel` and `flush` when nothing is queued', function(done) {
+      var callCount = 0,
+        funced = func(function() { callCount++ }, 32)
+
+      funced.cancel()
+      assert.strictEqual(funced.flush(), undefined)
+
+      setTimeout(function() {
+        assert.strictEqual(callCount, 0)
+        done()
+      }, 64)
+    })
+  })
+})
+
+describe('debounce', function() {
+  const debounce = _.debounce
+  it('should debounce a function', function(done) {
+    var callCount = 0
+
+    var debounced = debounce(function(value: any) {
+      ++callCount
+      return value
+    }, 32)
+
+    var results = [debounced('a'), debounced('b'), debounced('c')]
+    assert.deepStrictEqual(results, [undefined, undefined, undefined])
+    assert.strictEqual(callCount, 0)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 1)
+
+      var results = [debounced('d'), debounced('e'), debounced('f')]
+      assert.deepStrictEqual(results, ['c', 'c', 'c'])
+      assert.strictEqual(callCount, 1)
+    }, 128)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 2)
+      done()
+    }, 256)
+  })
+
+  it('subsequent debounced calls return the last `func` result', function(done) {
+    var debounced = debounce(identity, 32)
+    debounced('a')
+
+    setTimeout(function() {
+      assert.notStrictEqual(debounced('b'), 'b')
+    }, 64)
+
+    setTimeout(function() {
+      assert.notStrictEqual(debounced('c'), 'c')
+      done()
+    }, 128)
+  })
+
+  it('should not immediately call `func` when `wait` is `0`', function(done) {
+    var callCount = 0,
+      debounced = debounce(function() { ++callCount }, 0)
+
+    debounced()
+    debounced()
+    assert.strictEqual(callCount, 0)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 1)
+      done()
+    }, 5)
+  })
+
+  it('should apply default options', function(done) {
+    var callCount = 0,
+      debounced = debounce(function() { callCount++ }, 32, {})
+
+    debounced()
+    assert.strictEqual(callCount, 0)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 1)
+      done()
+    }, 64)
+  })
+
+  it('should support a `leading` option', function(done) {
+    var callCounts = [0, 0]
+
+    var withLeading = debounce(function() {
+      callCounts[0]++
+    }, 32, { 'leading': true })
+
+    var withLeadingAndTrailing = debounce(function() {
+      callCounts[1]++
+    }, 32, { 'leading': true })
+
+    withLeading()
+    assert.strictEqual(callCounts[0], 1)
+
+    withLeadingAndTrailing()
+    withLeadingAndTrailing()
+    assert.strictEqual(callCounts[1], 1)
+
+    setTimeout(function() {
+      assert.deepStrictEqual(callCounts, [1, 2])
+
+      withLeading()
+      assert.strictEqual(callCounts[0], 2)
+
+      done()
+    }, 64)
+  })
+
+  it('subsequent leading debounced calls return the last `func` result', function(done) {
+    var debounced = debounce(identity, 32, { 'leading': true, 'trailing': false }),
+      results = [debounced('a'), debounced('b')]
+
+    assert.deepStrictEqual(results, ['a', 'a'])
+
+    setTimeout(function() {
+      var results = [debounced('c'), debounced('d')]
+      assert.deepStrictEqual(results, ['c', 'c'])
+      done()
+    }, 64)
+  })
+
+  it('should support a `trailing` option', function(done) {
+    var withCount = 0,
+      withoutCount = 0
+
+    var withTrailing = debounce(function() {
+      withCount++
+    }, 32, { 'trailing': true })
+
+    var withoutTrailing = debounce(function() {
+      withoutCount++
+    }, 32, { 'trailing': false })
+
+    withTrailing()
+    assert.strictEqual(withCount, 0)
+
+    withoutTrailing()
+    assert.strictEqual(withoutCount, 0)
+
+    setTimeout(function() {
+      assert.strictEqual(withCount, 1)
+      assert.strictEqual(withoutCount, 0)
+      done()
+    }, 64)
+  })
+
+  it('should support a `maxWait` option', function(done) {
+    var callCount = 0
+
+    var debounced = debounce(function(value: any) {
+      ++callCount
+      return value
+    }, 32, { 'maxWait': 64 })
+
+    debounced()
+    debounced()
+    assert.strictEqual(callCount, 0)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 1)
+      debounced()
+      debounced()
+      assert.strictEqual(callCount, 1)
+    }, 128)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 2)
+      done()
+    }, 256)
+  })
+
+  it('should support `maxWait` in a tight loop', function(done) {
+    var limit = 1000,
+      withCount = 0,
+      withoutCount = 0
+
+    var withMaxWait = debounce(function() {
+      withCount++
+    }, 64, { 'maxWait': 128 })
+
+    var withoutMaxWait = debounce(function() {
+      withoutCount++
+    }, 96)
+
+    var start = +new Date
+    while ((new (Date as any) - start) < limit) {
+      withMaxWait()
+      withoutMaxWait()
+    }
+    var actual = [Boolean(withoutCount), Boolean(withCount)]
+    setTimeout(function() {
+      assert.deepStrictEqual(actual, [false, true])
+      done()
+    }, 1)
+  })
+
+  it('should queue a trailing call for subsequent debounced calls after `maxWait`', function(done) {
+    var callCount = 0
+
+    var debounced = debounce(function() {
+      ++callCount
+    }, 200, { 'maxWait': 200 })
+
+    debounced()
+
+    setTimeout(debounced, 190)
+    setTimeout(debounced, 200)
+    setTimeout(debounced, 210)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 2)
+      done()
+    }, 500)
+  })
+
+  it('should cancel `maxDelayed` when `delayed` is invoked', function(done) {
+    var callCount = 0
+
+    var debounced = debounce(function() {
+      callCount++
+    }, 32, { 'maxWait': 64 })
+
+    debounced()
+
+    setTimeout(function() {
+      debounced()
+      assert.strictEqual(callCount, 1)
+    }, 128)
+
+    setTimeout(function() {
+      assert.strictEqual(callCount, 2)
+      done()
+    }, 192)
+  })
+
+  it('should invoke the trailing call with the correct arguments and `this` binding', function(done) {
+    var actual: any[],
+      callCount = 0,
+      object = {}
+
+    var debounced = debounce(function(this: any, value: any) {
+      actual = [this]
+      push.apply(actual, arguments as any)
+      return ++callCount != 2
+    }, 32, { 'leading': true, 'maxWait': 64 })
+
+    while (true) {
+      if (!debounced.call(object, 'a')) {
+        break
+      }
+    }
+    setTimeout(function() {
+      assert.strictEqual(callCount, 2)
+      assert.deepStrictEqual(actual, [object, 'a'])
+      done()
+    }, 64)
+  })
+})
+
+
+describe('deburr', function() {
+  const deburr = _.deburr
+  it('should convert Latin Unicode letters to basic Latin', function() {
+    var actual = lodashStable.map(burredLetters, deburr)
+    assert.deepStrictEqual(actual, deburredLetters)
+  })
+
+  it('should not deburr Latin mathematical operators', function() {
+    var operators = ['\xd7', '\xf7'],
+      actual = lodashStable.map(operators, deburr)
+
+    assert.deepStrictEqual(actual, operators)
+  })
+
+  it('should deburr combining diacritical marks', function() {
+    var expected = lodashStable.map(comboMarks, lodashStable.constant('ei'))
+
+    var actual = lodashStable.map(comboMarks, function(chr: string) {
+      return deburr('e' + chr + 'i')
+    })
+
+    assert.deepStrictEqual(actual, expected)
   })
 })
 
