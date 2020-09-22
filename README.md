@@ -3,9 +3,11 @@
   <br/>
 
 [![build](https://github.com/livoras/nestscript/workflows/Node.js%20CI/badge.svg)](https://github.com/livoras/nestscript/actions) 
+
 [![codecov.io](https://codecov.io/github/livoras/nestscript/coverage.svg?branch=master)](https://codecov.io/github/livoras/nestscript?branch=master) 
-[![Dependency Status](https://david-dm.org/livoras/nestscript.svg)](https://david-dm.org/livoras/nestscript)
-[![npm version](https://badge.fury.io/js/nestscript.svg)](https://badge.fury.io/js/nestscript) 
+
+<!-- [![Dependency Status](https://david-dm.org/livoras/nestscript.svg)](https://david-dm.org/livoras/nestscript)
+[![npm version](https://badge.fury.io/js/nestscript.svg)](https://badge.fury.io/js/nestscript)  -->
 
 </p>
 
