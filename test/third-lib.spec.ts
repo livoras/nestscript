@@ -4122,3 +4122,657 @@ describe('eq', function() {
     assert.strictEqual(eq(object, { 'a': 1 }), false)
   })
 })
+
+describe('escape', function() {
+  const escape = _.escape
+  const unescape = _.unescape
+
+  var escaped = '&amp;&lt;&gt;&quot;&#39;/',
+    unescaped = '&<>"\'/'
+
+  escaped += escaped
+  unescaped += unescaped
+
+  it('should escape values', function() {
+    assert.strictEqual(escape(unescaped), escaped)
+  })
+
+  it('should handle strings with nothing to escape', function() {
+    assert.strictEqual(escape('abc'), 'abc')
+  })
+
+  it('should escape the same characters unescaped by `_.unescape`', function() {
+    assert.strictEqual(escape(unescape(escaped)), escaped)
+  })
+
+  lodashStable.each(['`', '/'], function(chr: string) {
+    it('should not escape the "' + chr + '" character', function() {
+      assert.strictEqual(escape(chr), chr)
+    })
+  })
+})
+
+describe('escapeRegExp', function() {
+  const escapeRegExp = _.escapeRegExp
+  var escaped = '\\^\\$\\.\\*\\+\\?\\(\\)\\[\\]\\{\\}\\|\\\\',
+    unescaped = '^$.*+?()[]{}|\\'
+
+  it('should escape values', function() {
+    assert.strictEqual(escapeRegExp(unescaped + unescaped), escaped + escaped)
+  })
+
+  it('should handle strings with nothing to escape', function() {
+    assert.strictEqual(escapeRegExp('abc'), 'abc')
+  })
+
+  it('should return an empty string for empty values', function() {
+    var values = [, null, undefined, ''],
+      expected = lodashStable.map(values, stubString)
+
+    var actual = lodashStable.map(values, function(value: any, index: any) {
+      return index ? escapeRegExp(value) : escapeRegExp()
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+})
+
+
+describe('every', function() {
+  const every = _.every
+  it('should return `true` if `predicate` returns truthy for all elements', function() {
+    assert.strictEqual(lodashStable.every([true, 1, 'a'], identity), true)
+  })
+
+  it('should return `true` for empty collections', function() {
+    var expected = lodashStable.map(empties, stubTrue)
+
+    var actual = lodashStable.map(empties, function(value: any) {
+      try {
+        return every(value, identity)
+      } catch (e) {}
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it('should return `false` as soon as `predicate` returns falsey', function() {
+    var count = 0
+
+    assert.strictEqual(every([true, null, true], function(value: any) {
+      count++
+      return value
+    }), false)
+
+    assert.strictEqual(count, 2)
+  })
+
+  it('should work with collections of `undefined` values (test in IE < 9)', function() {
+    assert.strictEqual(every([undefined, undefined, undefined], identity), false)
+  })
+
+  it('should use `_.identity` when `predicate` is nullish', function() {
+    var values = [, null, undefined],
+      expected = lodashStable.map(values, stubFalse)
+
+    var actual = lodashStable.map(values, function(value: any, index: any) {
+      var array = [0]
+      return index ? every(array, value) : every(array)
+    })
+
+    assert.deepStrictEqual(actual, expected)
+
+    expected = lodashStable.map(values, stubTrue)
+    actual = lodashStable.map(values, function(value: any, index: any) {
+      var array = [1]
+      return index ? every(array, value) : every(array)
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it('should work with `_.property` shorthands', function() {
+    var objects = [{ 'a': 0, 'b': 1 }, { 'a': 1, 'b': 2 }]
+    assert.strictEqual(every(objects, 'a'), false)
+    assert.strictEqual(every(objects, 'b'), true)
+  })
+
+  it('should work with `_.matches` shorthands', function() {
+    var objects = [{ 'a': 0, 'b': 0 }, { 'a': 0, 'b': 1 }]
+    assert.strictEqual(every(objects, { 'a': 0 }), true)
+    assert.strictEqual(every(objects, { 'b': 1 }), false)
+  })
+
+  it('should work as an iteratee for methods like `_.map`', function() {
+    var actual = lodashStable.map([[1]], every)
+    assert.deepStrictEqual(actual, [true])
+  })
+})
+
+
+describe('exit early', function() {
+  lodashStable.each(['_baseEach', 'forEach', 'forEachRight', 'forIn', 'forInRight', 'forOwn', 'forOwnRight', 'transform'], function(methodName: string) {
+    var func = _[methodName]
+
+    it('`_.' + methodName + '` can exit early when iterating arrays', function() {
+      if (func) {
+        var array = [1, 2, 3],
+          values: any[] = []
+
+        func(array, function(value: any, other: any) {
+          values.push(lodashStable.isArray(value) ? other : value)
+          return false
+        })
+
+        assert.deepStrictEqual(values, [lodashStable.endsWith(methodName, 'Right') ? 3 : 1])
+      }
+    })
+
+    it('`_.' + methodName + '` can exit early when iterating objects', function() {
+      if (func) {
+        var object = { 'a': 1, 'b': 2, 'c': 3 },
+          values = []
+
+        func(object, function(value: any, other: any) {
+          values.push(lodashStable.isArray(value) ? other : value)
+          return false
+        })
+
+        assert.strictEqual(values.length, 1)
+      }
+    })
+  })
+})
+
+describe('extremum methods', function() {
+  lodashStable.each(['max', 'maxBy', 'min', 'minBy'], function(methodName: string) {
+    var func = _[methodName],
+      isMax = /^max/.test(methodName)
+
+    it('`_.' + methodName + '` should work with Date objects', function() {
+      var curr = new Date,
+        past = new Date(0)
+
+      assert.strictEqual(func([curr, past]), isMax ? curr : past)
+    })
+
+    /** 性能问题要解决 */
+    xit('`_.' + methodName + '` should work with extremely large arrays', function() {
+      var array = lodashStable.range(0, 5e5)
+      assert.strictEqual(func(array), isMax ? 499999 : 0)
+    })
+
+    it('`_.' + methodName + '` should work when chaining on an array with only one value', function() {
+      var actual = _([40])[methodName]()
+      assert.strictEqual(actual, 40)
+    })
+  })
+
+  lodashStable.each(['maxBy', 'minBy'], function(methodName: string) {
+    var array = [1, 2, 3],
+      func = _[methodName],
+      isMax = methodName == 'maxBy'
+
+    it('`_.' + methodName + '` should work with an `iteratee`', function() {
+      var actual = func(array, function(n: number) {
+        return -n
+      })
+
+      assert.strictEqual(actual, isMax ? 1 : 3)
+    })
+
+    it('should work with `_.property` shorthands', function() {
+      var objects = [{ 'a': 2 }, { 'a': 3 }, { 'a': 1 }],
+        actual = func(objects, 'a')
+
+      assert.deepStrictEqual(actual, objects[isMax ? 1 : 2])
+
+      var arrays = [[2], [3], [1]]
+      actual = func(arrays, 0)
+
+      assert.deepStrictEqual(actual, arrays[isMax ? 1 : 2])
+    })
+
+    it('`_.' + methodName + '` should work when `iteratee` returns +/-Infinity', function() {
+      var value = isMax ? -Infinity : Infinity,
+        object = { 'a': value }
+
+      var actual = func([object, { 'a': value }], function(object: { a: any }) {
+        return object.a
+      })
+
+      assert.strictEqual(actual, object)
+    })
+  })
+})
+
+
+describe('fill', function() {
+  const fill = _.fill
+  it('should use a default `start` of `0` and a default `end` of `length`', function() {
+    var array = [1, 2, 3]
+    assert.deepStrictEqual(fill(array, 'a'), ['a', 'a', 'a'])
+  })
+
+  it('should use `undefined` for `value` if not given', function() {
+    var array = [1, 2, 3],
+      actual = fill(array)
+
+    assert.deepStrictEqual(actual, Array(3))
+    assert.ok(lodashStable.every(actual, function(value: any, index: string) {
+      return index in actual
+    }))
+  })
+
+  it('should work with a positive `start`', function() {
+    var array = [1, 2, 3]
+    assert.deepStrictEqual(fill(array, 'a', 1), [1, 'a', 'a'])
+  })
+
+  it('should work with a `start` >= `length`', function() {
+    lodashStable.each([3, 4, Math.pow(2, 32), Infinity], function(start: any) {
+      var array = [1, 2, 3]
+      assert.deepStrictEqual(fill(array, 'a', start), [1, 2, 3])
+    })
+  })
+
+  it('should treat falsey `start` values as `0`', function() {
+    var expected = lodashStable.map(falsey, lodashStable.constant(['a', 'a', 'a']))
+
+    var actual = lodashStable.map(falsey, function(start: any) {
+      var array = [1, 2, 3]
+      return fill(array, 'a', start)
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it('should work with a negative `start`', function() {
+    var array = [1, 2, 3]
+    assert.deepStrictEqual(fill(array, 'a', -1), [1, 2, 'a'])
+  })
+
+  it('should work with a negative `start` <= negative `length`', function() {
+    lodashStable.each([-3, -4, -Infinity], function(start: any) {
+      var array = [1, 2, 3]
+      assert.deepStrictEqual(fill(array, 'a', start), ['a', 'a', 'a'])
+    })
+  })
+
+  it('should work with `start` >= `end`', function() {
+    lodashStable.each([2, 3], function(start: any) {
+      var array = [1, 2, 3]
+      assert.deepStrictEqual(fill(array, 'a', start, 2), [1, 2, 3])
+    })
+  })
+
+  it('should work with a positive `end`', function() {
+    var array = [1, 2, 3]
+    assert.deepStrictEqual(fill(array, 'a', 0, 1), ['a', 2, 3])
+  })
+
+  it('should work with a `end` >= `length`', function() {
+    lodashStable.each([3, 4, Math.pow(2, 32), Infinity], function(end: any) {
+      var array = [1, 2, 3]
+      assert.deepStrictEqual(fill(array, 'a', 0, end), ['a', 'a', 'a'])
+    })
+  })
+
+  it('should treat falsey `end` values, except `undefined`, as `0`', function() {
+    var expected = lodashStable.map(falsey, function(value: undefined) {
+      return value === undefined ? ['a', 'a', 'a'] : [1, 2, 3]
+    })
+
+    var actual = lodashStable.map(falsey, function(end: any) {
+      var array = [1, 2, 3]
+      return fill(array, 'a', 0, end)
+    })
+
+    assert.deepStrictEqual(actual, expected)
+  })
+
+  it('should work with a negative `end`', function() {
+    var array = [1, 2, 3]
+    assert.deepStrictEqual(fill(array, 'a', 0, -1), ['a', 'a', 3])
+  })
+
+  it('should work with a negative `end` <= negative `length`', function() {
+    lodashStable.each([-3, -4, -Infinity], function(end: any) {
+      var array = [1, 2, 3]
+      assert.deepStrictEqual(fill(array, 'a', 0, end), [1, 2, 3])
+    })
+  })
+
+  it('should coerce `start` and `end` to integers', function() {
+    var positions = [[0.1, 1.6], ['0', 1], [0, '1'], ['1'], [NaN, 1], [1, NaN]]
+
+    var actual = lodashStable.map(positions, function(pos: ConcatArray<string | number[]>) {
+      var array = [1, 2, 3]
+      return fill.apply(_, [array, 'a'].concat(pos))
+    })
+
+    assert.deepStrictEqual(actual, [['a', 2, 3], ['a', 2, 3], ['a', 2, 3], [1, 'a', 'a'], ['a', 2, 3], [1, 2, 3]])
+  })
+
+  it('should work as an iteratee for methods like `_.map`', function() {
+    var array = [[1, 2], [3, 4]],
+      actual = lodashStable.map(array, fill)
+
+    assert.deepStrictEqual(actual, [[0, 0], [1, 1]])
+  })
+
+  it('should return a wrapped value when chaining', function() {
+    var array = [1, 2, 3],
+      wrapped = _(array).fill('a'),
+      actual = wrapped.value()
+
+    assert.ok(wrapped instanceof _)
+    assert.strictEqual(actual, array)
+    assert.deepEqual(actual, ['a', 'a', 'a'])
+  })
+})
+
+describe('filter methods', function() {
+  lodashStable.each(['filter', 'reject'], function(methodName: string) {
+    var array = [1, 2, 3, 4],
+      func = _[methodName],
+      isFilter = methodName == 'filter',
+      objects = [{ 'a': 0 }, { 'a': 1 }]
+
+    it('`_.' + methodName + '` should not modify the resulting value from within `predicate`', function() {
+      var actual = func([0], function(value: any, index: string | number, array: { [x: string]: number }) {
+        array[index] = 1
+        return isFilter
+      })
+
+      assert.deepStrictEqual(actual, [0])
+    })
+
+    it('`_.' + methodName + '` should work with `_.property` shorthands', function() {
+      assert.deepStrictEqual(func(objects, 'a'), [objects[isFilter ? 1 : 0]])
+    })
+
+    it('`_.' + methodName + '` should work with `_.matches` shorthands', function() {
+      assert.deepStrictEqual(func(objects, objects[1]), [objects[isFilter ? 1 : 0]])
+    })
+
+    it('`_.' + methodName + '` should not modify wrapped values', function() {
+      var wrapped = _(array)
+
+      var actual = wrapped[methodName](function(n: number) {
+        return n < 3
+      })
+
+      assert.deepEqual(actual.value(), isFilter ? [1, 2] : [3, 4])
+
+      actual = wrapped[methodName](function(n: number) {
+        return n > 2
+      })
+
+      assert.deepEqual(actual.value(), isFilter ? [3, 4] : [1, 2])
+    })
+
+    it('`_.' + methodName + '` should work in a lazy sequence', function() {
+      var array = lodashStable.range(LARGE_ARRAY_SIZE + 1),
+        predicate = function(value: number) { return isFilter ? isEven(value) : !isEven(value) }
+
+      var object = lodashStable.zipObject(lodashStable.times(LARGE_ARRAY_SIZE, function(index: string) {
+        return ['key' + index, index]
+      }))
+
+      var actual = _(array).slice(1).map(square)[methodName](predicate).value()
+      assert.deepEqual(actual, _[methodName](lodashStable.map(array.slice(1), square), predicate))
+
+      actual = _(object).mapValues(square)[methodName](predicate).value()
+      assert.deepEqual(actual, _[methodName](lodashStable.mapValues(object, square), predicate))
+    })
+
+    it('`_.' + methodName + '` should provide correct `predicate` arguments in a lazy sequence', function() {
+      var args: any[] | undefined,
+        array = lodashStable.range(LARGE_ARRAY_SIZE + 1),
+        expected = [1, 0, lodashStable.map(array.slice(1), square)]
+
+      _(array).slice(1)[methodName](function(value: any, index: any, array: any) {
+        args || (args = slice.call(arguments))
+      }).value()
+
+      assert.deepEqual(args, [1, 0, array.slice(1)])
+
+      args = undefined
+      _(array).slice(1).map(square)[methodName](function(value: any, index: any, array: any) {
+        args || (args = slice.call(arguments))
+      }).value()
+
+      assert.deepEqual(args, expected)
+
+      args = undefined
+      _(array).slice(1).map(square)[methodName](function(value: any, index: any) {
+        args || (args = slice.call(arguments))
+      }).value()
+
+      assert.deepEqual(args, expected)
+
+      args = undefined
+      _(array).slice(1).map(square)[methodName](function(value: any) {
+        args || (args = slice.call(arguments))
+      }).value()
+
+      assert.deepEqual(args, [1])
+
+      args = undefined
+      _(array).slice(1).map(square)[methodName](function() {
+        args || (args = slice.call(arguments))
+      }).value()
+
+      assert.deepEqual(args, expected)
+    })
+  })
+})
+
+describe('find and findLast', function() {
+  lodashStable.each(['find', 'findLast'], function(methodName: string) {
+    var isFind = methodName == 'find'
+
+    it('`_.' + methodName + '` should support shortcut fusion', function() {
+      var findCount = 0,
+        mapCount = 0,
+        array = lodashStable.range(1, LARGE_ARRAY_SIZE + 1),
+        iteratee = function(value: number) { mapCount++; return square(value) },
+        predicate = function(value: number) { findCount++; return isEven(value) },
+        actual = _(array).map(iteratee)[methodName](predicate)
+
+      assert.strictEqual(findCount, isFind ? 2 : 1)
+      assert.strictEqual(mapCount, isFind ? 2 : 1)
+      assert.strictEqual(actual, isFind ? 4 : square(LARGE_ARRAY_SIZE))
+    })
+  })
+})
+
+describe('find and includes', function() {
+  lodashStable.each(['includes', 'find'], function(methodName: string) {
+    var func = _[methodName],
+      isIncludes = methodName == 'includes',
+      resolve = methodName == 'find' ? lodashStable.curry(lodashStable.eq) : identity
+
+    lodashStable.each({
+      'an `arguments` object': args,
+      'an array': [1, 2, 3],
+    },
+    function(collection: any, key: string) {
+      var values = lodashStable.toArray(collection)
+
+      it('`_.' + methodName + '` should work with ' + key + ' and a positive `fromIndex`', function() {
+        var expected = [
+          isIncludes || values[2],
+          isIncludes ? false : undefined,
+        ]
+
+        var actual = [
+          func(collection, resolve(values[2]), 2),
+          func(collection, resolve(values[1]), 2),
+        ]
+
+        assert.deepStrictEqual(actual, expected)
+      })
+
+      it('`_.' + methodName + '` should work with ' + key + ' and a `fromIndex` >= `length`', function() {
+        var indexes = [4, 6, Math.pow(2, 32), Infinity]
+
+        var expected = lodashStable.map(indexes, function() {
+          var result = isIncludes ? false : undefined
+          return [result, result, result]
+        })
+
+        var actual = lodashStable.map(indexes, function(fromIndex: any) {
+          return [
+            func(collection, resolve(1), fromIndex),
+            func(collection, resolve(undefined), fromIndex),
+            func(collection, resolve(''), fromIndex),
+          ]
+        })
+
+        assert.deepStrictEqual(actual, expected)
+      })
+
+      it('`_.' + methodName + '` should work with ' + key + ' and treat falsey `fromIndex` values as `0`', function() {
+        var expected = lodashStable.map(falsey, lodashStable.constant(isIncludes || values[0]))
+
+        var actual = lodashStable.map(falsey, function(fromIndex: any) {
+          return func(collection, resolve(values[0]), fromIndex)
+        })
+
+        assert.deepStrictEqual(actual, expected)
+      })
+
+      it('`_.' + methodName + '` should work with ' + key + ' and coerce `fromIndex` to an integer', function() {
+        var expected = [
+          isIncludes || values[0],
+          isIncludes || values[0],
+          isIncludes ? false : undefined,
+        ]
+
+        var actual = [
+          func(collection, resolve(values[0]), 0.1),
+          func(collection, resolve(values[0]), NaN),
+          func(collection, resolve(values[0]), '1'),
+        ]
+
+        assert.deepStrictEqual(actual, expected)
+      })
+
+      it('`_.' + methodName + '` should work with ' + key + ' and a negative `fromIndex`', function() {
+        var expected = [
+          isIncludes || values[2],
+          isIncludes ? false : undefined,
+        ]
+
+        var actual = [
+          func(collection, resolve(values[2]), -1),
+          func(collection, resolve(values[1]), -1),
+        ]
+
+        assert.deepStrictEqual(actual, expected)
+      })
+
+      it('`_.' + methodName + '` should work with ' + key + ' and a negative `fromIndex` <= `-length`', function() {
+        var indexes = [-4, -6, -Infinity],
+          expected = lodashStable.map(indexes, lodashStable.constant(isIncludes || values[0]))
+
+        var actual = lodashStable.map(indexes, function(fromIndex: any) {
+          return func(collection, resolve(values[0]), fromIndex)
+        })
+
+        assert.deepStrictEqual(actual, expected)
+      })
+    })
+  })
+})
+
+describe('find methods', function() {
+  lodashStable.each(['find', 'findIndex', 'findKey', 'findLast', 'findLastIndex', 'findLastKey'], function(methodName: string) {
+    var array = [1, 2, 3, 4],
+      func = _[methodName]
+
+    var objects = [
+      { 'a': 0, 'b': 0 },
+      { 'a': 1, 'b': 1 },
+      { 'a': 2, 'b': 2 },
+    ]
+
+    var expected = ({
+      'find': [objects[1], undefined, objects[2]],
+      'findIndex': [1, -1, 2],
+      'findKey': ['1', undefined, '2'],
+      'findLast': [objects[2], undefined, objects[2]],
+      'findLastIndex': [2, -1, 2],
+      'findLastKey': ['2', undefined, '2'],
+    })[methodName]
+
+    it('`_.' + methodName + '` should return the found value', function() {
+      assert.strictEqual(func(objects, function(object: { a: any }) { return object.a }), expected[0])
+    })
+
+    it('`_.' + methodName + '` should return `' + expected[1] + '` if value is not found', function() {
+      assert.strictEqual(func(objects, function(object: { a: number }) { return object.a === 3 }), expected[1])
+    })
+
+    it('`_.' + methodName + '` should work with `_.matches` shorthands', function() {
+      assert.strictEqual(func(objects, { 'b': 2 }), expected[2])
+    })
+
+    it('`_.' + methodName + '` should work with `_.matchesProperty` shorthands', function() {
+      assert.strictEqual(func(objects, ['b', 2]), expected[2])
+    })
+
+    it('`_.' + methodName + '` should work with `_.property` shorthands', function() {
+      assert.strictEqual(func(objects, 'b'), expected[0])
+    })
+
+    it('`_.' + methodName + '` should return `' + expected[1] + '` for empty collections', function() {
+      var emptyValues = lodashStable.endsWith(methodName, 'Index') ? lodashStable.reject(empties, lodashStable.isPlainObject) : empties,
+        expecting = lodashStable.map(emptyValues, lodashStable.constant(expected[1]))
+
+      var actual = lodashStable.map(emptyValues, function(value: any) {
+        try {
+          return func(value, { 'a': 3 })
+        } catch (e) {}
+      })
+
+      assert.deepStrictEqual(actual, expecting)
+    })
+
+    it('`_.' + methodName + '` should return an unwrapped value when implicitly chaining', function() {
+      var expected = ({
+        'find': 1,
+        'findIndex': 0,
+        'findKey': '0',
+        'findLast': 4,
+        'findLastIndex': 3,
+        'findLastKey': '3',
+      })[methodName]
+
+      assert.strictEqual(_(array)[methodName](), expected)
+    })
+
+    it('`_.' + methodName + '` should return a wrapped value when explicitly chaining', function() {
+      assert.ok(_(array).chain()[methodName]() instanceof _)
+    })
+
+    it('`_.' + methodName + '` should not execute immediately when explicitly chaining', function() {
+      var wrapped = _(array).chain()[methodName]()
+      assert.strictEqual(wrapped.__wrapped__, array)
+    })
+
+    it('`_.' + methodName + '` should work in a lazy sequence', function() {
+      var largeArray = lodashStable.range(1, LARGE_ARRAY_SIZE + 1),
+        smallArray = array
+
+      lodashStable.times(2, function(index: any) {
+        var array = index ? largeArray : smallArray,
+          wrapped = _(array).filter(isEven)
+
+        assert.strictEqual(wrapped[methodName](), func(lodashStable.filter(array, isEven)))
+      })
+    })
+  })
+})

@@ -1,28 +1,4 @@
-import { runInThisContext } from 'vm'
-import { isRegExp } from 'util'
-
 const fs = require('fs')
-
-const testProgram = `
-  GLOBAL G1;
-  GLOBAL G2;
-
-  VAR R0;
-  PUSH 2;
-  PUSH 2;
-  CALL foo 2;
-  PRINT "======================";
-  PRINT $RET;
-  PRINT "+++++++++++++++++++++++";
-  PUSH 'WORLD';
-  PUSH "HELLO ";
-  PRINT "HELLO WORL";
-  CALL tow 2;
-LABEL con1:
-  MOV R0 $RET;
-  PRINT R0;
-  PRINT G1;
-`
 
 export const parseCode = (cd: string): string[][] => {
   const code = cd.trim()
