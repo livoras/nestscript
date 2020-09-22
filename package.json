@@ -39,10 +39,10 @@
     "tslint-sonarts": "^1.9.0",
     "typescript": "^3.9.7",
     "webpack": "^4.43.0",
-    "webpack-cli": "^3.3.11"
+    "webpack-cli": "^3.3.12"
   },
   "dependencies": {
-    "acorn": "^7.3.1",
-    "acorn-walk": "^7.2.0"
+    "acorn": "^8.0.1",
+    "acorn-walk": "^8.0.0"
   }
 }
