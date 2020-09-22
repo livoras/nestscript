@@ -2,15 +2,15 @@
   <img height="120" src="https://github.com/livoras/nestscript/blob/master/docs/logo.png?raw=true">
   <br/>
 
-  <a src="https://github.com/livoras/nestscript/actions">
+  <a href="https://github.com/livoras/nestscript/actions">
     <img src='https://github.com/livoras/nestscript/workflows/Node.js%20CI/badge.svg'>
   </a>
 
-  <a src="https://codecov.io/github/livoras/nestscript?branch=master">
+  <a href="https://codecov.io/github/livoras/nestscript?branch=master">
     <img src="https://codecov.io/github/livoras/nestscript/coverage.svg?branch=master">
   </a>
 
-  <a src="https://david-dm.org/livoras/nestscript">
+  <a href="https://david-dm.org/livoras/nestscript">
     <img src="https://david-dm.org/livoras/nestscript.svg">
   </a>
 
