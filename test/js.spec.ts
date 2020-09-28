@@ -1013,6 +1013,30 @@ describe("closure", (): void => {
     expect(c()).equal(2)
     `)
   })
+
+  it('closure variable should made right', (): void => {
+    tm(`
+      function a(t) {
+        function t(t) {
+          console.log("OJBK")
+          return t
+        }
+        return t
+      }
+      expect(typeof a(100)).equal('function')
+    `)
+  })
+
+  it('closure variable should made right2', (): void => {
+    tm(`
+      function aa(t) {
+        const kk = () => t
+        function t() {}
+        return t
+      }
+      expect(typeof aa(null)).equal('function')
+    `)
+  })
 })
 
 describe('error handling', (): void => {

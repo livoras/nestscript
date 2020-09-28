@@ -230,7 +230,6 @@ const deepStrictEqual = (a: any, b: any, msg?: string): void => {
   try {
     expect(a).deep.equal(b)
   } catch(e) {
-    console.log('---->', a, b)
     throw msg ? new Error(msg) : e
   }
 }
@@ -246,7 +245,6 @@ const assert = {
     try {
       expect(a).equal(b)
     } catch(e) {
-      console.log('---->', a, b)
       throw msg ? new Error(msg) : e
     }
   },
@@ -261,6 +259,9 @@ const assert = {
 }
 
 describe('compile and running third part libraries', (): void => {
+  it('mqtt.min.js', (): void => {
+    readAndRun('mqtt.min.js')
+  })
 
   it('moment.js', (): void => {
     readAndRun('moment.js')

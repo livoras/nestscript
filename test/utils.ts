@@ -16,6 +16,12 @@ export const tm = (codes: string, ctx: any = {}): any => {
     DataView,
     Infinity,
     Math,
+    Set,
+    Map,
+    Boolean,
+    Buffer,
+    Number,
+    Uint8Array,
   }
   const vm = createVMFromJavaScript(codes, c)
   vm.run()

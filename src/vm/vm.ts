@@ -928,6 +928,7 @@ export class VirtualMachine {
       // console.log(stack, args, 'good....')
       if (o) {
         // try {
+        // console.log(funcName)
         stack[0] = isNewExpression
           ? new o[funcName](...args)
           : o[funcName](...args)
@@ -998,7 +999,7 @@ export class VirtualMachine {
       if (vm.allThis.length === 0) {
         vm.currentThis = vm.ctx
       } else {
-        vm.currentThis = this
+        vm.currentThis = this || vm.ctx
       }
       vm.allThis.push(vm.currentThis)
       const stack = vm.stack

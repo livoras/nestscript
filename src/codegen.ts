@@ -135,6 +135,12 @@ const getVariablesByFunctionAstBody = (ast: any): Map<string, any> => {
         locals.set(node.id.name, VariableType.VARIABLE)
       }
     },
+
+    FunctionExpression(): any {
+    },
+
+    ArrowFunctionExpression(): any {
+    },
   })
   return locals
 }
@@ -334,11 +340,14 @@ const parseToCode = (ast: any): void => {
     // console.log(operants, '--->')
     operants.forEach((o: any): void => {
       if (typeof o === 'string') {
-        // if (o === 'i') {
-        //   console.log(operator, o)
-        // }
         blockChain.accessName(o)
-        // touchRegister(o, currentScope, scopes, blockChain)
+        // if (isMade && o === 't') {
+          // console.log('--------------------------------------------------')
+          // console.log(ops)
+          // for (const c of blockChain.chain) {
+          //   console.log(c)
+          // }
+        // }
       }
     })
     /** 这里需要提前一些指令，例如变量声明、全局变量、有名函数声明 */
@@ -487,6 +496,10 @@ const parseToCode = (ast: any): void => {
       cg(['VAR', `${name}`])
       s.blockChain.newName(name, kind)
     } else {
+      // console.log("nnnnnnnnnnnnnnnnnnnnnnnnnnnn new name", name)
+      // if (name === 'e') {
+      //   throw new Error('fuck')
+      // }
       cg([`VAR`, `${name}`], { prior: 1 })
       s.blockChain.newName(name, kind)
     }
@@ -771,7 +784,11 @@ const parseToCode = (ast: any): void => {
       const cmd = codesMap[node.operator]
 
       if (op !== 'delete') {
-        const reg = s.r0
+        const reg = s.r0 || newReg()
+        if (!reg) {
+          console.log((node.argument as any).callee.body.body[0])
+          throw new Error('! regster should not be null')
+        }
         getValueOfNode(node.argument, reg, s, c)
         cg([`${cmd}`, `${reg}`])
       } else {

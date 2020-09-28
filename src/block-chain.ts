@@ -45,33 +45,36 @@ export class BlockChain {
   }
 
   // tslint:disable-next-line: cognitive-complexity
-  public accessName(name: string): void {
+  public accessName(name: string): boolean {
     let i = this.chain.length
     // if (name === 'i') {
       // console.log(this.chain)
     // }
     if (name.startsWith('@@f')) {
-      return
+      return false
     }
     const currentFuncBlock = this.currentFuncBlock
     let shouldMakeClosure = false
+    const isBlockHasName = (b: IBlock | IFuncBlock, n: string): boolean => {
+      if (b.variables.has(n)) {
+        return true
+      }
+      if (this.isFuncBlock(b) && b.params.has(n)) {
+        return true
+      }
+      return false
+    }
     while (i-- > 0) {
       const block = this.chain[i]
       // console.log('make fucking closure', name, block, i, this.chain.length)
       if (!shouldMakeClosure) {
+        if (isBlockHasName(block, name)) {
+          return false
+        }
         if (this.isFuncBlock(block) && block === currentFuncBlock) {
           shouldMakeClosure = true
         }
         continue
-      }
-
-      if (i === this.chain.length - 1) {
-        if (block.variables.has(name)) {
-          return
-        }
-        if (this.isFuncBlock(block) && block.params.has(name)) {
-          return
-        }
       }
 
       const makeClosure = (n: string): void => {
@@ -81,19 +84,20 @@ export class BlockChain {
       if (block.variables.has(name)) {
         block.variables.set(name, VariableType.CLOSURE)
         makeClosure(name)
-        return
+        return true
       }
 
       if (this.isFuncBlock(block) && block.params.has(name)) {
         block.params.set(name, VariableType.CLOSURE)
         makeClosure(name)
-        return
+        return true
       }
     }
+    return false
   }
 
-  public isFuncBlock(block: IFuncBlock | IBlock): block is IFuncBlock {
-    return !!(block as IFuncBlock).params
+  public isFuncBlock(block: IFuncBlock | IBlock | undefined): block is IFuncBlock {
+    return !!block && !!(block as any).params
   }
 
   public newName(name: string, kind: 'var' | 'const' | 'let'): void {
@@ -102,7 +106,10 @@ export class BlockChain {
       : kind === 'var'
         ? this.currentFuncBlock
         : this.chain[this.chain.length - 1]
-
+    if (this.isFuncBlock(block) && block.params.has(name)) {
+      block.params.delete(name)
+      // console.log('DELETE name from params', name)
+    }
     block?.variables.set(name, VariableType.VARIABLE)
   }
 

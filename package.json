@@ -9,7 +9,7 @@
   "scripts": {
     "start": "npx nodemon --watch example/main.js --exec 'make js'",
     "cov": "nyc -r lcov -e .ts -x \"*.test.ts\" npm run test",
-    "test": "mocha --timeout 10000 -r ts-node/register test/**/*.spec.ts",
+    "test": "mocha --timeout 60000 -r ts-node/register test/**/*.spec.ts",
     "watch": "nodemon --watch src --watch test -e ts --exec 'npm test'"
   },
   "repository": {
