@@ -1037,6 +1037,44 @@ describe("closure", (): void => {
       expect(typeof aa(null)).equal('function')
     `)
   })
+
+  it('string indexOf with empty string', (): void => {
+    tm(`
+        const m = ''
+        const W = '\`'
+        if (-1 !== m.indexOf(W)) {
+          console.log("ok")
+        } else {
+          console.log("ok")
+        }
+    `)
+  })
+
+  it(`assign to membership`, (): void => {
+    tm(`
+const args = [1, 2, 3, 4]
+const a = args.length
+
+let s
+let o
+for (o = new Array(a - 1), s = 0; s < o.length; ) {
+  o[s++] = args[s];
+}
+expect(o).deep.equal([2, 3, 4])
+    `)
+
+    tm(`
+const args = [1, 2, 3, 4]
+const a = args.length
+
+let s
+let o
+for (o = new Array(a - 1), s = 0; s < o.length; ) {
+  o[s] = args[++s];
+}
+expect(o).deep.equal([2, 3, 4])
+    `)
+  })
 })
 
 describe('error handling', (): void => {

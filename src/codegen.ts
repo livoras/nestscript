@@ -731,17 +731,47 @@ const parseToCode = (ast: any): void => {
       const right = node.right
       const [newReg, freeReg] = newRegisterController()
       let rightReg = newReg()
+      const isLeftMembership = left.type === 'MemberExpression'
+      let objReg: any // = newReg()
+      let keyReg: any // = newReg()
+
+      if (isLeftMembership) {
+        objReg = newReg()
+        keyReg = newReg()
+        s.r1 = objReg
+        s.r2 = keyReg
+        c(left, s)
+      }
+
+      const getLeftReg = (reg: string): void => {
+        if (isLeftMembership) {
+          cg(["MOV_PROP", reg, objReg, keyReg])
+        } else {
+          getValueOfNode(left, reg, s, c)
+        }
+      }
+
+      const setLeftReg = (reg: string): void => {
+        if (isLeftMembership) {
+          cg([`SET_KEY`, `${objReg}`, keyReg, `${reg}`])
+        } else {
+          setValueToNode(left, reg, s, c)
+        }
+      }
+
       getValueOfNode(right, rightReg, s, c)
       if (node.operator !== '=') {
         const o = node.operator.replace(/\=$/, '')
         const cmd = codeMap[o]
         if (!cmd) { throw new Error(`Operation ${o} is not implemented.`)}
         const leftReg = newReg()
-        getValueOfNode(left, leftReg, s, c)
+        getLeftReg(leftReg)
+        // getValueOfNode(left, leftReg, s, c)
         cg([`${cmd}`, leftReg, rightReg])
         rightReg = leftReg
       }
-      setValueToNode(left, rightReg, s, c)
+      setLeftReg(rightReg)
+      // setValueToNode(left, rightReg, s, c)
       if (retReg) {
         cg([`MOV`, retReg, rightReg])
       }

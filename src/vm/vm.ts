@@ -1,7 +1,8 @@
 // tslint:disable: no-bitwise
+// tslint:disable: no-big-function
+// tslint:disable: no-dead-store
 import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from '../utils'
 import { Scope } from '../scope'
-import { count } from 'console'
 
 export enum I {
  VAR, CLS,
@@ -907,10 +908,11 @@ export class VirtualMachine {
     const stack = this.stack
     const f = func || o[funcName]
     let isCallVMFunction = false
+    const isNullOrUndefined = o === void 0 || o === null
     if ((f instanceof Callable) && !isNewExpression) {
       // console.log('---> THE IP IS -->', numArgs)
       const arg = new NumArgs(numArgs)
-      if (o) {
+      if (!isNullOrUndefined) {
         if (typeof o[funcName] === 'function') {
           o[funcName](arg)
         } else {
@@ -926,7 +928,7 @@ export class VirtualMachine {
         args.unshift(stack[this.sp--])
       }
       // console.log(stack, args, 'good....')
-      if (o) {
+      if (!isNullOrUndefined) {
         // try {
         // console.log(funcName)
         stack[0] = isNewExpression
