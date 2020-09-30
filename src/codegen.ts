@@ -193,7 +193,7 @@ const parseToCode = (ast: any): void => {
     const originalFunctionName = (node as any).id?.name
     const isFuntionExpression = node.type === 'FunctionExpression'
     if (originalFunctionName && !isFuntionExpression) {
-      declareVariable(s, originalFunctionName)
+      declareVariable(s, originalFunctionName, 'var', true)
     }
     const funcName = newFunctionName()
     // s.globals[funcName] = VariableType.FUNCTION
@@ -205,7 +205,7 @@ const parseToCode = (ast: any): void => {
       prepare(): void {
         const funcBlock = s.blockChain.getCurrentBlock() as IFuncBlock
         const isBlockHasSameName = funcBlock.variables.has(originalFunctionName) ||
-        funcBlock.params.has(originalFunctionName)
+          funcBlock.params.has(originalFunctionName)
         if (isFuntionExpression && originalFunctionName && !isBlockHasSameName) {
           declareVariable(s, originalFunctionName, 'var')
           cg([`FUNC`, `${originalFunctionName}`, `${funcName}`], { prior })
@@ -502,7 +502,11 @@ const parseToCode = (ast: any): void => {
     }
   }
 
-  const declareVariable = (s: IState, name: string, kind: 'let' | 'var' | 'const' = 'var'): void => {
+  const declareVariable = (
+    s: IState, name: string,
+    kind: 'let' | 'var' | 'const' = 'var',
+    isForce: boolean = false,
+  ): void => {
     // if (state.isGlobal) {
     //   cg(`GLOBAL`, name)
     //   s.globals.set(name, VariableType.VARIABLE)
@@ -513,14 +517,14 @@ const parseToCode = (ast: any): void => {
     // } else
     if ((kind === 'let' || kind === 'const') && s.blockChain.chain.length > 1) {
       cg(['VAR', `${name}`])
-      s.blockChain.newName(name, kind)
+      s.blockChain.newName(name, kind, isForce)
     } else {
       // console.log("nnnnnnnnnnnnnnnnnnnnnnnnnnnn new name", name)
       // if (name === 'e') {
       //   throw new Error('fuck')
       // }
       cg([`VAR`, `${name}`], { prior: 1 })
-      s.blockChain.newName(name, kind)
+      s.blockChain.newName(name, kind, isForce)
     }
   }
 

@@ -100,15 +100,21 @@ export class BlockChain {
     return !!block && !!(block as any).params
   }
 
-  public newName(name: string, kind: 'var' | 'const' | 'let'): void {
+  public newName(name: string, kind: 'var' | 'const' | 'let', isForce: boolean = false): void {
     const block = this.chain.length === 1
       ? this.chain[0]
       : kind === 'var'
         ? this.currentFuncBlock
         : this.chain[this.chain.length - 1]
+
+    // console.log(isForce, '---->', name)
     if (this.isFuncBlock(block) && block.params.has(name)) {
-      block.params.delete(name)
-      // console.log('DELETE name from params', name)
+      if (isForce) {
+        block.params.delete(name)
+      } else {
+        block.variables.delete(name)
+        return
+      }
     }
     block?.variables.set(name, VariableType.VARIABLE)
   }
