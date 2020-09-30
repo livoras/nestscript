@@ -6,7 +6,7 @@ export interface IBlock {
   isForceBlock: boolean
 }
 
-interface IFuncBlock extends IBlock {
+export interface IFuncBlock extends IBlock {
   params: Map<string, any>
   blockNameIndex: number
 }

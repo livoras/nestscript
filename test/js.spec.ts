@@ -1075,6 +1075,48 @@ for (o = new Array(a - 1), s = 0; s < o.length; ) {
 expect(o).deep.equal([2, 3, 4])
     `)
   })
+
+  it(`function expression with name`, (): void => {
+    tm(`
+    (function (e) {
+      (function e(n) {
+        if (n === 1) {
+          expect(typeof e).equal('function')
+        } else {
+          expect(typeof e).equal('function')
+          e(1)
+        }
+      })()
+    })(1000)
+    `)
+  })
+
+  it(`function expression name can be accessed in fuction body and not outer function body`, (): void => {
+    tm(`
+    (function(e) {
+      console.log('RET -> ', e);
+      expect(e).equal(1111);
+      (function e() {
+        expect(typeof e).equal('function')
+      })()
+      expect(e).equal(1111)
+    })(1111)
+    `)
+  })
+
+  it(`function varialbe name should not reset parameter with the same name`, (): void => {
+    tm(`
+    ;(function(e) {
+      expect(e).equal(1)
+      ;(function e(e) {
+        var e
+        expect(e).equal(333)
+        e = 1
+      })(333)
+      expect(e).equal(1)
+    })(1)
+    `)
+  })
 })
 
 describe('error handling', (): void => {

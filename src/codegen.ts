@@ -6,7 +6,7 @@ const acorn = require("acorn")
 const walk = require("acorn-walk")
 import * as et from "estree"
 import { CategoriesPriorityQueue } from './utils'
-import { BlockChain, IBlock } from './block-chain'
+import { BlockChain, IBlock, IFuncBlock } from './block-chain'
 
 export const enum VariableType {
   NO_EXIST = -1,
@@ -27,6 +27,7 @@ interface IFunction {
   name: string,
   body: et.FunctionExpression | et.ArrowFunctionExpression | et.FunctionDeclaration,
   blockChain: BlockChain,
+  prepare: () => void,
   // scopes: IScope[], // 存储作用域链
   // params: { [x in string]: 1 }[],
 }
@@ -188,6 +189,12 @@ const parseToCode = (ast: any): void => {
     s: IState,
     prior?: number,
   ): string => {
+    const retReg = s.r0
+    const originalFunctionName = (node as any).id?.name
+    const isFuntionExpression = node.type === 'FunctionExpression'
+    if (originalFunctionName && !isFuntionExpression) {
+      declareVariable(s, originalFunctionName)
+    }
     const funcName = newFunctionName()
     // s.globals[funcName] = VariableType.FUNCTION
     s.blockChain.newGlobal(funcName, VariableType.FUNCTION)
@@ -195,14 +202,26 @@ const parseToCode = (ast: any): void => {
       name: funcName,
       body: node,
       blockChain: s.blockChain.newFuncBlock(),
+      prepare(): void {
+        const funcBlock = s.blockChain.getCurrentBlock() as IFuncBlock
+        const isBlockHasSameName = funcBlock.variables.has(originalFunctionName) ||
+        funcBlock.params.has(originalFunctionName)
+        if (isFuntionExpression && originalFunctionName && !isBlockHasSameName) {
+          declareVariable(s, originalFunctionName, 'var')
+          cg([`FUNC`, `${originalFunctionName}`, `${funcName}`], { prior })
+        }
+      },
       // scopes: [...s.scopes, getCurrentScope() || {
       //   locals: s.locals, params: s.params, closureCounter: 0,
       // }],
     })
     s.functionTable[funcName] = node
     // console.log(s.r0, '....', s.functionTable)
-    if (s.r0) {
-      cg([`FUNC`, `${s.r0}`, `${funcName}`], { prior })
+    if (retReg) {
+      cg([`FUNC`, `${retReg}`, `${funcName}`], { prior })
+    }
+    if (originalFunctionName && !isFuntionExpression) {
+      cg([`FUNC`, `${originalFunctionName}`, `${funcName}`], { prior })
     }
     delete s.funcName
     return funcName
@@ -592,8 +611,8 @@ const parseToCode = (ast: any): void => {
       if (s.r0 && !state.isGlobal) {
         parseFunc(node, s)
       } else {
-        s.r0 = node.id?.name
-        declareVariable(s, s.r0)
+        // s.r0 = node.id?.name
+        // declareVariable(s, s.r0)
         parseFunc(node, s, 4)
       }
       s.r0 = null
@@ -1374,6 +1393,9 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     })
     // state.scopes = funcInfo.scopes
     state.blockChain = funcBlockChain
+    if (funcInfo.prepare) {
+      funcInfo.prepare()
+    }
     // console.log(funcAst?.name, funcAst?.scopes)
     processFunctionAst(funcInfo.body.body)
   }
