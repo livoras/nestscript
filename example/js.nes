@@ -1,34 +1,34 @@
 func @@main() {
-    VAR %r0;
-    FUNC rotatingHash @@f0;
+    CLS @isWx;
+    CLS @rotatingHash;
+    VAR _encryptKey;
+    CLS @getRandom;
+    CLS @judegeWx;
+    VAR init;
+    REG %r0;
+    FUNC @rotatingHash @@f0;
     FUNC _encryptKey @@f1;
-    FUNC getRandom @@f2;
-    FUNC judegeWx @@f3;
+    FUNC @getRandom @@f2;
+    FUNC @judegeWx @@f3;
     FUNC init @@f4;
-    GLOBAL isWx;
-    MOV isWx false;
-    GLOBAL rotatingHash;
-    GLOBAL _encryptKey;
-    GLOBAL getRandom;
-    GLOBAL judegeWx;
-    GLOBAL init;
+    MOV @isWx false;
     CALL_REG init 0 false;
     MOV %r0 _encryptKey;
     SET_CTX "encryptKey" %r0;
 }
-func @@f0(string) {
+func @@f0(.string) {
     VAR hash;
     VAR len;
     VAR i;
-    VAR %r0;
-    VAR %r1;
-    VAR %r2;
-    VAR %r3;
-    VAR %r4;
-    MOV %r0 string;
+    REG %r0;
+    REG %r1;
+    REG %r2;
+    REG %r3;
+    REG %r4;
+    MOV %r0 .string;
     MOV %r1 "length";
     MOV_PROP hash %r0 %r1;
-    MOV %r0 string;
+    MOV %r0 .string;
     MOV %r1 "length";
     MOV_PROP len %r0 %r1;
     MOV i 0;
@@ -47,13 +47,13 @@ LABEL _l3_:
     XOR %r1 %r3;
     MOV %r3 i;
     PUSH %r3;
-    MOV %r3 string;
+    MOV %r3 .string;
     MOV %r4 "charCodeAt";
     CALL_VAR %r3 %r4 1 false;
     MOV %r2 $RET;
     XOR %r1 %r2;
     MOV hash %r1;
-    MOV %r2 isWx;
+    MOV %r2 @isWx;
     NEG %r2;
     JF %r2 _l5_;
     MOV %r1 hash;
@@ -64,7 +64,7 @@ LABEL _l5_:
     MOV %r1 hash;
 LABEL _l4_:
     MOV hash %r1;
-    MOV %r2 isWx;
+    MOV %r2 @isWx;
     JF %r2 _l7_;
     MOV %r1 hash;
     JMP _l6_;
@@ -89,18 +89,18 @@ LABEL _l1_:
     MOV $RET %r0;
     RET;
 }
-func @@f1(key) {
+func @@f1(.key) {
     VAR tempKey;
     VAR md5Timer;
     VAR i;
-    VAR %r0;
-    VAR %r1;
-    VAR %r2;
-    VAR %r3;
-    MOV tempKey key;
-    MOV %r1 key;
+    REG %r0;
+    REG %r1;
+    REG %r2;
+    REG %r3;
+    MOV tempKey .key;
+    MOV %r1 .key;
     PUSH %r1;
-    CALL_REG rotatingHash 1 false;
+    CALL_REG @rotatingHash 1 false;
     MOV %r0 $RET;
     MOV tempKey %r0;
     MOV md5Timer tempKey;
@@ -132,17 +132,17 @@ LABEL _l9_:
     MOV $RET %r0;
     RET;
 }
-func @@f2(num) {
-    VAR %r0;
-    VAR %r1;
-    VAR %r2;
-    VAR %r3;
-    VAR %r4;
+func @@f2(.num) {
+    REG %r0;
+    REG %r1;
+    REG %r2;
+    REG %r3;
+    REG %r4;
     MOV_CTX %r3 "Math";
     MOV %r4 "random";
     CALL_VAR %r3 %r4 0 false;
     MOV %r0 $RET;
-    MOV %r2 num;
+    MOV %r2 .num;
     MUL %r0 %r2;
     MOV %r1 0;
     SHR %r0 %r1;
@@ -150,19 +150,19 @@ func @@f2(num) {
     RET;
 }
 func @@f3() {
-    VAR %r0;
-    VAR %r1;
-    VAR %r2;
-    VAR %r3;
-    VAR %r4;
-    VAR %r5;
-    VAR %r6;
-    VAR %r7;
-    VAR %r8;
-    VAR %r9;
-    VAR %r10;
-    VAR %r11;
-    VAR %r12;
+    REG %r0;
+    REG %r1;
+    REG %r2;
+    REG %r3;
+    REG %r4;
+    REG %r5;
+    REG %r6;
+    REG %r7;
+    REG %r8;
+    REG %r9;
+    REG %r10;
+    REG %r11;
+    REG %r12;
     MOV_CTX %r7 "a";
     MOV %r6 %r7;
     JF %r7 _l18_;
@@ -243,25 +243,25 @@ LABEL _l13_:
     NE %r2 %r3;
     LG_AND %r0 %r2;
 LABEL _l12_:
-    MOV isWx %r0;
+    MOV @isWx %r0;
     RET;
 }
 func @@f4() {
     VAR forTime;
     VAR judgeTimer;
     VAR i;
-    VAR %r0;
-    VAR %r1;
-    VAR %r2;
+    REG %r0;
+    REG %r1;
+    REG %r2;
     MOV %r1 100;
     PUSH %r1;
-    CALL_REG getRandom 1 false;
+    CALL_REG @getRandom 1 false;
     MOV forTime $RET;
     MOV %r0 10;
     ADD forTime %r0;
     MOV %r0 forTime;
     PUSH %r0;
-    CALL_REG getRandom 1 false;
+    CALL_REG @getRandom 1 false;
     MOV judgeTimer $RET;
     MOV %r0 0;
     MOV i %r0;
@@ -275,7 +275,7 @@ LABEL _l22_:
     MOV %r2 i;
     WEQ %r1 %r2;
     JF %r1 _l24_;
-    CALL_REG judegeWx 0 false;
+    CALL_REG @judegeWx 0 false;
     JMP _l23_;
 LABEL _l24_:
 LABEL _l23_:
