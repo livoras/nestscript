@@ -160,7 +160,7 @@ export class VirtualMachine {
   public error: any
 
   constructor (
-    public codes: ArrayBuffer,
+    public codes: Uint8Array,
     public functionsTable: FuncInfoMeta[],
     public entryIndx: number,
     public stringsTable: string[],
@@ -300,9 +300,6 @@ export class VirtualMachine {
       throw new VMRunTimeError('try to run again...')
     }
     const stack = this.stack
-    if (this.ip === 28) {
-      console.log('running .... ip -> ', this.ip)
-    }
     let op = this.nextOperator()
     // 用来判断是否嵌套调用 vm 函数
     let isCallVMFunction = false
@@ -908,7 +905,7 @@ export class VirtualMachine {
     const stack = this.stack
     const f = func || o[funcName]
     let isCallVMFunction = false
-    const isNullOrUndefined = o === void 0 || o === null
+    const isNullOrUndefined = o === void 0 || o === null || o === this.ctx
     if ((f instanceof Callable) && !isNewExpression) {
       // console.log('---> THE IP IS -->', numArgs)
       const arg = new NumArgs(numArgs)
@@ -1087,7 +1084,7 @@ const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMac
   )
 
   const stringsTable: string[] = parseStringsArray(buffer.slice(stringTableBasicIndex))
-  const codesBuf = buffer.slice(4 * 4, funcionTableBasicIndex)
+  const codesBuf = new Uint8Array(buffer.slice(4 * 4, funcionTableBasicIndex))
   const funcsBuf = buffer.slice(funcionTableBasicIndex, stringTableBasicIndex)
   const funcsTable: FuncInfoMeta[] = parseFunctionTable(funcsBuf)
   console.log('string table', stringsTable)
@@ -1129,7 +1126,7 @@ class Callable extends Function {
   }
 }
 
-exports.Callable = Callable
+export { Callable }
 
 
 // tslint:disable-next-line: max-classes-per-file

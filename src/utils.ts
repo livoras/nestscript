@@ -82,7 +82,9 @@ export const readFloat64 = (buffer: ArrayBuffer, from: number, to: number): numb
 }
 
 export const readUInt8 = (buffer: ArrayBuffer, from: number, to: number): number => {
-  return (new Uint8Array(buffer.slice(from, to)))[0]
+  // console.log(from, to)
+  return buffer[from]
+  // return buffer.slice(from, to)[0]
 }
 
 export const readInt8 = (buffer: ArrayBuffer, from: number, to: number): number => {
@@ -141,8 +143,8 @@ export const createOperantBuffer = (ot: IOperatantType, value: number, forceLeng
   }
 }
 
-export const getOperatantByBuffer = (arrayBuffer: ArrayBuffer, i: number = 0): [IOperatantType, number, number] => {
-  const buffer = new Uint8Array(arrayBuffer)
+export const getOperatantByBuffer = (arrayBuffer: Uint8Array, i: number = 0): [IOperatantType, number, number] => {
+  const buffer = arrayBuffer
   const head = buffer[i++]
   const [ot, byteLength] = getOperantTypeAndByteLengthByNum(head)
   // console.log('head -> ', head, buffer.slice(i, i + byteLength))
@@ -175,19 +177,30 @@ const createOperantHead = (ot: IOperatantType, byteLength: number): ArrayBuffer 
 //   return uint8buf.slice(i).buffer
 // }
 
+const num64Buf = new Float64Array(1)
+const num8For64Buf = new Uint8Array(num64Buf.buffer)
 export const getFloat64OperatantValueByBuffer = (
   buffer: Uint8Array, i: number = 0, byteLength: number): number => {
-  const num64Buf = new Float64Array(1)
-  const num8For64Buf = new Uint8Array(num64Buf.buffer)
-  num8For64Buf.set(buffer.slice(i, i + byteLength), num8For64Buf.length - byteLength)
+  num64Buf[0] = 0
+  /** setting in this way is faster than `XXBuffer.set` function */
+  const s = num8For64Buf.length - byteLength
+  for (let j = 0; j < byteLength; j++) {
+    num8For64Buf[s + j] = buffer[i + j]
+  }
+  // const b = buffer.slice(i, i + byteLength)
+  // num8For64Buf.set(b, num8For64Buf.length - byteLength)
   return num64Buf[0]
 }
 
+const num32Buf = new Int32Array(1)
+const num8For32Buf = new Uint8Array(num32Buf.buffer)
 export const getInt32OperatantValueByBuffer = (
   buffer: Uint8Array, i: number = 0, byteLength: number): number => {
-  const num32Buf = new Int32Array(1)
-  const num8For32Buf = new Uint8Array(num32Buf.buffer)
-  num8For32Buf.set(buffer.slice(i, i + byteLength), 0)
+  num32Buf[0] = 0
+  for (let j = 0; j < byteLength; j++) {
+    num8For32Buf[j] = buffer[j + i]
+  }
+  // const b = buffer.slice(i, i + byteLength)
   return num32Buf[0]
 }
 
@@ -221,40 +234,6 @@ export const getByteLengthFromFloat64 = (num: number): number => {
 
 export const getOperantName = (o: I): string => {
   return I[o]
-}
-
-const test = (ot: IOperatantType, num: number, len?: number): void => {
-  const a = getOperatantByBuffer(createOperantBuffer(ot, num))
-  console.assert(a[0] === ot && a[1] === num)
-  if (len) {
-    console.assert(a[2] === len)
-  }
-  if (a[0] !== ot || a[1] !== num) {
-    throw new Error("assert failed")
-  }
-}
-
-const testCases = (): void => {
-  test(IOperatantType.NUMBER, 3, 2)
-  test(IOperatantType.NUMBER, 3.14, 8)
-  test(IOperatantType.NUMBER, 0.33)
-  test(IOperatantType.REGISTER, 108, 1)
-  test(IOperatantType.FUNCTION_INDEX, 0, 0)
-  test(IOperatantType.CLOSURE_REGISTER, 0, 0)
-  test(IOperatantType.REGISTER, 0, 0)
-  const types = [
-    IOperatantType.REGISTER,
-    IOperatantType.FUNCTION_INDEX,
-    IOperatantType.ADDRESS,
-    IOperatantType.ARG_COUNT,
-  ]
-  for (let i = 0; i < 1000; i++) {
-    test(IOperatantType.NUMBER, Math.random() * 1000)
-    const t = types[Math.floor(Math.random() * types.length)]
-    const n = Math.floor(Math.random() * 10000000)
-    console.log(t, n)
-    test(t, n)
-  }
 }
 
 export class CategoriesPriorityQueue<T = any> {

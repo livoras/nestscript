@@ -133,6 +133,9 @@ func main() {
 * * *
 
 ## Change Log
+### 2020-10-09
+* 性能优化：不使用 `XXXBuffer.set` 从 buffer 读取指令速度更快
+
 ### 2020-09-18
 * 解决 try catch 调用栈退出到 catch 的函数的地方
 

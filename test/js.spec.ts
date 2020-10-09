@@ -501,19 +501,19 @@ describe('function', (): void => {
 
   it(`operatant type transfer`, (): void => {
     expect(
-      getOperatantByBuffer(createOperantBuffer(IOperatantType.NUMBER, -3368)),
+      getOperatantByBuffer(new Uint8Array(createOperantBuffer(IOperatantType.NUMBER, -3368))),
     ).deep.equal(
       [IOperatantType.NUMBER, -3368, 3],
     )
 
     expect(
-      getOperatantByBuffer(createOperantBuffer(IOperatantType.NUMBER, -3.14159)),
+      getOperatantByBuffer(new Uint8Array(createOperantBuffer(IOperatantType.NUMBER, -3.14159))),
     ).deep.equal(
       [IOperatantType.NUMBER, -3.14159, 8],
     )
 
     expect(
-      getOperatantByBuffer(createOperantBuffer(IOperatantType.REGISTER, 100)),
+      getOperatantByBuffer(new Uint8Array(createOperantBuffer(IOperatantType.REGISTER, 100))),
     ).deep.equal(
       [IOperatantType.REGISTER, 100, 1],
     )
