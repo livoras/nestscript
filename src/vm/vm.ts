@@ -981,10 +981,11 @@ export class VirtualMachine {
         allArgs = [...args]
       } else {
         numArgs = n.numArgs
-        allArgs = []
-        for (let i = 0; i < numArgs; i++) {
-          allArgs.unshift(vm.stack[vm.sp - i])
-        }
+        const end = vm.sp + 1
+        allArgs = vm.stack.slice(end - numArgs, end) // []
+        // for (let i = 0; i < numArgs; i++) {
+        //   allArgs.unshift(vm.stack[vm.sp - i])
+        // }
       }
       // console.log(allArgs)
       const currentCallingFunctionInfo: ICallingFunctionInfo =  vm.callingFunctionInfo = {
