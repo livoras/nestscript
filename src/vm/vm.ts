@@ -56,8 +56,9 @@ class VMRunTimeError extends Error {
 }
 
 interface ICallingFunctionInfo {
+  isInitClosure: boolean,
   closureScope: Scope,
-  variables: Scope,
+  variables: Scope | null,
   returnValue?: any,
   args: any[],
 }
@@ -144,6 +145,7 @@ export class VirtualMachine {
 
   /** 闭包映射表 */
   public callingFunctionInfo: ICallingFunctionInfo = {
+    isInitClosure: true,
     closureScope: new Scope(),
     variables: new Scope(),
     args: [],
@@ -237,9 +239,12 @@ export class VirtualMachine {
   }
 
   public setReg(dst: IOperant, src: { value: any }): void {
+    const callingFunctionInfo = this.callingFunctionInfo
     if (dst.type === IOperatantType.VAR_SYMBOL) {
-      this.callingFunctionInfo.variables.set(dst.index, src.value)
+      this.checkVariableScopeAndNew()
+      callingFunctionInfo.variables!.set(dst.index, src.value)
     } else if (dst.type === IOperatantType.CLOSURE_REGISTER) {
+      this.checkClosureAndFork()
       this.callingFunctionInfo.closureScope.set(dst.index, src.value)
     } else if (dst.type === IOperatantType.REGISTER || dst.type === IOperatantType.RETURN_VALUE) {
       if (dst.type === IOperatantType.RETURN_VALUE) {
@@ -257,9 +262,12 @@ export class VirtualMachine {
   }
 
   public newReg(o: IOperant): any {
+    const callingFunctionInfo = this.callingFunctionInfo
     if (o.type === IOperatantType.VAR_SYMBOL) {
-      this.callingFunctionInfo.variables.new(o.index)
+      this.checkVariableScopeAndNew()
+      this.callingFunctionInfo.variables!.new(o.index)
     } else if (o.type === IOperatantType.CLOSURE_REGISTER) {
+      this.checkClosureAndFork()
       this.callingFunctionInfo.closureScope.new(o.index)
     } else {
       console.error(o)
@@ -269,6 +277,9 @@ export class VirtualMachine {
 
   public getReg(o: IOperant): any {
     if (o.type === IOperatantType.VAR_SYMBOL) {
+      if (!this.callingFunctionInfo.variables) {
+        throw new Error('variable is not declared.')
+      }
       return this.callingFunctionInfo.variables.get(o.index)
     } else if (o.type === IOperatantType.CLOSURE_REGISTER) {
       return this.callingFunctionInfo.closureScope.get(o.index)
@@ -759,8 +770,10 @@ export class VirtualMachine {
       const o= this.nextOperant()
       // console.log('===================== start block ===================', o.value)
       // console.log(this.callingFunctionInfo.variables)
+      this.checkClosureAndFork()
+      this.checkVariableScopeAndNew()
       this.callingFunctionInfo.closureScope.front(o.value)
-      this.callingFunctionInfo.variables.front(o.value)
+      this.callingFunctionInfo.variables!.front(o.value)
       // console.log('\n')
       break
     }
@@ -770,7 +783,7 @@ export class VirtualMachine {
       // console.log('===================== end block ===================', o.value)
       // console.log('before -> ', this.callingFunctionInfo.variables.printScope())
       this.callingFunctionInfo.closureScope.back(o.value)
-      this.callingFunctionInfo.variables.back(o.value)
+      this.callingFunctionInfo.variables!.back(o.value)
       // console.log('after -> ', this.callingFunctionInfo.variables.printScope())
       // console.log('\n')
       break
@@ -787,6 +800,20 @@ export class VirtualMachine {
     }
 
     return [op, isCallVMFunction]
+  }
+
+  public checkClosureAndFork(): void {
+    const callingFunctionInfo = this.callingFunctionInfo
+    if (!callingFunctionInfo.isInitClosure) {
+      callingFunctionInfo.closureScope = this.callingFunctionInfo.closureScope.fork()
+      callingFunctionInfo.isInitClosure = true
+    }
+  }
+
+  public checkVariableScopeAndNew(): void {
+    if (!this.callingFunctionInfo.variables) {
+      this.callingFunctionInfo.variables = new Scope()
+    }
   }
 
   public returnCurrentFunction(): void {
@@ -817,8 +844,7 @@ export class VirtualMachine {
   }
 
   public nextOperant(): IOperant {
-    const codes = this.codes
-    const [operantType, value, byteLength] = getOperatantByBuffer(codes, this.ip++)
+    const [operantType, value, byteLength] = getOperatantByBuffer(this.codes, this.ip++)
     this.ip = this.ip + byteLength
     if (operantType === IOperatantType.REGISTER) {
       // console.log(this.fp, value)
@@ -866,6 +892,9 @@ export class VirtualMachine {
     case IOperatantType.UNDEFINED:
       return void 0
     case IOperatantType.VAR_SYMBOL:
+      if (!this.callingFunctionInfo.variables) {
+        return undefined
+      }
       return this.callingFunctionInfo.variables.get(value)
     default:
       throw new VMRunTimeError("Unknown operant " + valueType)
@@ -989,8 +1018,9 @@ export class VirtualMachine {
       }
       // console.log(allArgs)
       const currentCallingFunctionInfo: ICallingFunctionInfo =  vm.callingFunctionInfo = {
-        closureScope: closureScope.fork(),
-        variables: new Scope(),
+        isInitClosure: false,
+        closureScope,
+        variables: null,
         args: allArgs,
         returnValue: NO_RETURN_SYMBOL,
       }
