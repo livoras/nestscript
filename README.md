@@ -133,6 +133,9 @@ func main() {
 * * *
 
 ## Change Log
+### 2020-10-10
+* 函数调用的时候延迟 new Scope 和 scope.fork 可以很好提升性能（~500ms）
+
 ### 2020-10-09
 * 性能优化：不使用 `XXXBuffer.set` 从 buffer 读取指令速度更快
 
