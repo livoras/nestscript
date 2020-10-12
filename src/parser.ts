@@ -78,20 +78,18 @@ const enum TokenizingState {
   FUNCTION_BODY,
 }
 
-export const parseAssembler = (code: string): IParsedFunction[] => {
+export const parseAssembler = (code: string, isRawString: boolean = false): IParsedFunction[] => {
   code = code.trim()
   let operants: string[] = []
 
   let i = 0
   let val = ""
   let isInString = false
-  const isInFunction = false
   let oldStringStart: string = ''
 
   let codes: string[][] = []
   const funcs: IParsedFunction[] = []
   let token = ''
-  const oldToken = ''
   let tokenizingState: TokenizingState = TokenizingState.INIT
   let currentFunctionInfo: IParsedFunction | null = null
   const NO_SET_FUNCTION_INFO_ERROR = 'current function info is not set.'
@@ -109,6 +107,7 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
       if (isEmpyty(c)) {
         if (!token) { continue }
         if (token !== 'func') {
+          console.log('->', operants)
           throw new Error('INIT Unexpected token ' + token)
         }
         token = ''
@@ -185,6 +184,9 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
       if (c === '\\') {
         if (isEscape) {
           isEscape = false
+          if (isRawString) {
+            val += c
+          }
         } else {
           isEscape = true
           val += c
@@ -194,7 +196,7 @@ export const parseAssembler = (code: string): IParsedFunction[] => {
 
       if (c === '"' && isEscape) {
         // console.log('--->', val)
-        val = val.substring(0, val.length - 1) + '"'
+        val = val.substring(0, val.length - (isRawString ? 0 : 1)) + '"'
         isEscape = false
         continue
       }

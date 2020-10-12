@@ -1,12 +1,113 @@
-import { Certificate, createDecipher, createDiffieHellman } from 'crypto'
-import { parseCode, parseAssembler, IParsedFunction } from './parser'
-import { I } from './vm/vm'
-import { use } from 'chai'
+// tslint:disable: max-classes-per-file
+
+import { parseAssembler, IParsedFunction } from './parser'
+import { I, IOperatantType } from './vm/vm'
+const fs = require('fs')
+
+class CodeBlock {
+  public toCodeBlocks = new Set<number>()
+  constructor(
+    public codes: string[][] = [],
+    public index: number = 0,
+  ) {}
+}
+
+class CodeBlockGraph {
+  public blockMap: Map<number, CodeBlock> = new Map()
+  public codes: string[][] = []
+  public functionName: string = ''
+  public params: string[] = []
+
+  constructor(public func: IParsedFunction) {
+    this.functionName = func.functionName
+    this.codes = func.instructions
+    this.params = func.params
+    this.parse()
+  }
+
+  public parse(): void {
+    let codeBlock = new CodeBlock([], 0)
+    let oldCodeBlock = codeBlock
+    const labelsMap = new Map<string, number>()
+    this.codes.forEach((code: string[], i): void => {
+      if (code[0].match(/LABEL/i)) {
+        labelsMap.set(code[1], i)
+      }
+    })
+    this.blockMap.set(0, codeBlock)
+
+    this.codes.forEach((code: string[], i): void => {
+      const op = code[0]
+      const isJumpCode: boolean = ['JMP', 'JE', 'JNE', 'JG', 'JL', 'JGE', 'JLE', 'JF', 'JIF'].includes(op)
+      const isLabelCode: boolean = !!op.match(/LABEL/i)
+      if (isLabelCode) {
+        if (codeBlock.codes.length !== 0) {
+          oldCodeBlock = codeBlock
+          codeBlock = new CodeBlock([], i)
+          this.blockMap.set(codeBlock.index, codeBlock)
+        } else {
+          codeBlock.index = i
+        }
+        oldCodeBlock.toCodeBlocks.add(i)
+        codeBlock.codes.push(code)
+      } else if (isJumpCode) {
+        codeBlock.codes.push(code)
+        const label = code[code.length - 1]
+        if (!labelsMap.has(label)) {
+          throw new Error(`cannot find label ${label}`)
+        }
+        codeBlock.toCodeBlocks.add(labelsMap.get(label)!)
+        codeBlock.toCodeBlocks.add(i + 1)
+        oldCodeBlock = codeBlock
+        codeBlock = new CodeBlock([], i + 1)
+        this.blockMap.set(codeBlock.index, codeBlock)
+      } else {
+        codeBlock.codes.push(code)
+      }
+    })
+  }
+
+  public print(): void {
+    for (const [_, cb] of this.blockMap.entries()) {
+      console.log('--->', cb.index, cb.codes, cb.toCodeBlocks)
+    }
+  }
+
+  public optimize(): void {
+    [...this.blockMap.entries()].forEach(([i, codeBlock]): void => {
+      codeBlock.codes = optimizeCodes(codeBlock.codes)
+    })
+  }
+
+  public output(): any {
+    const codeString = [...this.blockMap.entries()]
+      .sort(([i]: any, [j]: any): any => i - j)
+      .reduce<string[][]>((ret: string[][], [i, codeBlock]): string[][] => {
+        return [...ret, ...codeBlock.codes]
+      }, [])
+      .filter((c): boolean => !!c)
+      .map((c: string[]): string => {
+        if (c[0] === 'LABEL') {
+          return c.join(' ') + ':\n'
+        }
+        return '  ' + c.join(' ') + ';\n'
+      }).join('')
+    return `func ${this.functionName} (${this.params.join(', ')}) {
+${codeString.trimRight()}\n}`
+  }
+}
 
 export const optimizeCode = (code: string): string => {
-  const funcs = parseAssembler(code)
-  // console.log(funcs, '?????')
-  return funcs.map(optimizeFunction).join('\n')
+  // return code
+  const ret = parseAssembler(code, true).reduce((r: string, func: IParsedFunction): string => {
+    const cb = new CodeBlockGraph(func)
+    cb.optimize()
+    return r + '\n' + cb.output()
+  }, '').trim()
+  fs.writeFileSync('opt.nes', ret, 'utf-8')
+  return ret
+  // console.log(funcs)
+  // console.log(func.instructions.join('\n'))
 }
 
 const enum OU {
@@ -93,7 +194,7 @@ const codeToUseAge: { [x in any]: OU[] } = {
   [I.FORIN_END]: [],
   [I.BREAK_FORIN]: [],
   [I.CONT_FORIN]: [],
-  [I.MOV_ARGS]: [OU.GET],
+  [I.MOV_ARGS]: [OU.SET],
 }
 
 const IGNORE_INS = [
@@ -116,8 +217,7 @@ interface ICandidate {
   usages: { codeIndex: number, position: number }[],
 }
 
-const optimizeFunction = (func: IParsedFunction): string => {
-  let codes: any[] = func.instructions
+const optimizeCodes = (codes: any[]): any[] => {
   const candidates: Map<string, ICandidate> = new Map()
   const isInCandidates = (reg: string): boolean => candidates.has(reg)
   const isReg = (s: string): boolean => s.startsWith('%')
@@ -143,14 +243,13 @@ const optimizeFunction = (func: IParsedFunction): string => {
       try {
         codes[usage.codeIndex][usage.position] = value
       } catch(e) {
-        // console.log('----. REG', usage, codes[usage.codeIndex])
         throw new Error(e)
       }
     }
   }
 
   const isIgnoreOperator = (op: string): boolean => {
-    return ['VAR'].includes(op)
+    return ['VAR', 'REG'].includes(op)
   }
 
   codes.forEach((code: string[], i: number): void => {
@@ -211,22 +310,9 @@ const optimizeFunction = (func: IParsedFunction): string => {
     }
   })
 
-  for (const [reg] of candidates.entries()) {
-    processReg(reg)
-  }
+  // for (const [reg] of candidates.entries()) {
+  //   processReg(reg)
+  // }
 
-  codes = codes.filter((c): boolean => !!c)
-  const codeString = codes.map((c: string[]): string => {
-    if (c[0] === 'LABEL') {
-      return c.join(' ') + ':\n'
-    }
-    return '  ' + c.join(' ') + ';\n'
-  }).join('')
-  const ret = `
-func ${func.functionName} (${func.params.join(', ')}) {
-${codeString}
-}
-`
-  console.log(ret)
-  return ret
+  return codes
 }
