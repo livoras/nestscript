@@ -37,12 +37,26 @@ export default class Run extends Command {
       TypeError,
       ArrayBuffer,
       DataView,
+      Uint8Array,
       Error,
+      Set,
+      Map,
+      Boolean,
+      Infinity,
       Math,
       console,
+      Buffer,
+      Number,
+      process,
       Date,
     })
     vm.run()
+    const _ = global._
+    // _.fuck()
+    const curried = _.curry((a: any, b: any, c: any, d: any): any[] => [a, b, c, d])
+    console.log(curried(1)(2)(3)(4))
+    console.log(curried(1, 2)(3, 4))
+    console.log(curried(1, 2, 3, 4))
   }
 
   public getAbsPath(p: string): string {

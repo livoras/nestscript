@@ -1,8 +1,11 @@
+// (window as any).newCount = 0
+
 export class Scope {
   constructor(
     public scope: any = {},
     public heap: any[] = [],
     public isRestoreWhenChange: boolean = true) {
+    // (window as any).newCount++
     this.scope.blockNameMap = new Map<string, any>()
   }
 
@@ -32,7 +35,6 @@ export class Scope {
     const index = this.heap.length
     this.scope[key] = index
     this.heap.push(void 0)
-    // console.log('pushing .....', this.heap)
   }
 
   public set(key: any, value: any): void {
@@ -58,29 +60,3 @@ export class Scope {
     return `len ${scopes.length}: ` + scopes.join(' <- ')
   }
 }
-
-
-// const s = new Scope()
-// s.isRestoreWhenChange = true
-// s.set('name', 'good')
-
-// s.front()
-// s.set('title', 'nice')
-
-// const s1 = s.fork()
-// console.log(s1.get('title') === 'nice')
-// console.log(s1.get('name') === 'good')
-
-// s.front()
-// s.set('age', 12)
-
-// console.log(s.get('age') === 12)
-// console.log(s.get('title') === 'nice')
-// console.log(s.get('name') === 'good')
-// console.log(s1.get('age') === void 0)
-
-// console.log(s.heap)
-// s.back()
-// console.log(s.heap)
-// s.back()
-// console.log(s.heap)
