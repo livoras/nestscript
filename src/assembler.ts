@@ -91,8 +91,8 @@ export const parseCodeToProgram = (program: string): Buffer => {
   const globalSymbols = new Map<string, any>()
   const stringTable: string[] = []
   const stringIndex: any = {}
-  // const funcs = parseAssembler(optimizeCode(program))
-  const funcs = parseAssembler(program) // program
+  const funcs = parseAssembler(optimizeCode(program))
+  // const funcs = parseAssembler(program) // program
   const _symbols = new Map<string, number>()
   let symbolsCounter = 0
 

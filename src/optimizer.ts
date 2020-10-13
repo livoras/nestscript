@@ -246,6 +246,7 @@ const optimizeCodes = (codes: any[]): any[] => {
         throw new Error(e)
       }
     }
+    candidates.delete(reg)
   }
 
   const isIgnoreOperator = (op: string): boolean => {
@@ -268,10 +269,11 @@ const optimizeCodes = (codes: any[]): any[] => {
           position: 2,
         })
       }
-      if (!isReg(dst) || isReg(value)) { return }
+      if (!isReg(dst)) { return }
       if (isInCandidates(dst)) {
         processReg(dst)
       }
+      if (isReg(value)) { return }
       candidates.set(dst, {
         codeIndex: i,
         operator,
