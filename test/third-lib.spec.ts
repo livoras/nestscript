@@ -225,6 +225,7 @@ const readAndRun = (filename: string): any => {
 readAndRun('lodash.js')
 let _: any
 const lodashStable = _ = (global as any)._
+console.log('---------------------------- ready to run lodash.')
 
 const deepStrictEqual = (a: any, b: any, msg?: string): void => {
   try {
@@ -259,6 +260,7 @@ const assert = {
 }
 
 describe('compile and running third part libraries', (): void => {
+  console.log('----------------------- ?')
   it('mqtt.min.js', (): void => {
     readAndRun('mqtt.min.js')
   })
@@ -280,6 +282,7 @@ describe('compile and running third part libraries', (): void => {
     expect(_.isNumber('3')).equal(false)
 
     const curried = _.curry((a: any, b: any, c: any, d: any): any[] => [a, b, c, d])
+    console.log('-------------------????? try to run.', curried, typeof curried)
     let expected = [1, 2, 3, 4]
     expect(curried(1)(2)(3)(4)).to.deep.equal(expected)
     expect(curried(1, 2)(3, 4)).to.deep.equal(expected)
