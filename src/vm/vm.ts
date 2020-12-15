@@ -210,11 +210,11 @@ export class VirtualMachine {
      * G1
      * RET
      */
-    console.log(
-      'globalIndex', globalIndex,
-      'localSize', localSize,
-    )
-    console.log("start ---> fp", this.fp, this.sp)
+    // console.log(
+    //   'globalIndex', globalIndex,
+    //   'localSize', localSize,
+    // )
+    // console.log("start ---> fp", this.fp, this.sp)
   }
 
   public reset(): void {
@@ -230,7 +230,7 @@ export class VirtualMachine {
   public run(): void {
     this.callFunction(this.mainFunction, void 0, '', 0, false)
     // this.ip = this.functionsTable[this.entryFunctionIndex].ip
-    console.log("start stack", this.stack)
+    // console.log("start stack", this.stack)
     this.isRunning = true
     while (this.isRunning) {
       // console.log('running in main stream.....')
@@ -347,7 +347,7 @@ export class VirtualMachine {
       break
     }
     case I.EXIT: {
-      console.log('exit stack size -> ', stack.length)
+      // console.log('exit stack size -> ', stack.length)
       // console.log('stack -> ', this.stack)
       // console.log('heap -> ', this.heap)
       // console.log('closures -> ', this.closureTables)
@@ -479,13 +479,13 @@ export class VirtualMachine {
         // console.log(pattern, flags, '---------?')
         this.setReg(dst, { value: new RegExp(pattern.value, flags.value) })
       } catch(e) {
-        console.log("================== pattern\n")
-        console.log(pattern.value)
-        console.log("==================\n")
+        // console.log("================== pattern\n")
+        // console.log(pattern.value)
+        // console.log("==================\n")
 
-        console.log("=================== value\n")
-        console.log(flags.value)
-        console.log("===================\n")
+        // console.log("=================== value\n")
+        // console.log(flags.value)
+        // console.log("===================\n")
         throw new VMRunTimeError(e)
       }
       break
@@ -795,7 +795,7 @@ export class VirtualMachine {
     // }
 
     default:
-      console.log(this.ip)
+      // console.log(this.ip)
       throw new VMRunTimeError("Unknow command " + op + " " + I[op],)
     }
 
@@ -1105,24 +1105,24 @@ const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMac
   const funcionTableBasicIndex = readUInt32(buffer, 4, 8)
   const stringTableBasicIndex = readUInt32(buffer, 8, 12)
   const globalsSize = readUInt32(buffer, 12, 16)
-  console.log(
-    ' =========================== Start Running =======================\n',
-    'main function index', mainFunctionIndex, '\n',
-    'function table basic index', funcionTableBasicIndex, '\n',
-    'string table basic index', stringTableBasicIndex, '\n',
-    'globals szie ', globalsSize, '\n',
-    '=================================================================\n',
-  )
+  // console.log(
+  //   ' =========================== Start Running =======================\n',
+  //   'main function index', mainFunctionIndex, '\n',
+  //   'function table basic index', funcionTableBasicIndex, '\n',
+  //   'string table basic index', stringTableBasicIndex, '\n',
+  //   'globals szie ', globalsSize, '\n',
+  //   '=================================================================\n',
+  // )
 
   const stringsTable: string[] = parseStringsArray(buffer.slice(stringTableBasicIndex))
   const codesBuf = new Uint8Array(buffer.slice(4 * 4, funcionTableBasicIndex))
   const funcsBuf = buffer.slice(funcionTableBasicIndex, stringTableBasicIndex)
   const funcsTable: FuncInfoMeta[] = parseFunctionTable(funcsBuf)
-  console.log('string table', stringsTable)
+  // console.log('string table', stringsTable)
   // console.log('function table', funcsTable)
-  console.log(mainFunctionIndex, 'function basic index', funcionTableBasicIndex)
-  console.log('total codes bytes length -->', codesBuf.byteLength)
-  console.log('main start index', funcsTable[mainFunctionIndex][0], stringTableBasicIndex)
+  // console.log(mainFunctionIndex, 'function basic index', funcionTableBasicIndex)
+  // console.log('total codes bytes length -->', codesBuf.byteLength)
+  // console.log('main start index', funcsTable[mainFunctionIndex][0], stringTableBasicIndex)
 
   return new VirtualMachine(codesBuf, funcsTable, mainFunctionIndex, stringsTable, globalsSize, ctx)
   // const mainFuncInfo = parseVmFunctionToJsFunction({

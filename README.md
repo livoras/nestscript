@@ -40,6 +40,11 @@ A script nested in JavaScript, dynamically runs code in environment without `eva
 
 理论上你可以将任意语言编译成 `nestscript` 指令集，但是目前 `nestscript` 只包含了一个代码生成器，目前支持将 JavaScript 编译成 `nestscript` 指令。
 
+目前支持单文件 ES5 编译，并且已经成功编译并运行一些经典的 JavaScript 第三方库，例如 moment.js、lodash.js、mqtt.js。并且有日活百万级产品在生产环境使用。
+
+## 快速使用
+TODO
+
 ## nestscript 指令集
 
 ```

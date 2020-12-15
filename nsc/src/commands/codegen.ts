@@ -2,9 +2,10 @@ import { Command, flags } from '@oclif/command'
 import path = require("path")
 import fs = require("fs")
 import { generateAssemblyFromJs } from '../../../src/codegen'
+import { parseCodeToProgram } from '../../../src/assembler'
 
 export default class Codegen extends Command {
-  static description = 'compile js to nestscript assembly.'
+  static description = 'compile javascript file to nestscript assembly.'
 
   static examples = [
     `$ nsc codegen main.js main.nes`,

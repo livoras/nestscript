@@ -1,14 +1,14 @@
 import { Command, flags } from '@oclif/command'
 import path = require("path")
 import fs = require("fs")
-import { generateAssemblyFromJs } from "nestscript"
+import { generateAssemblyFromJs } from '../../../src/codegen'
 import { parseCodeToProgram } from '../../../src/assembler'
 
 export default class Compile extends Command {
-  static description = 'describe the command here'
+  static description = 'compile source javascript file to executable binary file'
 
   static examples = [
-    `$ nsc compile eg.asm target`,
+    `$ nsc compile main.js main`,
   ]
 
   static flags = {
@@ -36,7 +36,8 @@ export default class Compile extends Command {
     const src = this.getAbsPath(args.file)
     const dst = this.getAbsPath(args.target)
     const code = fs.readFileSync(src, 'utf-8')
-    const buffer = parseCodeToProgram(code)
+    const asm = generateAssemblyFromJs(code)
+    const buffer = parseCodeToProgram(asm)
     fs.writeFileSync(dst, buffer)
     console.log("Compile done!")
   }

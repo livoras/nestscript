@@ -5,7 +5,7 @@ import { parseCodeToProgram } from "nestscript"
 import { VirtualMachine, createVMFromArrayBuffer } from "nestscript/src/vm/vm"
 
 export default class Run extends Command {
-  static description = 'describe the command here'
+  static description = 'run executable binary file'
 
   static examples = [
     `$ nsc compile eg.asm target`,
@@ -51,12 +51,6 @@ export default class Run extends Command {
       Date,
     })
     vm.run()
-    // const _ = global._
-    // // _.fuck()
-    // const curried = _.curry((a: any, b: any, c: any, d: any): any[] => [a, b, c, d])
-    // console.log(curried(1)(2)(3)(4))
-    // console.log(curried(1, 2)(3, 4))
-    // console.log(curried(1, 2, 3, 4))
   }
 
   public getAbsPath(p: string): string {
