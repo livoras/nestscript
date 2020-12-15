@@ -133,6 +133,43 @@ nsc compile game.js game
 </script>
 ```
 
+## API
+
+### `nsc compile [source.js] [binary]`
+
+把 JavaScript 文件编译成二进制，例如 `npx nsc compile game.js game`
+
+### `nsc run [binary]`
+
+通过 nestscript 虚拟机运行编译好的二进制，例如 `npx nsc run game`
+
+### `createVMFromArrayBuffer(buffer: ArrayBuffer, context: any): VirtuamMachine`
+
+由 `dist/vm.js` 提供的方法，解析编译好的二进制文件，返回一个虚拟机实例，并且可以准备执行。例如:
+
+```javascript
+const vm = createVMFromArrayBuffer(buffer, context)
+```
+
+`buffer` 指的是二进制用 JavaScript 的 ArrayBuffer 的展示形式；
+
+`context` 相当于传给虚拟机的一个全局运行环境，因为虚拟机的运行环境和外部分离开来的。它对 window、global 这些已有的 JavaScript 环境无知，所以需要手动传入一个 `context` 来告知虚拟机目前的全局环境。虚拟机的全局变量、属性都会从传入的 `contenxt` 中拿到。
+
+例如，如果代码只用到全局的 `Date` 属性，那么除了可以直接传入 `window` 对象以外，还可以这么做：
+
+```javascript
+const vm = createVMFromArrayBuffer(buffer, { Date })
+```
+
+### VirtuamMachine::run()
+
+`createVMFromArrayBuffer` 返回的虚拟机实例有 `run` 方法可以运行代码：
+
+```javascript
+const vm = createVMFromArrayBuffer(buffer, { Date })
+vm.run()
+```
+
 ## nestscript 指令集
 
 ```
