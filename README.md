@@ -42,7 +42,6 @@ A script nested in JavaScript, dynamically runs code in environment without `eva
 
 目前支持单文件 ES5 编译，并且已经成功编译并运行一些经典的 JavaScript 第三方库，例如 moment.js、lodash.js、mqtt.js。并且有日活百万级产品在生产环境使用。
 
-
 ## Installation
 
 ```bash
@@ -74,6 +73,34 @@ npx nsc run main
 会看到终端输出 `hello world`。这个 `main` 二进制文件，可以在任何一个包含了 nestscript 虚拟机，也就是 `dist/vm.js` 文件的环境中运行。
 
 例如你可以把这个 `main` 二进制分发到 CND，然后通过网络下载到包含 `dist/vm.js` 文件的小程序中动态执行。
+
+## DEMO
+
+为了展示它的作用，我们编译了一个开源的的伪 3D 游戏 [javascript-racer](https://github.com/jakesgordon/javascript-racer/)。可以通过这个网址查看效果：[https://livoras.github.io/nestscript-demo/index.html](https://livoras.github.io/nestscript-demo/index.html)
+
+![游戏图片](https://github.com/livoras/nestscript-demo/blob/master/demo.png?raw=true)
+
+查看源代码（[nestscript-demo](https://github.com/livoras/nestscript-demo)）可以看到，我们在网页中引入了一个虚拟机 `vm.js`。游戏的主体逻辑都通过 nestscript 编译成了一个二进制文件 `game`，然后通过 `fetch`下载这个二进制文件，然后给到虚拟机解析、运行。
+
+```html
+<!-- 引入 nestscript 虚拟机 -->
+<script src="./nestscript/dist/vm.js"></script>
+
+<!-- 下载二进制文件 `game`，并且用虚拟机运行 -->
+<script>
+   fetch('./game').then((res) => {
+      res.arrayBuffer().then((data) => {
+         const vm = createVMFromArrayBuffer(data, window)
+         vm.run()
+      })
+   })
+</script>
+```
+
+达到的效果和原来的开源的游戏效果完全一致
+
+* 原来用 JS 运行的效果：[http://codeincomplete.com/projects/racer/v4.final.html](http://codeincomplete.com/projects/racer/v4.final.html)
+* 用虚拟机运行 nestscript 二进制的效果：[https://livoras.github.io/nestscript-demo/index.html](https://livoras.github.io/nestscript-demo/index.html)
 
 ## nestscript 指令集
 
