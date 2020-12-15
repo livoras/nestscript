@@ -135,15 +135,15 @@ nsc compile game.js game
 
 ## API
 
-### `nsc compile [source.js] [binary]`
+### nsc compile [source.js] [binary]
 
 把 JavaScript 文件编译成二进制，例如 `npx nsc compile game.js game`
 
-### `nsc run [binary]`
+### nsc run [binary]
 
 通过 nestscript 虚拟机运行编译好的二进制，例如 `npx nsc run game`
 
-### `createVMFromArrayBuffer(buffer: ArrayBuffer, context: any): VirtuamMachine`
+### createVMFromArrayBuffer(buffer: ArrayBuffer, context: any)
 
 由 `dist/vm.js` 提供的方法，解析编译好的二进制文件，返回一个虚拟机实例，并且可以准备执行。例如:
 
