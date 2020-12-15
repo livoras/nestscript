@@ -102,6 +102,37 @@ npx nsc run main
 * 原来用 JS 运行的效果：[http://codeincomplete.com/projects/racer/v4.final.html](http://codeincomplete.com/projects/racer/v4.final.html)
 * 用虚拟机运行 nestscript 二进制的效果：[https://livoras.github.io/nestscript-demo/index.html](https://livoras.github.io/nestscript-demo/index.html)
 
+### demo 原理
+
+编译的过程非常简单，只不过是把原来游戏的几个逻辑文件合并在一起：
+
+```bash
+cat common.js stats.js main.js > game.js
+```
+
+然后用 nestscript 编译成二进制文件：
+
+```bash
+nsc compile game.js game
+```
+
+再在 html 中引入虚拟机 vm.js，然后通过网络请求获取 game 二进制文件，接着运行二进制：
+
+```html
+<!-- 引入 nestscript 虚拟机 -->
+<script src="./nestscript/dist/vm.js"></script>
+
+<!-- 下载二进制文件 `game`，并且用虚拟机运行 -->
+<script>
+   fetch('./game').then((res) => {
+      res.arrayBuffer().then((data) => {
+         const vm = createVMFromArrayBuffer(data, window)
+         vm.run()
+      })
+   })
+</script>
+```
+
 ## nestscript 指令集
 
 ```
