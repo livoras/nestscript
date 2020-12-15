@@ -104,7 +104,7 @@ export const optimizeCode = (code: string): string => {
     cb.optimize()
     return r + '\n' + cb.output()
   }, '').trim()
-  fs.writeFileSync('opt.nes', ret, 'utf-8')
+  // fs.writeFileSync('opt.nes', ret, 'utf-8')
   return ret
   // console.log(funcs)
   // console.log(func.instructions.join('\n'))

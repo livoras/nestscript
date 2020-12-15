@@ -1166,3 +1166,8 @@ class NumArgs {
   }
 // tslint:disable-next-line: max-file-line-count
 }
+
+if (typeof window !== 'undefined') {
+  (window as any).VirtualMachine = VirtualMachine;
+  (window as any).createVMFromArrayBuffer = createVMFromArrayBuffer
+}

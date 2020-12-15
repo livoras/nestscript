@@ -2,7 +2,7 @@ const path = require("path")
 
 module.exports = {
     entry: {
-        "vm": "./build/vm.js",
+        "vm": "./build/src/vm/vm.js",
     },
     optimization: {
         minimize: false,

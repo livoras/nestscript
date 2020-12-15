@@ -42,7 +42,8 @@ A script nested in JavaScript, dynamically runs code in environment without `eva
 
 目前支持单文件 ES5 编译，并且已经成功编译并运行一些经典的 JavaScript 第三方库，例如 moment.js、lodash.js、mqtt.js。并且有日活百万级产品在生产环境使用。
 
-## Install
+
+## Installation
 
 ```bash
 npm install nestscript
@@ -50,13 +51,13 @@ npm install nestscript
 
 ## 快速尝试
 
-### 新建一个文件，例如 `main.js`
+### 新建一个文件，例如 `main.js`：
 
 ```javascript
 console.log("hello world")
 ```
 
-### 执行命令：
+### 编译成二进制：
 
 ```bash
 npx nsc compile main.js main
@@ -64,7 +65,7 @@ npx nsc compile main.js main
 
 这会将 `main.js` 编译成 `main` 二进制文件
 
-### 使用 nestscript 运行二进制文件
+### 通过虚拟机运行二进制：
 
 ```bash
 npx nsc run main
