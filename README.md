@@ -137,7 +137,7 @@ nsc compile game.js game
 
 ### nsc compile [source.js] [binary]
 
-把 JavaScript 文件编译成二进制，例如 `npx nsc compile game.js game`
+把 JavaScript 文件编译成二进制，例如 `npx nsc compile game.js game`。注意，目前仅支持 ES5 的语法。
 
 ### nsc run [binary]
 
