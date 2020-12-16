@@ -74,7 +74,7 @@ npx nsc run main
 
 例如你可以把这个 `main` 二进制分发到 CND，然后通过网络下载到包含 `dist/vm.js` 文件的小程序中动态执行。
 
-## DEMO
+## Example
 
 为了展示它的作用，我们编译了一个开源的的伪 3D 游戏 [javascript-racer](https://github.com/jakesgordon/javascript-racer/)。可以通过这个网址查看效果：[https://livoras.github.io/nestscript-demo/index.html](https://livoras.github.io/nestscript-demo/index.html)
 
@@ -161,7 +161,7 @@ const vm = createVMFromArrayBuffer(buffer, context)
 const vm = createVMFromArrayBuffer(buffer, { Date })
 ```
 
-### VirtuamMachine::run()
+### VirtualMachine::run()
 
 `createVMFromArrayBuffer` 返回的虚拟机实例有 `run` 方法可以运行代码：
 
