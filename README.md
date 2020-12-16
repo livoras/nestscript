@@ -197,49 +197,55 @@ FUNC, ALLOC,
 例如使用指令编写的，斐波那契数列：
 
 ```javascript
-func fib(a) {
-  PUSH "斐波那契数列";
-  CALL_CTX "console" "time" 1;
-  VAR r0;
-  VAR r1;
-  VAR r2;
-  VAR tmp;
-  MOV r1 1;
-  MOV r2 1;
-  MOV r0 0;
-  JL a 3 l2;
-  SUB a 2;
-  JMP l1;
-
-LABEL l0:
-  MOV tmp r2;
-  ADD r2 r1;
-  MOV r1 tmp;
-  ADD r0 1;
-
-LABEL l1:
-  PRINT r2;
-  JL r0 a l0;
-  MOV $RET r2;
-  JMP l3;
-
-LABEL l2:
-  PRINT "DIRECT";
-  MOV $RET 1;
-
-LABEL l3:
-  MOV tmp $RET;
-  PUSH "斐波那契数列";
-  CALL_CTX "console" "timeEnd" 1;
-  MOV $RET tmp;
+func @@main() {
+    CLS @fibonacci;
+    REG %r0;
+    FUNC $RET @@f0;
+    FUNC @fibonacci @@f0;
+    MOV %r0 10;
+    PUSH %r0;
+    CALL_REG @fibonacci 1 false;
 }
-
-func main() {
-  PUSH "THE RESULT IS";
-  CALL_CTX "console" "log" 1;
-  PUSH 5;
-  CALL fib 1;
-  PRINT $RET;
+func @@f0(.n) {
+    REG %r0;
+    REG %r1;
+    REG %r2;
+    REG %r3;
+    MOV %r0 .n;
+    MOV %r1 1;
+    LT %r0 %r1;
+    JF %r0 _l1_;
+    MOV %r1 0;
+    MOV $RET %r1;
+    RET;
+    JMP _l0_;
+LABEL _l1_:
+LABEL _l0_:
+    MOV %r0 .n;
+    MOV %r1 2;
+    LE %r0 %r1;
+    JF %r0 _l3_;
+    MOV %r1 1;
+    MOV $RET %r1;
+    RET;
+    JMP _l2_;
+LABEL _l3_:
+LABEL _l2_:
+    MOV %r2 .n;
+    MOV %r3 1;
+    SUB %r2 %r3;
+    PUSH %r2;
+    CALL_REG @fibonacci 1 false;
+    MOV %r0 $RET;
+    MOV %r2 .n;
+    MOV %r3 2;
+    SUB %r2 %r3;
+    PUSH %r2;
+    CALL_REG @fibonacci 1 false;
+    MOV %r1 $RET;
+    ADD %r0 %r1;
+    MOV $RET %r0;
+    RET;
 }
 ```
 
@@ -251,15 +257,15 @@ func main() {
   - [ ] 属性访问优化
 - [ ] 文档：
   - [ ] IR 指令手册
-  - [ ] 安装文档
-  - [ ] 使用手册
-  - [ ] 使用 demo
+  - [x] 安装文档
+  - [x] 使用手册
+  - [x] 使用 demo
 - [x] `null`, `undefined` keyword
 - [x] 正则表达式
 - [x] label 语法
-- [ ] `try catch`
+- [x] `try catch`
   - [x] try catch block
-  - [ ] error 对象获取
+  - [x] error 对象获取
 - [x] ForInStatement
 - [x] 支持 function.length
 
