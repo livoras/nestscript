@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/livoras/nestscript#readme",
   "devDependencies": {
+    "@oclif/command": "^1.8.0",
     "@types/chai": "^4.2.11",
     "@types/estree": "0.0.44",
     "@types/mocha": "^8.0.0",
