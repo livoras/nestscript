@@ -1,4 +1,4 @@
-/******/ (function(modules) { // webpackBootstrap
+(function(e, a) { for(var i in a) e[i] = a[i]; }(exports, /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
 /******/
@@ -294,7 +294,6 @@ class VirtualMachine {
         if (!this.isRunning) {
             throw new VMRunTimeError('try to run again...');
         }
-        const stack = this.stack;
         let op = this.nextOperator();
         let isCallVMFunction = false;
         switch (op) {
@@ -901,7 +900,10 @@ class VirtualMachine {
             }
         };
         Object.setPrototypeOf(func, Callable.prototype);
-        Object.defineProperty(func, 'length', { value: meta[1] });
+        try {
+            Object.defineProperty(func, 'length', { value: meta[1] });
+        }
+        catch (e) { }
         vm.setMetaToFunc(func, meta);
         return func;
     }
@@ -1202,4 +1204,4 @@ exports.Scope = Scope;
 
 
 /***/ })
-/******/ ]);
+/******/ ])));
