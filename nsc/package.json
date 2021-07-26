@@ -27,7 +27,8 @@
     "/bin",
     "/lib",
     "/npm-shrinkwrap.json",
-    "/oclif.manifest.json"
+    "/oclif.manifest.json",
+    "tsconfig.json"
   ],
   "homepage": "https://github.com/nestscript/nsc",
   "keywords": [
