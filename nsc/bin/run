@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env ts-node
 
 require('@oclif/command').run()
 .then(require('@oclif/command/flush'))

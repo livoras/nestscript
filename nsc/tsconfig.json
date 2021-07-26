@@ -3,12 +3,11 @@
     "declaration": true,
     "importHelpers": true,
     "module": "commonjs",
-    "outDir": "lib",
-    "rootDir": "src",
+    "rootDir": "lib",
     "strict": true,
     "target": "es2017"
   },
   "include": [
-    "src/**/*"
+    "lib/**/*"
   ]
 }
