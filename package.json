@@ -5,7 +5,7 @@
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "bin": {
-    "nsc": "./nsc/bin/run"
+    "nsc": "nsc/bin/run"
   },
   "files": [
     "build/src",
