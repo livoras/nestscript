@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="25 155 455 190" role="img" aria-labelledby="title">
+  <title id="title">NestScript</title>
+  <rect x="25" y="155" width="455" height="190" fill="#fff"/>
+  <rect x="115" y="175" width="80" height="150" fill="#b2ebf9" opacity=".5"/>
+  <rect
+    x="80"
+    y="210"
+    width="80"
+    height="150"
+    fill="#aea1ea"
+    opacity=".5"
+    transform="rotate(90 120 285)"
+  />
+  <text
+    x="216"
+    y="250"
+    fill="#132430"
+    font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+    font-size="35"
+    font-weight="600"
+  >NestScript</text>
+</svg>

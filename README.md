@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.svg" alt="NestScript" height="120">
+  <img src="docs/logo-readme.svg" alt="NestScript" width="360">
 </p>
 
 <h1 align="center">NestScript</h1>
