@@ -13,6 +13,7 @@ export const enum VariableType {
   FUNCTION = 1,
   VARIABLE = 2,
   CLOSURE = 3,
+  ARGUMENTS = 4,
 }
 
 interface IScope {
@@ -26,6 +27,10 @@ interface IScope {
 interface IFunction {
   name: string,
   body: et.FunctionExpression | et.ArrowFunctionExpression | et.FunctionDeclaration,
+  kind: 'normal' | 'arrow',
+  strict: boolean,
+  withDepth: number,
+  usesArguments: boolean,
   blockChain: BlockChain,
   prepare: () => void,
   // scopes: IScope[], // 存储作用域链
@@ -52,6 +57,8 @@ interface IState {
   funcName: string,
   currentScope?: IScope,
   blockChain: BlockChain,
+  currentStrict: boolean,
+  withDepth: number,
 
   // $obj: string,
   // $key: string,
@@ -96,8 +103,27 @@ const codeMap = {
 
 class Codegen {
   public parse(code: string): et.Program {
-    return acorn.parse(code)
+    return acorn.parse(code, { ecmaVersion: 2020 })
   }
+}
+
+const functionBodyUsesArguments = (body: et.Node): boolean => {
+  let found = false
+  walk.recursive(body, null, {
+    Identifier(node: et.Identifier): void {
+      if (node.name === 'arguments') {
+        found = true
+      }
+    },
+    FunctionDeclaration(): void {},
+    FunctionExpression(): void {},
+    // Arrows inherit the surrounding arguments binding, so their body counts
+    // as a use by the nearest normal function.
+    ArrowFunctionExpression(node: et.ArrowFunctionExpression, s: any, c: any): void {
+      c(node.body, s)
+    },
+  })
+  return found
 }
 
 /**
@@ -124,7 +150,9 @@ const getVariablesByFunctionAstBody = (ast: any): Map<string, any> => {
       // let funcName = ''
       if (node.id.type === 'Identifier') {
         if (kind === 'var') {
-          locals.set(node.id.name, VariableType.VARIABLE)
+          if (locals.get(node.id.name) !== VariableType.FUNCTION) {
+            locals.set(node.id.name, VariableType.VARIABLE)
+          }
         }
       } else {
         throw new Error("Unprocessed node.id.type " + node.id.type + " " + node.id)
@@ -133,7 +161,7 @@ const getVariablesByFunctionAstBody = (ast: any): Map<string, any> => {
 
     FunctionDeclaration(node: et.FunctionDeclaration, s: any, c: any): any {
       if (node.id) {
-        locals.set(node.id.name, VariableType.VARIABLE)
+        locals.set(node.id.name, VariableType.FUNCTION)
       }
     },
 
@@ -175,7 +203,13 @@ const createNewState = (): IState => {
     maxRegister: 0,
     currentFunctionName: '',
     blockChain: new BlockChain([]),
+    currentStrict: false,
+    withDepth: 0,
   }
+}
+
+const hasUseStrictDirective = (body: et.Program | et.BlockStatement): boolean => {
+  return body.body.some((statement: any): boolean => statement.directive === 'use strict')
 }
 // tslint:disable-next-line: no-big-function
 const parseToCode = (ast: any): void => {
@@ -201,6 +235,11 @@ const parseToCode = (ast: any): void => {
     s.functions.push({
       name: funcName,
       body: node,
+      kind: node.type === 'ArrowFunctionExpression' ? 'arrow' : 'normal',
+      strict: s.currentStrict ||
+        (node.body.type === 'BlockStatement' && hasUseStrictDirective(node.body)),
+      withDepth: s.withDepth,
+      usesArguments: functionBodyUsesArguments(node.body),
       blockChain: s.blockChain.newFuncBlock(),
       prepare(): void {
         const funcBlock = s.blockChain.getCurrentBlock() as IFuncBlock
@@ -468,7 +507,17 @@ const parseToCode = (ast: any): void => {
       freeRegister()
       freeRegister()
     } else if (node.type === 'Identifier') {
-      if (s.blockChain.hasName(node.name)) {
+      if (s.withDepth > 0) {
+        const fallbackKind = s.blockChain.getNameType(node.name) === VariableType.ARGUMENTS
+          ? 2
+          : (s.blockChain.hasName(node.name) ? 1 : 0)
+        cg([
+          `WITH_SET`, `"${node.name}"`, `${fallbackKind}`,
+          fallbackKind === 1 ? node.name : 'undefined', reg,
+        ])
+      } else if (s.blockChain.getNameType(node.name) === VariableType.ARGUMENTS) {
+        cg(['SET_ARGS', reg])
+      } else if (s.blockChain.hasName(node.name)) {
         cg([`MOV`, `${ node.name }`, `${ reg }`])
       } else {
         cg([`SET_CTX`, `"${node.name}"`, `${ reg }`])
@@ -481,7 +530,17 @@ const parseToCode = (ast: any): void => {
   const getValueOfNode = (node: any, reg: string, s: IState, c: any): any => {
     if (node.type === 'Identifier') {
       if (reg) {
-        if (s.blockChain.hasName(node.name)) {
+        if (s.withDepth > 0) {
+          const fallbackKind = s.blockChain.getNameType(node.name) === VariableType.ARGUMENTS
+            ? 2
+            : (s.blockChain.hasName(node.name) ? 1 : 0)
+          cg([
+            `WITH_GET`, `${reg}`, `"${node.name}"`, `${fallbackKind}`,
+            fallbackKind === 1 ? node.name : 'undefined',
+          ])
+        } else if (s.blockChain.getNameType(node.name) === VariableType.ARGUMENTS) {
+          cg([`MOV_ARGS`, `${ reg }`])
+        } else if (s.blockChain.hasName(node.name)) {
           cg([`MOV`, `${ reg }`, `${ node.name }`])
         } else {
           if (node.name === 'arguments') {
@@ -507,25 +566,40 @@ const parseToCode = (ast: any): void => {
     kind: 'let' | 'var' | 'const' = 'var',
     isForce: boolean = false,
   ): void => {
-    // if (state.isGlobal) {
-    //   cg(`GLOBAL`, name)
-    //   s.globals.set(name, VariableType.VARIABLE)
-    /* } else */
-    // if (state.isGlobal) {
-    //   cg(`GLOBAL`, name)
-    //   s.blockChain.newGlobal(name, VariableType.VARIABLE)
-    // } else
-    if ((kind === 'let' || kind === 'const') && s.blockChain.chain.length > 1) {
-      cg(['VAR', `${name}`])
-      s.blockChain.newName(name, kind, isForce)
-    } else {
-      // console.log("nnnnnnnnnnnnnnnnnnnnnnnnnnnn new name", name)
-      // if (name === 'e') {
-      //   throw new Error('fuck')
-      // }
-      cg([`VAR`, `${name}`], { prior: 1 })
-      s.blockChain.newName(name, kind, isForce)
+    if (kind === 'let' || kind === 'const') {
+      if (!s.blockChain.hasOwnName(name)) {
+        // Register the name before emitting the declaration so earlier reads
+        // in the same block resolve to this lexical binding and observe TDZ.
+        s.blockChain.newName(name, kind, isForce)
+        cg(
+          [kind === 'let' ? 'LET' : 'CONST', name],
+          // Top-level function declarations are emitted with priority 4. The
+          // captured lexical cell must exist (still uninitialized) before a
+          // hoisted function closes over it.
+          s.blockChain.chain.length === 1 ? { prior: 2 } : {},
+        )
+      }
+      return
     }
+
+    if (state.isGlobal && ['undefined', 'NaN', 'Infinity'].includes(name)) {
+      // These names already denote immutable properties of the ES global
+      // object. A var declaration does not create a shadow binding.
+      return
+    }
+
+    if (state.isGlobal) {
+      cg([`GLOBAL_BIND`, `${name}`, `"${name}"`], { prior: 1 })
+    } else {
+      const functionBlock = s.blockChain.currentFuncBlock
+      cg([
+        `VAR`,
+        (): string => functionBlock?.variables.get(name) === VariableType.CLOSURE
+          ? `@${name}`
+          : name,
+      ], { prior: 1 })
+    }
+    s.blockChain.newName(name, kind, isForce)
   }
 
   /** Label 操作 */
@@ -555,10 +629,51 @@ const parseToCode = (ast: any): void => {
     return ret
   }
 
+  const predeclareLexicalDeclarations = (nodes: readonly any[], s: IState): void => {
+    nodes.forEach((node: any): void => {
+      if (node.type !== 'VariableDeclaration' || node.kind === 'var') { return }
+      node.declarations.forEach((declaration: et.VariableDeclarator): void => {
+        if (declaration.id.type !== 'Identifier') {
+          throw new Error('Unprocessed lexical declaration ' + declaration.id.type)
+        }
+        declareVariable(s, declaration.id.name, node.kind)
+      })
+    })
+  }
+
+  const evaluateDiscarded = (node: any, s: IState, c: any): void => {
+    // Most compound visitors already evaluate their observable children when
+    // no result is requested. Bare references are the important exception:
+    // they still need GetValue for getters and ReferenceError behaviour.
+    if (node.type === 'Identifier' || node.type === 'MemberExpression') {
+      const result = newRegister()
+      getValueOfNode(node, result, s, c)
+      freeRegister()
+    } else {
+      const previousResult = s.r0
+      s.r0 = null
+      c(node, s)
+      s.r0 = previousResult
+    }
+  }
+
   /**
    * 表达式结果处理原则：所有没有向下一层传递 s.r0 的都要处理 s.r0
    */
   walk.recursive(ast, state, {
+    Program(node: et.Program, s: any, c: any): void {
+      predeclareLexicalDeclarations(node.body, s)
+      node.body.forEach((n: any): void => c(n, s))
+    },
+
+    ExpressionStatement(node: et.ExpressionStatement, s: any, c: any): void {
+      // Even when an expression's value is discarded, evaluating it can be
+      // observable: a property read can invoke a getter and an identifier read
+      // can throw. Supplying a temporary destination keeps those semantics
+      // instead of allowing leaf visitors to silently skip the expression.
+      evaluateDiscarded(node.expression, s, c)
+    },
+
     Identifier: (node: et.Identifier, s: any, c: any): void => {
       if (s.r0) {
         getValueOfNode(node, s.r0, s, c)
@@ -595,7 +710,35 @@ const parseToCode = (ast: any): void => {
       } else {
         throw new Error("Unprocessed node.id.type " + node.id.type + " " + node.id)
       }
-      if (node.init) {
+      const isLexical = s.varKind === 'let' || s.varKind === 'const'
+      if (isLexical) {
+        const valueReg = newReg()
+        if (node.init) {
+          getValueOfNode(node.init, valueReg, s, c)
+        } else {
+          cg(['MOV', valueReg, 'undefined'])
+        }
+        cg(['INIT', reg, valueReg])
+      } else if (
+        node.init &&
+        state.isGlobal &&
+        (reg === 'undefined' || reg === 'NaN' || reg === 'Infinity')
+      ) {
+        const valueReg = newReg()
+        getValueOfNode(node.init, valueReg, s, c)
+        cg(['SET_CTX', `"${reg}"`, valueReg])
+      } else if (
+        node.init &&
+        s.blockChain.getNameType(reg) === VariableType.ARGUMENTS
+      ) {
+        const valueReg = newReg()
+        getValueOfNode(node.init, valueReg, s, c)
+        setValueToNode(node.id, valueReg, s, c)
+      } else if (node.init && s.varKind === 'var' && s.withDepth > 0) {
+        const valueReg = newReg()
+        getValueOfNode(node.init, valueReg, s, c)
+        setValueToNode(node.id, valueReg, s, c)
+      } else if (node.init) {
         if (node.init?.type === 'Identifier') {
           // if (!state.isGlobal) {
           getValueOfNode(node.init, reg, s, c)
@@ -626,39 +769,59 @@ const parseToCode = (ast: any): void => {
       const retReg = s.r0
       const isNewExpression = !!s.isNewExpression
       delete s.isNewExpression
-      const args = [...node.arguments]
-      // args.reverse()
-      for (const arg of args) {
-        const reg = s.r0 = newRegister()
-        // if (arg.type === 'Identifier') {
-        getValueOfNode(arg, reg, s, c)
-        // } else {
-        //   c(arg, s)
-        //   freeRegister()
-        // }
+
+      // JavaScript evaluates the callee (and captures its Reference) before
+      // evaluating any argument. Keep both the function value and its receiver
+      // alive while arguments are evaluated so argument side effects cannot
+      // change which function is called or what `this` is bound to.
+      let calleeReg: string
+      let thisReg: string | null = null
+      if (node.callee.type === 'MemberExpression') {
+        calleeReg = newRegister()
+        const objReg = newRegister()
+        const keyReg = newRegister()
+        s.r0 = null
+        s.r1 = objReg
+        s.r2 = keyReg
+        c(node.callee, s)
+        cg(['MOV_PROP', calleeReg, objReg, keyReg])
+        thisReg = objReg
         freeRegister()
-        cg([`PUSH`, reg])
+      } else if (node.callee.type === 'Identifier' && s.withDepth > 0) {
+        calleeReg = newRegister()
+        thisReg = newRegister()
+        const name = node.callee.name
+        const fallbackKind = s.blockChain.getNameType(name) === VariableType.ARGUMENTS
+          ? 2
+          : (s.blockChain.hasName(name) ? 1 : 0)
+        cg([
+          'WITH_RESOLVE', calleeReg, thisReg, `"${name}"`, `${fallbackKind}`,
+          fallbackKind === 1 ? name : 'undefined',
+        ])
+      } else {
+        calleeReg = newRegister()
+        getValueOfNode(node.callee, calleeReg, s, c)
       }
 
-      if (node.callee.type === "MemberExpression") {
-        s.r0 = null
-        const objReg = s.r1 = newRegister()
-        const keyReg = s.r2 = newRegister()
-        c(node.callee, s)
-        cg([`CALL_VAR`, objReg, keyReg, node.arguments.length, isNewExpression])
+      const args = [...node.arguments]
+      for (const arg of args) {
+        const reg = s.r0 = newRegister()
+        getValueOfNode(arg, reg, s, c)
+        cg([`PUSH`, reg])
         freeRegister()
-        freeRegister()
-      } else if (node.callee.type === "Identifier") {
-        callIdentifier(node.callee.name, node.arguments.length, s, isNewExpression)
+      }
+
+      if (thisReg) {
+        cg(['CALL_REF', calleeReg, thisReg, node.arguments.length, isNewExpression])
       } else {
-        const ret = s.r0 = newRegister()
-        c(node.callee, s)
-        freeRegister()
-        /** 这里不能用 callIdentifier */
-        cg([`CALL_REG`, ret, node.arguments.length, isNewExpression])
+        cg(['CALL_REG', calleeReg, node.arguments.length, isNewExpression])
       }
       if (retReg) {
         cg([`MOV`, retReg, `$RET`])
+      }
+      freeRegister()
+      if (thisReg) {
+        freeRegister()
       }
       s.r0 = null
     },
@@ -698,8 +861,22 @@ const parseToCode = (ast: any): void => {
 
     BlockStatement(node: et.BlockStatement, s: any, c: any): void {
       const restoreBlockChain = newBlockChain()
+      predeclareLexicalDeclarations(node.body, s)
       node.body.forEach((n: any): void => c(n, s))
       restoreBlockChain()
+    },
+
+    WithStatement(node: et.WithStatement, s: any, c: any): void {
+      const objectReg = newRegister()
+      const endLabel = newLabelName()
+      getValueOfNode(node.object, objectReg, s, c)
+      cg(['ENTER_WITH', objectReg, endLabel])
+      s.withDepth++
+      c(node.body, s)
+      s.withDepth--
+      cg(['EXIT_WITH'])
+      lg(endLabel)
+      freeRegister()
     },
 
     MemberExpression(node: et.MemberExpression, s: any, c: any): void {
@@ -731,7 +908,7 @@ const parseToCode = (ast: any): void => {
       } else if (node.property.type === 'Identifier') {
         // a.b.c.d
         if (node.computed) {
-          cg([`MOV`, keyReg, node.property.name])
+          getValueOfNode(node.property, keyReg, s, c)
         } else {
           cg([`MOV`, keyReg, `"${node.property.name}"`])
         }
@@ -753,7 +930,7 @@ const parseToCode = (ast: any): void => {
       const left = node.left
       const right = node.right
       const [newReg, freeReg] = newRegisterController()
-      let rightReg = newReg()
+      let rightReg: string
       const isLeftMembership = left.type === 'MemberExpression'
       let objReg: any // = newReg()
       let keyReg: any // = newReg()
@@ -782,16 +959,21 @@ const parseToCode = (ast: any): void => {
         }
       }
 
-      getValueOfNode(right, rightReg, s, c)
       if (node.operator !== '=') {
         const o = node.operator.replace(/\=$/, '')
         const cmd = codeMap[o]
         if (!cmd) { throw new Error(`Operation ${o} is not implemented.`)}
         const leftReg = newReg()
+        // GetValue(left) happens before the right-hand expression. This is
+        // observable when the RHS mutates the same binding or invokes getters.
         getLeftReg(leftReg)
-        // getValueOfNode(left, leftReg, s, c)
+        rightReg = newReg()
+        getValueOfNode(right, rightReg, s, c)
         cg([`${cmd}`, leftReg, rightReg])
         rightReg = leftReg
+      } else {
+        rightReg = newReg()
+        getValueOfNode(right, rightReg, s, c)
       }
       setLeftReg(rightReg)
       // setValueToNode(left, rightReg, s, c)
@@ -835,6 +1017,37 @@ const parseToCode = (ast: any): void => {
       }
       const [newReg, freeReg] = newRegisterController()
       const cmd = codesMap[node.operator]
+      const resultReg = s.r0
+
+      if (
+        op === 'typeof' &&
+        node.argument.type === 'Identifier' &&
+        s.withDepth > 0
+      ) {
+        const reg = s.r0 || newReg()
+        const name = node.argument.name
+        const fallbackKind = s.blockChain.getNameType(name) === VariableType.ARGUMENTS
+          ? 2
+          : (s.blockChain.hasName(name) ? 1 : 0)
+        cg([
+          'WITH_TYPEOF', reg, `"${name}"`, `${fallbackKind}`,
+          fallbackKind === 1 ? name : 'undefined',
+        ])
+        freeReg()
+        return
+      }
+
+      if (
+        op === 'typeof' &&
+        node.argument.type === 'Identifier' &&
+        !s.blockChain.hasName(node.argument.name) &&
+        node.argument.name !== 'arguments'
+      ) {
+        const reg = s.r0 || newReg()
+        cg(['TYPEOF_CTX', reg, `"${node.argument.name}"`])
+        freeReg()
+        return
+      }
 
       if (op !== 'delete') {
         const reg = s.r0 || newReg()
@@ -845,13 +1058,37 @@ const parseToCode = (ast: any): void => {
         getValueOfNode(node.argument, reg, s, c)
         cg([`${cmd}`, `${reg}`])
       } else {
-        s.r0 = null
-        const objReg = s.r1 = newReg()
-        const keyReg = s.r2 = newReg()
-        c(node.argument, s)
-        cg([`DEL`, `${objReg}`, `${keyReg}`])
-        s.r1 = null
-        s.r2 = null
+        const retReg = resultReg || newReg()
+        if (node.argument.type === 'MemberExpression') {
+          s.r0 = null
+          const objReg = s.r1 = newReg()
+          const keyReg = s.r2 = newReg()
+          c(node.argument, s)
+          cg([`DELETE_REF`, `${retReg}`, `${objReg}`, `${keyReg}`])
+          s.r1 = null
+          s.r2 = null
+        } else if (node.argument.type === 'Identifier') {
+          if (s.withDepth > 0) {
+            const name = node.argument.name
+            const fallbackKind = s.blockChain.getNameType(name) === VariableType.ARGUMENTS
+              ? 2
+              : (s.blockChain.hasName(name) ? 1 : 0)
+            cg([
+              'WITH_DELETE', retReg, `"${name}"`, `${fallbackKind}`,
+              fallbackKind === 1 ? name : 'undefined',
+            ])
+          } else if (s.blockChain.hasName(node.argument.name) || node.argument.name === 'arguments') {
+            cg([`MOV`, `${retReg}`, 'false'])
+          } else {
+            cg([`DELETE_CTX`, `${retReg}`, `"${node.argument.name}"`])
+          }
+        } else {
+          // Delete of a non-Reference still evaluates its operand for side
+          // effects, then produces true.
+          const valueReg = newReg()
+          getValueOfNode(node.argument, valueReg, s, c)
+          cg([`MOV`, `${retReg}`, 'true'])
+        }
       }
 
       freeReg()
@@ -920,6 +1157,9 @@ const parseToCode = (ast: any): void => {
 
     ForStatement(node: et.ForStatement, s: any, c: any): any {
       const restoreBlockChainInit = newBlockChain()
+      if (node.init && node.init.type === 'VariableDeclaration') {
+        predeclareLexicalDeclarations([node.init], s)
+      }
       const [newReg, freeReg] = newRegisterController()
       const startLabel = newLabelName()
       let endLabel = newLabelName()
@@ -996,17 +1236,22 @@ const parseToCode = (ast: any): void => {
       const left = node.left
       const right = node.right
       const [newReg, freeReg] = newRegisterController()
-      let leftReg
+      if (left.type === 'VariableDeclaration') {
+        predeclareLexicalDeclarations([left], s)
+      }
+      let leftTarget: et.Identifier
       if (left.type === 'Identifier') {
-        leftReg = left.name
+        leftTarget = left
       } else if (left.type === 'VariableDeclaration') {
         const varDecorator = left.declarations[0]
-        leftReg = (varDecorator.id as et.Identifier).name
-        declareVariable(s, leftReg, left.kind)
+        leftTarget = varDecorator.id as et.Identifier
+        declareVariable(s, leftTarget.name, left.kind)
       } else {
         throw new Error('Cannot process for in statement left type ' + left.type)
       }
       const rightReg = newReg()
+      const iteratorReg = newReg()
+      const iterationValueReg = newReg()
       const startLabel = newLabelName()
       const endLabel = newLabelName()
       getValueOfNode(right, rightReg, s, c)
@@ -1014,19 +1259,20 @@ const parseToCode = (ast: any): void => {
         startLabel,
         endLabel,
         updateLabel: startLabel,
-        isForIn: true,
         blockNameStart: restoreBlockChain.blockIndexName,
         startBlock: s.blockChain.getCurrentBlock(),
       }
       pushLoopLabels(labels)
-      cg(['FORIN', leftReg, rightReg, startLabel, endLabel])
+      cg(['FORIN_INIT', iteratorReg, rightReg])
       lg(startLabel)
+      cg(['FORIN_NEXT', iterationValueReg, iteratorReg, endLabel])
+      setValueToNode(leftTarget, iterationValueReg, s, c)
       const restoreBlockChainBody = newBlockChain()
       labels.blockNameBody = restoreBlockChainBody.blockIndexName
       labels.bodyBlock = s.blockChain.getCurrentBlock()
       c(node.body, s)
       restoreBlockChainBody()
-      cg(['FORIN_END'])
+      cg(['JMP', startLabel])
       lg(endLabel)
       restoreBlockChain()
       freeReg()
@@ -1050,7 +1296,7 @@ const parseToCode = (ast: any): void => {
         const lb = blockEndLabels.get(name)!
         lb.startBlock!.isForceBlock = true
         cg(['CLR_BLOCK', lb.blockNameStart], { isForceBlock: true })
-        cg(['JMP', lb.endLabel])
+        cg(['ABRUPT_JUMP', lb.endLabel])
         return
       }
 
@@ -1068,11 +1314,12 @@ const parseToCode = (ast: any): void => {
       if (labels.startBlock) { // for switch case
         labels.startBlock.isForceBlock = true
       }
-      if (!labels.blockNameStart) {
+      // Block index 0 is valid for the first compiled top-level block.
+      if (labels.blockNameStart === void 0) {
         throw new Error('No start block name')
       }
       cg(['CLR_BLOCK', labels.blockNameStart], { isForceBlock: true })
-      cg([`JMP`, `${endLabel}`])
+      cg([`ABRUPT_JUMP`, `${endLabel}`])
     },
 
     ContinueStatement(node: et.ContinueStatement, s: any, c: any): any {
@@ -1085,7 +1332,7 @@ const parseToCode = (ast: any): void => {
         // continue label; 语法，如果有 update ，回到 update， 否则回到头
         blockLabel.bodyBlock!.isForceBlock = true
         cg(['CLR_BLOCK', blockLabel.blockNameBody], { isForceBlock: true })
-        cg(['JMP', blockLabel.updateLabel || blockLabel.startLabel])
+        cg(['ABRUPT_JUMP', blockLabel.updateLabel || blockLabel.startLabel])
         return
       }
 
@@ -1103,7 +1350,7 @@ const parseToCode = (ast: any): void => {
       // cg(`JMP ${endLabel} (break)`)
       labels.bodyBlock!.isForceBlock = true
       cg(['CLR_BLOCK', labels.blockNameBody], { isForceBlock: true })
-      cg([`JMP`, `${updateLabel || startLabel}`])
+      cg([`ABRUPT_JUMP`, `${updateLabel || startLabel}`])
     },
 
     UpdateExpression(node: et.UpdateExpression, s: any, c: any): any {
@@ -1112,6 +1359,10 @@ const parseToCode = (ast: any): void => {
       const retReg = s.r0
       const reg = newReg()
       getValueOfNode(node.argument, reg, s, c)
+      // Both prefix and postfix update first apply ToNumber. In the postfix
+      // form the saved result is that numeric value, not the original string
+      // or object operand.
+      cg([`PLUS`, `${reg}`])
       if (retReg && !node.prefix) {
         cg([`MOV ${retReg} ${reg}`])
       }
@@ -1148,9 +1399,12 @@ const parseToCode = (ast: any): void => {
         }
         const valReg = newRegister()
         getValueOfNode(el, valReg, s, c)
-        cg([`SET_KEY`, `${reg}`, `${i}`, `${valReg}`])
+        cg([`DEF_DATA`, `${reg}`, `${i}`, `${valReg}`])
         freeRegister()
       })
+      // Elisions create no indexed properties but still contribute to the
+      // array literal's length.
+      cg([`SET_KEY`, `${reg}`, `'length'`, `${node.elements.length}`])
       freeReg()
     },
 
@@ -1167,7 +1421,11 @@ const parseToCode = (ast: any): void => {
         key = keyReg
       }
       getValueOfNode(node.value, valReg, s, c)
-      cg([`SET_KEY`, `${objReg}`, key, `${valReg}`])
+      if (node.kind === 'get' || node.kind === 'set') {
+        cg([`DEF_PROP`, `${objReg}`, key, `${valReg}`, `'${node.kind}'`])
+      } else {
+        cg([`DEF_DATA`, `${objReg}`, key, `${valReg}`])
+      }
       // cg(`SET_KEY`, `${objReg}`, `"${key}"`, `${valReg}`)
       freeReg()
     },
@@ -1184,13 +1442,14 @@ const parseToCode = (ast: any): void => {
 
     SequenceExpression(node: et.SequenceExpression, s: any, c: any): any {
       const r0 = s.r0
-      delete s.r0
       node.expressions.forEach((n, i): void => {
-        if (i === node.expressions.length - 1) {
-          s.r0 = r0
+        if (i === node.expressions.length - 1 && r0) {
+          getValueOfNode(n, r0, s, c)
+        } else {
+          evaluateDiscarded(n, s, c)
         }
-        c(n, s)
       })
+      s.r0 = r0
     },
 
     ThisExpression(node: et.ThisExpression, s: any, c: any): any {
@@ -1231,67 +1490,63 @@ const parseToCode = (ast: any): void => {
 
     SwitchStatement(node: et.SwitchStatement, s: any, c: any): any {
       const restoreBlockChain = newBlockChain()
+      predeclareLexicalDeclarations(
+        node.cases.reduce<any[]>((all, switchCase): any[] => [...all, ...switchCase.consequent], []),
+        s,
+      )
       const [newReg, freeReg] = newRegisterController()
       const discriminantReg = newReg()
       getValueOfNode(node.discriminant, discriminantReg, s, c)
       const switchEndLabel = newLabelName()
+      const caseLabels = node.cases.map((): string => newLabelName())
+      let defaultLabel: string | null = null
       const label: BlockLabel = {
         endLabel: switchEndLabel,
         blockNameStart: restoreBlockChain.blockIndexName,
         startBlock: s.blockChain.getCurrentBlock(),
       }
       pushLoopLabels(label)
-      let caseStartlabel: string = ''
-      const fetchCaseLabel = (): string => {
-        if (!caseStartlabel) {
-          caseStartlabel = newLabelName()
-        }
-        return caseStartlabel
-      }
-      const useCaseLabel = (): string => {
-        const ret = caseStartlabel
-        caseStartlabel = ''
-        return ret
-        // caseStartlabel = ''
-        // caseEndlabel = ''
-        // return ret
-      }
-      node.cases.forEach((cs: et.SwitchCase): void => {
-        let startLabel = fetchCaseLabel()
-        const endLabel = newLabelName()
+
+      // Selection and execution are separate phases. In particular, a
+      // `default` in the middle must not run until all later case tests have
+      // also been checked.
+      node.cases.forEach((cs: et.SwitchCase, i: number): void => {
         if (cs.test) {
           const testReg = newReg()
           getValueOfNode(cs.test, testReg, s, c)
-          cg([`JE`, `${discriminantReg}`, `${testReg}`, `${startLabel}`])
-          cg([`JMP`, `${endLabel}`])
+          cg(['JE', discriminantReg, testReg, caseLabels[i]])
+        } else {
+          defaultLabel = caseLabels[i]
         }
-        if (cs.consequent && cs.consequent.length > 0) {
-          startLabel = useCaseLabel()
-          cg([`LABEL ${startLabel}:`])
-          cs.consequent.forEach((n: any): void => {
-            c(n, s)
-          })
-          const nextStart = fetchCaseLabel()
-          cg([`JMP ${nextStart}`])
-        }
-        cg([`LABEL ${endLabel}:`])
       })
-      if (caseStartlabel) {
-        cg([`LABEL ${caseStartlabel}:`])
-      }
-      cg([`LABEL ${switchEndLabel}:`])
+      cg(['JMP', defaultLabel || switchEndLabel])
+
+      node.cases.forEach((cs: et.SwitchCase, i: number): void => {
+        lg(caseLabels[i])
+        cs.consequent.forEach((n: any): void => c(n, s))
+      })
+
+      lg(switchEndLabel)
       popLoopLabels()
       freeReg()
       restoreBlockChain()
     },
 
     TryStatement(node: et.TryStatement, s: any, c: any): any {
-      // const restoreBlockChain = newBlockChain()
       const catchLabel: string = newLabelName()
       const finalLabel: string = newLabelName()
+      const endLabel: string = newLabelName()
+      const catchTarget = node.handler ? catchLabel : endLabel
+      const finallyTarget = node.finalizer ? finalLabel : endLabel
 
-      const endLabel = node.handler ? catchLabel : finalLabel
-      cg(['TRY', endLabel, finalLabel])
+      cg([
+        'TRY',
+        catchTarget,
+        finallyTarget,
+        endLabel,
+        !!node.handler,
+        !!node.finalizer,
+      ])
       c(node.block, s)
       cg(['TRY_END'])
 
@@ -1305,18 +1560,22 @@ const parseToCode = (ast: any): void => {
           }
           const errName = handler.param.name
           declareVariable(s, errName, 'let')
-          cg(['GET_ERR', errName])
+          const errReg = newRegister()
+          cg(['GET_ERR', errReg])
+          cg(['INIT', errName, errReg])
+          freeRegister()
         }
-        c(handler, s)
+        c(handler.body, s)
         restoreBlockChain()
+        cg(['TRY_END'])
       }
 
-      lg(finalLabel)
       if (node.finalizer) {
-        const finalizer = node.finalizer
-        c(finalizer, s)
+        lg(finalLabel)
+        c(node.finalizer, s)
+        cg(['FINALLY_END'])
       }
-      // restoreBlockChain()
+      lg(endLabel)
     },
 
     ThrowStatement(node: et.ThrowStatement, s: any, c: any): any {
@@ -1351,31 +1610,60 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
       state.codes.push(`REG %r${i}`, 1)
     }
     state.codes.push('}')
-    allCodes = [...allCodes, ...state.codes]
+    for (const code of state.codes) {
+      allCodes.push(code)
+    }
     state.codes.clear()
   }
 
   state = createNewState()
+  state.currentStrict = hasUseStrictDirective(ret)
   const globals = getVariablesByFunctionAstBody(ret)
+  globals.delete('undefined')
+  globals.delete('NaN')
+  globals.delete('Infinity')
   state.blockChain = state.blockChain.newBlock(globals)
   state.codes.push('func @@main() {', 0)
+  state.codes.push(`META ${state.currentStrict ? 2 : 0}`, 0)
   processFunctionAst(ret)
 
-  while (state.functions.length > 0) {
+  let functionCursor = 0
+  while (functionCursor < state.functions.length) {
     state.isGlobal = false
     state.maxRegister = 0
-    const funcInfo = state.functions.shift()!
+    const funcInfo = state.functions[functionCursor++]
+    state.currentStrict = funcInfo.strict
+    state.withDepth = funcInfo.withDepth
     const funcBlockChain = funcInfo.blockChain
     const params = funcInfo.body.params.reduce((o, param): any => {
       o.set((param as et.Identifier).name, VariableType.VARIABLE)
       return o
     }, new Map())
     const locals = getVariablesByFunctionAstBody(funcInfo.body.body)
+    for (const name of params.keys()) {
+      // A var declaration with the same name as a formal parameter reuses the
+      // parameter binding. Function declarations are different: ES5 binding
+      // instantiation replaces the parameter value with the function.
+      if (locals.get(name) === VariableType.VARIABLE) {
+        locals.delete(name)
+      }
+    }
+    if (
+      funcInfo.kind === 'normal' &&
+      !params.has('arguments') &&
+      locals.get('arguments') !== VariableType.FUNCTION
+    ) {
+      locals.set('arguments', VariableType.ARGUMENTS)
+    }
     if (!funcBlockChain.currentFuncBlock) { throw new Error('Should has function block chain.') }
     const currentFuncBlock = funcBlockChain.currentFuncBlock
     currentFuncBlock.params = params
     currentFuncBlock.variables = locals
     state.codes.push(getFunctionDecleration(funcInfo), 0)
+    const flags = (funcInfo.kind === 'arrow' ? 1 : 0) |
+      (funcInfo.strict ? 2 : 0) |
+      (funcInfo.usesArguments ? 4 : 0)
+    state.codes.push(`META ${flags}`, 0)
     state.codes.push((): string[] => {
       const paramClosureDeclarations = [...currentFuncBlock.params.keys()].reduce((o: any, param: string): any => {
         const paramType = funcBlockChain.getNameType(param)
@@ -1404,20 +1692,24 @@ export const generateAssemblyFromJs = (jsCode: string): string => {
     processFunctionAst(funcInfo.body.body)
   }
 
-  allCodes = allCodes.map((s: string | (() => string[])): string[] => {
-    const f = (c: string): string => {
-      if (c.trim() === '') { return ''}
-      if (c.startsWith('func') || c.startsWith('LABEL') || c.startsWith('}')) {
-        return c + '\n'
-      }
-      return `    ${c};\n`
-    }
-    if (typeof s === 'string') {
-      return [f(s)]
+  const output: string[] = []
+  const appendFormatted = (code: string): void => {
+    if (code.trim() === '') { return }
+    if (code.startsWith('func') || code.startsWith('LABEL') || code.startsWith('}')) {
+      output.push(code + '\n')
     } else {
-      return s().map(f)
+      output.push(`    ${code};\n`)
     }
-  }).reduce((cc: string[], c: string[]): string[] => [...cc, ...c], [])
-  return allCodes.join("")
+  }
+  for (const code of allCodes as Array<string | (() => string[])>) {
+    if (typeof code === 'string') {
+      appendFormatted(code)
+    } else {
+      for (const generated of code()) {
+        appendFormatted(generated)
+      }
+    }
+  }
+  return output.join("")
 // tslint:disable-next-line: max-file-line-count
 }

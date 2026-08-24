@@ -187,7 +187,7 @@ const codeToUseAge: { [x in any]: OU[] } = {
   [I.IN]: BOTH_GET,
   [I.MOV_THIS]: [OU.SET],
   [I.NEW_REG]: [OU.SET, OU.GET, OU.GET],
-  [I.TRY]: [OU.GET],
+  [I.TRY]: [OU.GET, OU.GET, OU.GET, OU.GET, OU.GET],
   [I.TRY_END]: [],
   [I.THROW]: [OU.GET],
   [I.FORIN]: [OU.BOTH, OU.GET],
@@ -195,6 +195,29 @@ const codeToUseAge: { [x in any]: OU[] } = {
   [I.BREAK_FORIN]: [],
   [I.CONT_FORIN]: [],
   [I.MOV_ARGS]: [OU.SET],
+  [I.CALL_REF]: [OU.GET, OU.GET, OU.GET, OU.GET],
+  [I.FORIN_INIT]: [OU.SET, OU.GET],
+  [I.FORIN_NEXT]: [OU.SET, OU.GET, OU.GET],
+  [I.FINALLY_END]: [],
+  [I.LET]: [OU.SET],
+  [I.CONST]: [OU.SET],
+  [I.INIT]: [OU.SET, OU.GET],
+  [I.GET_ERR]: [OU.SET],
+  [I.TYPEOF_CTX]: [OU.SET, OU.GET],
+  [I.DEF_PROP]: [OU.GET, OU.GET, OU.GET, OU.GET],
+  [I.DELETE_REF]: [OU.SET, OU.GET, OU.GET],
+  [I.DELETE_CTX]: [OU.SET, OU.GET],
+  [I.GLOBAL_BIND]: [OU.SET, OU.GET],
+  [I.ENTER_WITH]: [OU.GET, OU.GET],
+  [I.EXIT_WITH]: [],
+  [I.WITH_GET]: [OU.SET, OU.GET, OU.GET, OU.GET],
+  [I.WITH_SET]: [OU.GET, OU.GET, OU.BOTH, OU.GET],
+  [I.WITH_RESOLVE]: [OU.SET, OU.SET, OU.GET, OU.GET, OU.GET],
+  [I.WITH_TYPEOF]: [OU.SET, OU.GET, OU.GET, OU.GET],
+  [I.WITH_DELETE]: [OU.SET, OU.GET, OU.GET, OU.GET],
+  [I.DEF_DATA]: [OU.GET, OU.GET, OU.GET],
+  [I.ABRUPT_JUMP]: [OU.GET],
+  [I.SET_ARGS]: [OU.GET],
 }
 
 const IGNORE_INS = [
@@ -222,6 +245,22 @@ const optimizeCodes = (codes: any[]): any[] => {
   const isInCandidates = (reg: string): boolean => candidates.has(reg)
   const isReg = (s: string): boolean => s.startsWith('%')
 
+  // Re-reading a non-literal MOV source is only equivalent to keeping the
+  // captured register value while nothing observable can run in between.
+  // These instructions may call user code (directly or through coercion,
+  // getters, setters, proxies, or enumeration).
+  const observableOperators = new Set([
+    'CALL', 'CALL_CTX', 'CALL_VAR', 'CALL_REG', 'CALL_REF',
+    'SET_CTX', 'SET_KEY', 'DEF_PROP', 'DEF_DATA', 'MOV_CTX', 'MOV_PROP', 'NEW_REG',
+    'ADD', 'SUB', 'MUL', 'DIV', 'MOD', 'EXP',
+    'LT', 'GT', 'LE', 'GE', 'EQ', 'NE', 'WEQ', 'WNE',
+    'AND', 'OR', 'XOR', 'SHL', 'SHR', 'ZSHR',
+    'PLUS', 'MINUS', 'NOT', 'VOID', 'DEL', 'DELETE_REF', 'DELETE_CTX', 'NEG', 'TYPE_OF',
+    'INST_OF', 'IN', 'FORIN', 'FORIN_INIT',
+    'ENTER_WITH', 'EXIT_WITH', 'WITH_GET', 'WITH_SET', 'WITH_RESOLVE', 'WITH_TYPEOF', 'WITH_DELETE',
+    'BLOCK', 'END_BLOCK', 'CLR_BLOCK',
+  ])
+
   const getValueType = (val: string): ValueType => {
     if (isReg(val)) {
       return ValueType.REGISTESR
@@ -238,6 +277,29 @@ const optimizeCodes = (codes: any[]): any[] => {
     const candidate = candidates.get(reg)!
     if (candidate.valueType === ValueType.NUMBER && candidate.usages.length > 1) { return }
     const { codeIndex, value, usages } = candidate
+
+    if (candidate.valueType === ValueType.OTHER) {
+      const isSafeToReadSourceLater = usages.every((usage): boolean => {
+        for (let i = codeIndex + 1; i < usage.codeIndex; i++) {
+          const code = codes[i]
+          if (!code) { continue }
+          if (observableOperators.has(code[0])) { return false }
+
+          const operandUsages = codeToUseAge[I[code[0]]] || []
+          const writesSource = code.slice(1).some((operand: string, position: number): boolean => {
+            const use = operandUsages[position]
+            return operand === value && (use === OU.SET || use === OU.BOTH)
+          })
+          if (writesSource) { return false }
+        }
+        return true
+      })
+      if (!isSafeToReadSourceLater) {
+        candidates.delete(reg)
+        return
+      }
+    }
+
     codes[codeIndex] = null
     for (const usage of usages) {
       try {

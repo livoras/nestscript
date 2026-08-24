@@ -107,6 +107,10 @@ export class BlockChain {
         ? this.currentFuncBlock
         : this.chain[this.chain.length - 1]
 
+    if (kind === 'var' && !isForce && block?.variables.has(name)) {
+      return
+    }
+
     // console.log(isForce, '---->', name)
     if (this.isFuncBlock(block) && block.params.has(name)) {
       if (isForce) {
@@ -144,6 +148,11 @@ export class BlockChain {
 
   public hasName(name: string): boolean {
     return this.getNameType(name) > 0
+  }
+
+  public hasOwnName(name: string): boolean {
+    const block = this.getCurrentBlock()
+    return block.variables.has(name) || (this.isFuncBlock(block) && block.params.has(name))
   }
 
   // tslint:disable-next-line: cognitive-complexity

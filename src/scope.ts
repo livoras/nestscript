@@ -1,9 +1,15 @@
 // (window as any).newCount = 0
 
+interface IBindingCell {
+  value: any
+  mutable: boolean
+  initialized: boolean
+}
+
 export class Scope {
   constructor(
     public scope: any = {},
-    public heap: any[] = [],
+    public heap: IBindingCell[] = [],
     public isRestoreWhenChange: boolean = true) {
     // (window as any).newCount++
     this.scope.blockNameMap = new Map<string, any>()
@@ -31,10 +37,13 @@ export class Scope {
     return new Scope(scope, this.heap, this.isRestoreWhenChange)
   }
 
-  public new(key: any): void {
+  public new(
+    key: any,
+    { mutable = true, initialized = true }: { mutable?: boolean, initialized?: boolean } = {},
+  ): void {
     const index = this.heap.length
     this.scope[key] = index
-    this.heap.push(void 0)
+    this.heap.push({ value: void 0, mutable, initialized })
   }
 
   public set(key: any, value: any): void {
@@ -42,12 +51,38 @@ export class Scope {
       throw new Error('variable is used before decleration')
     }
     const index = this.scope[key]
-    this.heap[index] = value
+    const cell = this.heap[index]
+    if (!cell.initialized) {
+      throw new ReferenceError('Cannot access binding before initialization')
+    }
+    if (!cell.mutable) {
+      throw new TypeError('Assignment to constant variable')
+    }
+    cell.value = value
+  }
+
+  public init(key: any, value: any): void {
+    if (!(key in this.scope)) {
+      throw new ReferenceError('binding is not declared')
+    }
+    const cell = this.heap[this.scope[key]]
+    if (cell.initialized) {
+      throw new ReferenceError('binding is already initialized')
+    }
+    cell.value = value
+    cell.initialized = true
   }
 
   public get(key: any): any {
+    if (!(key in this.scope)) {
+      throw new ReferenceError('binding is not declared')
+    }
     const index = this.scope[key]
-    return this.heap[index]
+    const cell = this.heap[index]
+    if (!cell.initialized) {
+      throw new ReferenceError('Cannot access binding before initialization')
+    }
+    return cell.value
   }
 
   public printScope(): string {

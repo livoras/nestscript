@@ -82,6 +82,7 @@ interface IFuncInfo {
   index?: number,
   bytecodes?: ArrayBuffer,
   labels?: any,
+  flags: number,
 }
 
 
@@ -144,11 +145,13 @@ export const parseCodeToProgram = (program: string): Buffer => {
           if (i === 0) { return }
 
           if (
-            (op === 'TRY' && (i === 1 || i === 2)) ||
-            ['JMP'].includes(op) ||
+            (op === 'TRY' && (i === 1 || i === 2 || i === 3)) ||
+            (op === 'ENTER_WITH' && i === 2) ||
+            ['JMP', 'ABRUPT_JUMP'].includes(op) ||
             (['JE', 'JNE', 'JG', 'JL', 'JGE', 'JLE'].includes(op) && i === 3) ||
             (['JF', 'JIF'].includes(op) && i === 2) ||
-            (op === 'FORIN' && (i === 3 || i === 4))
+            (op === 'FORIN' && (i === 3 || i === 4)) ||
+            (op === 'FORIN_NEXT' && i === 3)
           ) {
             code[i] = {
               type: IOperatantType.ADDRESS,
@@ -369,7 +372,7 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
    * stringTableBasicIndex: 4
    * globalsSize: 4
    */
-  const FUNC_SIZE = 4 + 2 + 2 // ip + numArgs + localSize
+  const FUNC_SIZE = 4 + 2 + 2 + 2 // ip + numArgs + localSize + flags
   const funcionTableBasicIndex = 4 * 4 + buffer.byteLength
   const stringTableBasicIndex = funcionTableBasicIndex + FUNC_SIZE * funcsInfo.length
   const headerView = new Uint32Array(4)
@@ -382,11 +385,12 @@ const parseToStream = (funcsInfo: IFuncInfo[], strings: string[], globalsSize: n
   /** Function Table */
   funcsInfo.forEach((funcInfo: IFuncInfo, i: number): void => {
     const ipBuf = new Uint32Array(1)
-    const numArgsAndLocal = new Uint16Array(2)
+    const numArgsLocalAndFlags = new Uint16Array(3)
     ipBuf[0] = funcInfo.ip!
-    numArgsAndLocal[0] = funcInfo.numArgs
-    numArgsAndLocal[1] = funcInfo.localSize
-    const funcBuf = concatBuffer(ipBuf.buffer, numArgsAndLocal.buffer)
+    numArgsLocalAndFlags[0] = funcInfo.numArgs
+    numArgsLocalAndFlags[1] = funcInfo.localSize
+    numArgsLocalAndFlags[2] = funcInfo.flags
+    const funcBuf = concatBuffer(ipBuf.buffer, numArgsLocalAndFlags.buffer)
     buffer = concatBuffer(buffer, funcBuf)
   })
 
@@ -421,10 +425,13 @@ const parseFunction = (func: IParsedFunction): IFuncInfo => {
   const body = func.instructions
 
   const vars = body.filter((stat: string[]): boolean => stat[0] === 'REG')
+  const meta = body.find((stat: string[]): boolean => stat[0] === 'META')
   const globals = body
     .filter((stat: string[]): boolean => stat[0] === 'GLOBAL')
     .map((stat: string[]): string => stat[1])
-  const codes = body.filter((stat: string[]): boolean => stat[0] !== 'REG' && stat[0] !== 'GLOBAL')
+  const codes = body.filter((stat: string[]): boolean => {
+    return stat[0] !== 'REG' && stat[0] !== 'GLOBAL' && stat[0] !== 'META'
+  })
   const symbols = new Map<string, any>()
   args.forEach((arg: string, i: number): void => {
     symbols.set(arg, -4 - i)
@@ -464,6 +471,7 @@ const parseFunction = (func: IParsedFunction): IFuncInfo => {
     codes: codesWithoutLabel,
     localSize: vars.length,
     globals,
+    flags: meta ? Number(meta[1]) : 0,
     labels,
   }
 }

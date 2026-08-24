@@ -414,7 +414,7 @@ describe('function', (): void => {
         throw new Error('This method should be rewritten by vm')
       },
     }
-    wrapper.sub = (a, b) => a - b + this.a + this.c
+    wrapper.sub = function (a, b) { return a - b + this.a + this.c }
     expect(wrapper.sub(39, 20)).equal(120)
     expect(wrapper.getResult(100, 50)).equal(151)
     `)
