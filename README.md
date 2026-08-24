@@ -5,6 +5,10 @@
 <h1 align="center">NestScript</h1>
 
 <p align="center">
+  English · <a href="README.zh-CN.md">简体中文</a>
+</p>
+
+<p align="center">
   A JavaScript bytecode toolchain and virtual machine for environments where
   <code>eval</code>, <code>new Function</code>, and other forms of dynamic code
   generation are unavailable or prohibited.
