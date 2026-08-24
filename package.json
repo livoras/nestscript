@@ -1,14 +1,25 @@
 {
   "name": "nestscript",
-  "version": "1.0.5",
-  "description": "A script nested in JavaScript, dynamically run code in environment without `eval` and `new Function`.",
-  "main": "src/index.js",
+  "version": "1.0.6",
+  "description": "A JavaScript bytecode toolchain and virtual machine for runtimes without dynamic code evaluation.",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
   "bin": {
     "nsc": "./nsc/bin/run"
   },
+  "files": [
+    "build/src",
+    "dist/vm.js",
+    "nsc/bin/run",
+    "nsc/bin/run.cmd",
+    "README.zh-CN.md"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.release.json && webpack",
     "start": "npx nodemon --watch example/main.js --exec 'make js'",
     "cov": "nyc -r lcov -e .ts -x \"*.test.ts\" npm run test",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm test && tsc --noEmit",
     "test": "mocha --timeout 60000 -r ts-node/register test/**/*.spec.ts",
     "test262": "tsc --outDir build/test262-run --sourceMap false && node build/test262-run/test262/runner.js",
     "watch": "nodemon --watch src --watch test -e ts --exec 'npm test'"
@@ -23,28 +34,38 @@
     "url": "https://github.com/livoras/nestscript/issues"
   },
   "homepage": "https://github.com/livoras/nestscript#readme",
+  "engines": {
+    "node": ">=12"
+  },
+  "keywords": [
+    "bytecode",
+    "es5",
+    "interpreter",
+    "javascript",
+    "virtual-machine",
+    "wechat-mini-program"
+  ],
   "devDependencies": {
     "@types/chai": "^4.2.11",
     "@types/estree": "0.0.44",
     "@types/mocha": "^8.0.0",
-    "@types/node": "^14.0.13",
     "chai": "^4.2.0",
     "chai-spies": "^1.0.0",
     "mocha": "7.1.1",
     "nodemon": "^2.0.4",
     "nyc": "^15.1.0",
-    "tslib": "^2.0.0",
-    "tslint": "^6.1.2",
+    "ts-node": "^8.10.2",
+    "tslint": "^5.20.1",
     "tslint-eslint-rules": "^5.4.0",
     "tslint-sonarts": "^1.9.0",
+    "typescript": "^3.9.7",
     "webpack": "^4.43.0",
     "webpack-cli": "^3.3.12"
   },
   "dependencies": {
+    "@types/node": "^14.0.13",
     "acorn": "^8.0.1",
     "acorn-walk": "^8.0.0",
-    "typescript": "^3.9.7",
-    "@oclif/command": "^1.8.0",
-    "ts-node": "^8.10.2"
+    "tslib": "^2.0.0"
   }
 }

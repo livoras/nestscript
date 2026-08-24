@@ -1,6 +1,8 @@
 const path = require("path")
 
 module.exports = {
+    mode: "none",
+    stats: "errors-only",
     entry: {
         "vm": "./build/src/vm/vm.js",
     },
@@ -32,4 +34,3 @@ module.exports = {
         libraryTarget: "commonjs"
     },
 };
-

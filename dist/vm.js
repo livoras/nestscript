@@ -174,14 +174,86 @@ var I;
     I[I["BLOCK"] = 75] = "BLOCK";
     I[I["END_BLOCK"] = 76] = "END_BLOCK";
     I[I["CLR_BLOCK"] = 77] = "CLR_BLOCK";
+    I[I["CALL_REF"] = 78] = "CALL_REF";
+    I[I["FORIN_INIT"] = 79] = "FORIN_INIT";
+    I[I["FORIN_NEXT"] = 80] = "FORIN_NEXT";
+    I[I["FINALLY_END"] = 81] = "FINALLY_END";
+    I[I["LET"] = 82] = "LET";
+    I[I["CONST"] = 83] = "CONST";
+    I[I["INIT"] = 84] = "INIT";
+    I[I["TYPEOF_CTX"] = 85] = "TYPEOF_CTX";
+    I[I["DEF_PROP"] = 86] = "DEF_PROP";
+    I[I["DELETE_REF"] = 87] = "DELETE_REF";
+    I[I["DELETE_CTX"] = 88] = "DELETE_CTX";
+    I[I["GLOBAL_BIND"] = 89] = "GLOBAL_BIND";
+    I[I["ENTER_WITH"] = 90] = "ENTER_WITH";
+    I[I["EXIT_WITH"] = 91] = "EXIT_WITH";
+    I[I["WITH_GET"] = 92] = "WITH_GET";
+    I[I["WITH_SET"] = 93] = "WITH_SET";
+    I[I["WITH_RESOLVE"] = 94] = "WITH_RESOLVE";
+    I[I["WITH_TYPEOF"] = 95] = "WITH_TYPEOF";
+    I[I["WITH_DELETE"] = 96] = "WITH_DELETE";
+    I[I["DEF_DATA"] = 97] = "DEF_DATA";
+    I[I["ABRUPT_JUMP"] = 98] = "ABRUPT_JUMP";
+    I[I["SET_ARGS"] = 99] = "SET_ARGS";
 })(I = exports.I || (exports.I = {}));
 const NO_RETURN_SYMBOL = Symbol();
+const ES5_WHITE_SPACE = /^[\u0009\u000B\u000C\u0020\u00A0\u000A\u000D\u2028\u2029\u1680\u180E\u2000-\u200A\u202F\u205F\u3000]+|[\u0009\u000B\u000C\u0020\u00A0\u000A\u000D\u2028\u2029\u1680\u180E\u2000-\u200A\u202F\u205F\u3000]+$/g;
+const toES5Number = (value) => Number(typeof value === 'string' ? value.replace(ES5_WHITE_SPACE, '') : value);
+const ES5NumberPrototype = new Number(0);
+const ES5Number = function (value) {
+    const number = arguments.length === 0 ? 0 : toES5Number(value);
+    if (this instanceof ES5Number) {
+        return Object.setPrototypeOf(new Number(number), ES5NumberPrototype);
+    }
+    return number;
+};
+Object.defineProperty(ES5NumberPrototype, 'constructor', {
+    configurable: true,
+    value: ES5Number,
+    writable: true,
+});
+ES5Number.prototype = ES5NumberPrototype;
+Object.setPrototypeOf(ES5Number, Number);
+for (const name of ['MAX_VALUE', 'MIN_VALUE', 'NaN', 'NEGATIVE_INFINITY', 'POSITIVE_INFINITY']) {
+    Object.defineProperty(ES5Number, name, {
+        configurable: false,
+        enumerable: false,
+        value: Number[name],
+        writable: false,
+    });
+}
+const INTRINSIC_GLOBALS = new Map([
+    ['undefined', void 0],
+    ['NaN', NaN],
+    ['Infinity', Infinity],
+    ['parseFloat', parseFloat],
+    ['parseInt', parseInt],
+    ['isFinite', isFinite],
+    ['isNaN', isNaN],
+    ['decodeURI', decodeURI],
+    ['decodeURIComponent', decodeURIComponent],
+    ['encodeURI', encodeURI],
+    ['encodeURIComponent', encodeURIComponent],
+]);
 class VMRunTimeError extends Error {
     constructor(error) {
         super(error);
         this.error = error;
     }
 }
+const ARGUMENTS_META = Symbol('nestscript.arguments');
+const RESTRICTED_PROPERTY_ACCESSOR = Object.getOwnPropertyDescriptor(Function.prototype, 'caller').get;
+const defineRestrictedProperties = (object, names) => {
+    for (const name of names) {
+        Object.defineProperty(object, name, {
+            configurable: false,
+            enumerable: false,
+            get: RESTRICTED_PROPERTY_ACCESSOR,
+            set: RESTRICTED_PROPERTY_ACCESSOR,
+        });
+    }
+};
 class VirtualMachine {
     constructor(codes, functionsTable, entryIndx, stringsTable, globalSize, ctx) {
         this.codes = codes;
@@ -199,10 +271,44 @@ class VirtualMachine {
             closureScope: new scope_1.Scope(),
             variables: new scope_1.Scope(),
             args: [],
+            argumentsValue: [],
+            strict: false,
+            capturedWithObjects: [],
         };
         this.callingFunctionInfos = [];
+        this.tryHandlers = [];
+        this.withEnvironments = [];
         this.allThis = [];
         this.isRunning = false;
+        for (const [name, value] of [
+            ['undefined', void 0],
+            ['NaN', NaN],
+            ['Infinity', Infinity],
+        ]) {
+            const descriptor = Object.getOwnPropertyDescriptor(ctx, name);
+            if (!descriptor || descriptor.configurable) {
+                Object.defineProperty(ctx, name, {
+                    configurable: false,
+                    enumerable: false,
+                    value,
+                    writable: false,
+                });
+            }
+        }
+        if (ctx.Number === Number) {
+            ctx.Number = ES5Number;
+        }
+        for (const name of [
+            'Object', 'Function', 'Array', 'String', 'Boolean', 'Number', 'Date', 'RegExp',
+            'Error', 'EvalError', 'RangeError', 'ReferenceError', 'SyntaxError', 'TypeError', 'URIError',
+            'Math', 'JSON', 'parseFloat', 'parseInt', 'isFinite', 'isNaN',
+            'decodeURI', 'decodeURIComponent', 'encodeURI', 'encodeURIComponent',
+        ]) {
+            const descriptor = Object.getOwnPropertyDescriptor(ctx, name);
+            if (descriptor && descriptor.enumerable) {
+                Object.defineProperty(ctx, name, Object.assign(Object.assign({}, descriptor), { enumerable: false }));
+            }
+        }
         const mainClosureScope = new scope_1.Scope();
         mainClosureScope.isRestoreWhenChange = false;
         this.mainFunction = this.parseToJsFunc(functionsTable[this.entryIndx], mainClosureScope);
@@ -213,12 +319,15 @@ class VirtualMachine {
         const { meta } = this.getMetaFromFunc(mainFunction);
         const [ip, numArgs, localSize] = meta;
         this.stack.splice(0);
+        this.setStack(0, undefined);
         const globalIndex = globalSize + 1;
         this.fp = globalIndex;
-        this.stack[this.fp] = -1;
+        this.setStack(this.fp, -1);
         this.sp = this.fp;
         this.stack.length = this.sp + 1;
         this.callingFunctionInfos = [];
+        this.tryHandlers = [];
+        this.withEnvironments = [];
         this.allThis = [];
     }
     reset() {
@@ -226,10 +335,24 @@ class VirtualMachine {
         this.error = null;
     }
     run() {
-        this.callFunction(this.mainFunction, void 0, '', 0, false);
+        this.callFunctionValue(this.mainFunction, this.ctx, 0, false);
         this.isRunning = true;
         while (this.isRunning) {
-            this.fetchAndExecute();
+            this.executeNext();
+        }
+    }
+    executeNext(exceptionBoundary) {
+        try {
+            return this.fetchAndExecute();
+        }
+        catch (e) {
+            if (e instanceof VMRunTimeError) {
+                throw e;
+            }
+            if (this.handleThrow(e, exceptionBoundary)) {
+                return [I.THROW, false];
+            }
+            throw e;
         }
     }
     setReg(dst, src) {
@@ -247,10 +370,16 @@ class VirtualMachine {
                 this.callingFunctionInfo.returnValue = src.value;
             }
             if (dst.raw <= -4) {
-                this.callingFunctionInfo.args[-4 - dst.raw] = src.value;
+                const index = -4 - dst.raw;
+                this.callingFunctionInfo.args[index] = src.value;
+                const argsObject = this.callingFunctionInfo.argumentsValue;
+                const meta = argsObject && argsObject[ARGUMENTS_META];
+                if (meta && meta.mapped.has(index) && Object.prototype.hasOwnProperty.call(argsObject, index)) {
+                    Reflect.set(argsObject, index, src.value);
+                }
             }
             else {
-                this.stack[dst.index] = src.value;
+                this.setStack(dst.index, src.value);
             }
         }
         else {
@@ -259,18 +388,34 @@ class VirtualMachine {
         }
     }
     newReg(o) {
+        this.newBinding(o, true, true);
+    }
+    newBinding(o, mutable, initialized) {
         const callingFunctionInfo = this.callingFunctionInfo;
         if (o.type === 208) {
             this.checkVariableScopeAndNew();
-            this.callingFunctionInfo.variables.new(o.index);
+            this.callingFunctionInfo.variables.new(o.index, { mutable, initialized });
         }
         else if (o.type === 16) {
             this.checkClosureAndFork();
-            this.callingFunctionInfo.closureScope.new(o.index);
+            this.callingFunctionInfo.closureScope.new(o.index, { mutable, initialized });
         }
         else {
             console.error(o);
             throw new Error(`Cannot process register type ${o.type}`);
+        }
+    }
+    initReg(dst, src) {
+        if (dst.type === 208) {
+            this.checkVariableScopeAndNew();
+            this.callingFunctionInfo.variables.init(dst.index, src.value);
+        }
+        else if (dst.type === 16) {
+            this.checkClosureAndFork();
+            this.callingFunctionInfo.closureScope.init(dst.index, src.value);
+        }
+        else {
+            throw new Error(`Cannot initialize register type ${dst.type}`);
         }
     }
     getReg(o) {
@@ -299,8 +444,40 @@ class VirtualMachine {
         switch (op) {
             case I.VAR:
             case I.CLS: {
-                const o = this.nextOperant();
+                const o = this.nextOperant(false);
                 this.newReg(o);
+                break;
+            }
+            case I.GLOBAL_BIND: {
+                const binding = this.nextOperant(false);
+                const name = this.nextOperant().value;
+                this.newReg(binding);
+                const variables = this.callingFunctionInfo.variables;
+                const closureScope = this.callingFunctionInfo.closureScope;
+                if (!Object.prototype.hasOwnProperty.call(this.ctx, name)) {
+                    Object.defineProperty(this.ctx, name, {
+                        configurable: false,
+                        enumerable: true,
+                        get: () => binding.type === 16
+                            ? closureScope.get(binding.index)
+                            : variables.get(binding.index),
+                        set: (value) => binding.type === 16
+                            ? closureScope.set(binding.index, value)
+                            : variables.set(binding.index, value),
+                    });
+                }
+                break;
+            }
+            case I.LET:
+            case I.CONST: {
+                const o = this.nextOperant(false);
+                this.newBinding(o, op === I.LET, false);
+                break;
+            }
+            case I.INIT: {
+                const dst = this.nextOperant(false);
+                const src = this.nextOperant();
+                this.initReg(dst, src);
                 break;
             }
             case I.PUSH: {
@@ -313,7 +490,9 @@ class VirtualMachine {
                 break;
             }
             case I.RET: {
-                this.returnCurrentFunction();
+                if (!this.beginReturn()) {
+                    this.returnCurrentFunction();
+                }
                 break;
             }
             case I.PRINT: {
@@ -322,7 +501,7 @@ class VirtualMachine {
                 break;
             }
             case I.MOV: {
-                const dst = this.nextOperant();
+                const dst = this.nextOperant(false);
                 const src = this.nextOperant();
                 this.setReg(dst, src);
                 break;
@@ -330,6 +509,11 @@ class VirtualMachine {
             case I.JMP: {
                 const address = this.nextOperant();
                 this.ip = address.value;
+                break;
+            }
+            case I.ABRUPT_JUMP: {
+                const address = this.nextOperant().value;
+                this.routeJump({ type: 'jump', address, functionInfo: this.callingFunctionInfo });
                 break;
             }
             case I.JE: {
@@ -395,27 +579,162 @@ class VirtualMachine {
                 isCallVMFunction = this.callFunction(f, void 0, '', numArgs, isNewExpression);
                 break;
             }
+            case I.CALL_REF: {
+                const f = this.nextOperant().value;
+                const receiver = this.nextOperant().value;
+                const numArgs = this.nextOperant().value;
+                const isNewExpression = this.nextOperant().value;
+                isCallVMFunction = this.callFunctionValue(f, receiver, numArgs, isNewExpression);
+                break;
+            }
             case I.MOV_CTX: {
-                const dst = this.nextOperant();
+                const dst = this.nextOperant(false);
                 const propKey = this.nextOperant();
-                const src = this.ctx[propKey.value];
+                const key = propKey.value;
+                let src;
+                if (this.ctx !== null && this.ctx !== void 0 && key in Object(this.ctx)) {
+                    src = this.ctx[key];
+                }
+                else if (INTRINSIC_GLOBALS.has(key)) {
+                    src = INTRINSIC_GLOBALS.get(key);
+                }
+                else {
+                    throw new ReferenceError(`${key} is not defined`);
+                }
                 this.setReg(dst, { value: src });
+                break;
+            }
+            case I.TYPEOF_CTX: {
+                const dst = this.nextOperant(false);
+                const key = this.nextOperant().value;
+                let value;
+                if (this.ctx !== null && this.ctx !== void 0 && key in Object(this.ctx)) {
+                    value = this.ctx[key];
+                }
+                else if (INTRINSIC_GLOBALS.has(key)) {
+                    value = INTRINSIC_GLOBALS.get(key);
+                }
+                else {
+                    this.setReg(dst, { value: 'undefined' });
+                    break;
+                }
+                this.setReg(dst, { value: typeof value });
                 break;
             }
             case I.SET_CTX: {
                 const propKey = this.nextOperant();
                 const val = this.nextOperant();
-                this.ctx[propKey.value] = val.value;
+                const key = propKey.value;
+                if (this.callingFunctionInfo.strict && !(key in Object(this.ctx)) && !INTRINSIC_GLOBALS.has(key)) {
+                    throw new ReferenceError(`${key} is not defined`);
+                }
+                const success = Reflect.set(this.ctx, key, val.value);
+                if (!success && this.callingFunctionInfo.strict) {
+                    throw new TypeError(`Cannot assign to read only property '${String(key)}'`);
+                }
+                break;
+            }
+            case I.ENTER_WITH: {
+                const value = this.nextOperant().value;
+                const endAddress = this.nextOperant().value;
+                if (value === null || value === undefined) {
+                    throw new TypeError(`Cannot convert ${value} to object`);
+                }
+                this.appendInternal(this.withEnvironments, {
+                    object: Object(value),
+                    functionInfo: this.callingFunctionInfo,
+                    endAddress,
+                });
+                break;
+            }
+            case I.EXIT_WITH: {
+                const environment = this.withEnvironments[this.withEnvironments.length - 1];
+                if (environment && environment.functionInfo === this.callingFunctionInfo) {
+                    this.withEnvironments.pop();
+                }
+                break;
+            }
+            case I.WITH_GET:
+            case I.WITH_TYPEOF: {
+                const dst = this.nextOperant(false);
+                const name = this.nextOperant().value;
+                const fallbackKind = this.nextOperant().value;
+                const fallback = this.nextOperant(false);
+                const environment = this.findWithEnvironment(name);
+                let value;
+                if (environment) {
+                    value = environment.object[name];
+                }
+                else {
+                    value = this.readNameFallback(name, fallbackKind, fallback, op === I.WITH_TYPEOF);
+                }
+                this.setReg(dst, { value: op === I.WITH_TYPEOF ? typeof value : value });
+                break;
+            }
+            case I.WITH_SET: {
+                const name = this.nextOperant().value;
+                const fallbackKind = this.nextOperant().value;
+                const fallback = this.nextOperant(false);
+                const value = this.nextOperant().value;
+                const environment = this.findWithEnvironment(name);
+                if (environment) {
+                    const success = Reflect.set(environment.object, name, value);
+                    if (!success && this.callingFunctionInfo.strict) {
+                        throw new TypeError(`Cannot assign to read only property '${String(name)}'`);
+                    }
+                }
+                else {
+                    this.writeNameFallback(name, fallbackKind, fallback, value);
+                }
+                break;
+            }
+            case I.WITH_RESOLVE: {
+                const dst = this.nextOperant(false);
+                const receiverDst = this.nextOperant(false);
+                const name = this.nextOperant().value;
+                const fallbackKind = this.nextOperant().value;
+                const fallback = this.nextOperant(false);
+                const environment = this.findWithEnvironment(name);
+                if (environment) {
+                    this.setReg(dst, { value: environment.object[name] });
+                    this.setReg(receiverDst, { value: environment.object });
+                }
+                else {
+                    this.setReg(dst, { value: this.readNameFallback(name, fallbackKind, fallback, false) });
+                    this.setReg(receiverDst, { value: fallbackKind === 0 ? this.ctx : undefined });
+                }
+                break;
+            }
+            case I.WITH_DELETE: {
+                const dst = this.nextOperant(false);
+                const name = this.nextOperant().value;
+                const fallbackKind = this.nextOperant().value;
+                this.nextOperant(false);
+                const environment = this.findWithEnvironment(name);
+                let deleted;
+                if (environment) {
+                    deleted = Reflect.deleteProperty(environment.object, name);
+                }
+                else if (fallbackKind === 0) {
+                    deleted = INTRINSIC_GLOBALS.has(name) ? false : Reflect.deleteProperty(this.ctx, name);
+                }
+                else {
+                    deleted = false;
+                }
+                if (!deleted && this.callingFunctionInfo.strict) {
+                    throw new TypeError(`Cannot delete property '${String(name)}'`);
+                }
+                this.setReg(dst, { value: deleted });
                 break;
             }
             case I.NEW_OBJ: {
-                const dst = this.nextOperant();
+                const dst = this.nextOperant(false);
                 const o = {};
                 this.setReg(dst, { value: o });
                 break;
             }
             case I.NEW_REG: {
-                const dst = this.nextOperant();
+                const dst = this.nextOperant(false);
                 const pattern = this.nextOperant();
                 const flags = this.nextOperant();
                 try {
@@ -427,7 +746,7 @@ class VirtualMachine {
                 break;
             }
             case I.NEW_ARR: {
-                const dst = this.nextOperant();
+                const dst = this.nextOperant(false);
                 const o = [];
                 this.setReg(dst, { value: o });
                 break;
@@ -436,22 +755,57 @@ class VirtualMachine {
                 const o = this.nextOperant().value;
                 const key = this.nextOperant().value;
                 const value = this.nextOperant().value;
-                o[key] = value;
+                const success = Reflect.set(o, key, value);
+                if (!success && this.callingFunctionInfo.strict) {
+                    throw new TypeError(`Cannot assign to read only property '${String(key)}'`);
+                }
+                const meta = o && o[ARGUMENTS_META];
+                const index = typeof key === 'symbol' ? NaN : (typeof key === 'number' ? key : Number(key));
+                if (meta && Number.isInteger(index) && String(index) === String(key) && meta.mapped.has(index)) {
+                    meta.values[index] = value;
+                }
+                break;
+            }
+            case I.DEF_PROP: {
+                const o = this.nextOperant().value;
+                const key = this.nextOperant().value;
+                const accessor = this.nextOperant().value;
+                const kind = this.nextOperant().value;
+                Object.defineProperty(o, key, {
+                    [kind]: accessor,
+                    configurable: true,
+                    enumerable: true,
+                });
+                break;
+            }
+            case I.DEF_DATA: {
+                const object = this.nextOperant().value;
+                const key = this.nextOperant().value;
+                const value = this.nextOperant().value;
+                Object.defineProperty(object, key, {
+                    configurable: true,
+                    enumerable: true,
+                    value,
+                    writable: true,
+                });
                 break;
             }
             case I.FUNC: {
-                const dst = this.nextOperant();
+                const dst = this.nextOperant(false);
                 const funcOperant = this.nextOperant();
                 const funcInfoMeta = funcOperant.value;
-                const func = this.parseToJsFunc(funcInfoMeta, this.callingFunctionInfo.closureScope.fork());
+                const func = this.parseToJsFunc(funcInfoMeta, this.callingFunctionInfo.closureScope.fork(), this.currentThis, this.callingFunctionInfo.argumentsValue, this.captureWithObjects());
                 this.setReg(dst, { value: func });
                 break;
             }
             case I.MOV_PROP: {
-                const dst = this.nextOperant();
+                const dst = this.nextOperant(false);
                 const o = this.nextOperant();
                 const k = this.nextOperant();
-                const v = o.value[k.value];
+                let v = o.value[k.value];
+                if (k.value === 'constructor' && v === Number && this.ctx.Number === ES5Number) {
+                    v = ES5Number;
+                }
                 this.setReg(dst, { value: v });
                 break;
             }
@@ -557,7 +911,7 @@ class VirtualMachine {
                 break;
             }
             case I.PLUS: {
-                this.uniaryExpression((val) => +val);
+                this.uniaryExpression((val) => toES5Number(val));
                 break;
             }
             case I.MINUS: {
@@ -586,43 +940,60 @@ class VirtualMachine {
                 delete o1[o2];
                 break;
             }
+            case I.DELETE_REF: {
+                const dst = this.nextOperant(false);
+                const base = this.nextOperant().value;
+                const key = this.nextOperant().value;
+                if (base === null || base === undefined) {
+                    throw new TypeError(`Cannot convert ${base} to object`);
+                }
+                const object = Object(base);
+                const deleted = typeof object === 'function' && key === 'length'
+                    ? false
+                    : Reflect.deleteProperty(object, key);
+                const meta = object && object[ARGUMENTS_META];
+                const index = typeof key === 'symbol' ? NaN : (typeof key === 'number' ? key : Number(key));
+                if (deleted && meta && Number.isInteger(index) && String(index) === String(key)) {
+                    meta.mapped.delete(index);
+                }
+                if (!deleted && this.callingFunctionInfo.strict) {
+                    throw new TypeError(`Cannot delete property '${String(key)}'`);
+                }
+                this.setReg(dst, { value: deleted });
+                break;
+            }
+            case I.DELETE_CTX: {
+                const dst = this.nextOperant(false);
+                const key = this.nextOperant().value;
+                const deleted = INTRINSIC_GLOBALS.has(key)
+                    ? false
+                    : Reflect.deleteProperty(this.ctx, key);
+                if (!deleted && this.callingFunctionInfo.strict) {
+                    throw new TypeError(`Cannot delete property '${String(key)}'`);
+                }
+                this.setReg(dst, { value: deleted });
+                break;
+            }
             case I.MOV_THIS: {
-                this.setReg(this.nextOperant(), { value: this.currentThis });
+                this.setReg(this.nextOperant(false), { value: this.currentThis });
                 break;
             }
             case I.TRY: {
-                const catchAddress = this.nextOperant();
-                const endAddress = this.nextOperant();
-                let callCount = 1;
-                const currentFunctionInfo = this.callingFunctionInfo;
-                while (callCount > 0 && this.isRunning) {
-                    try {
-                        const [o, isCallVMFunc] = this.fetchAndExecute();
-                        op = o;
-                        if (isCallVMFunc) {
-                            callCount++;
-                        }
-                        if (o === I.RET) {
-                            callCount--;
-                            if (callCount === 0) {
-                                break;
-                            }
-                        }
-                        if (o === I.TRY_END && callCount === 1) {
-                            this.ip = endAddress.value;
-                            break;
-                        }
-                    }
-                    catch (e) {
-                        if (e instanceof VMRunTimeError) {
-                            throw e;
-                        }
-                        this.popToFunction(currentFunctionInfo);
-                        this.error = e;
-                        this.ip = catchAddress.value;
-                        break;
-                    }
-                }
+                const catchAddress = this.nextOperant().value;
+                const finallyAddress = this.nextOperant().value;
+                const endAddress = this.nextOperant().value;
+                const hasCatch = this.nextOperant().value;
+                const hasFinally = this.nextOperant().value;
+                this.appendInternal(this.tryHandlers, {
+                    functionInfo: this.callingFunctionInfo,
+                    catchAddress,
+                    finallyAddress,
+                    endAddress,
+                    hasCatch,
+                    hasFinally,
+                    phase: 'try',
+                    startAddress: this.ip,
+                });
                 break;
             }
             case I.THROW: {
@@ -631,16 +1002,25 @@ class VirtualMachine {
                 break;
             }
             case I.TRY_END: {
+                this.finishTryRegion();
+                break;
+            }
+            case I.FINALLY_END: {
+                this.finishFinally();
                 break;
             }
             case I.GET_ERR: {
-                const o = this.nextOperant();
+                const o = this.nextOperant(false);
                 this.setReg(o, { value: this.error });
                 break;
             }
             case I.MOV_ARGS: {
-                const dst = this.nextOperant();
-                this.setReg(dst, { value: this.stack[this.fp - 3] });
+                const dst = this.nextOperant(false);
+                this.setReg(dst, { value: this.callingFunctionInfo.argumentsValue });
+                break;
+            }
+            case I.SET_ARGS: {
+                this.callingFunctionInfo.argumentsValue = this.nextOperant().value;
                 break;
             }
             case I.FORIN: {
@@ -667,6 +1047,28 @@ class VirtualMachine {
             case I.FORIN_END:
             case I.BREAK_FORIN:
             case I.CONT_FORIN: {
+                break;
+            }
+            case I.FORIN_INIT: {
+                const dst = this.nextOperant(false);
+                const target = this.nextOperant().value;
+                const keys = [];
+                for (const key in target) {
+                    this.appendInternal(keys, key);
+                }
+                this.setReg(dst, { value: { index: 0, keys } });
+                break;
+            }
+            case I.FORIN_NEXT: {
+                const dst = this.nextOperant(false);
+                const iterator = this.nextOperant().value;
+                const endAddress = this.nextOperant().value;
+                if (iterator.index >= iterator.keys.length) {
+                    this.ip = endAddress;
+                }
+                else {
+                    this.setReg(dst, { value: iterator.keys[iterator.index++] });
+                }
                 break;
             }
             case I.BLOCK: {
@@ -701,35 +1103,240 @@ class VirtualMachine {
             this.callingFunctionInfo.variables = new scope_1.Scope();
         }
     }
+    beginReturn() {
+        const functionInfo = this.callingFunctionInfo;
+        const value = functionInfo.returnValue === NO_RETURN_SYMBOL
+            ? void 0
+            : functionInfo.returnValue;
+        return this.routeReturn({ type: 'return', value, functionInfo });
+    }
+    routeReturn(completion) {
+        while (this.tryHandlers.length > 0) {
+            const handler = this.tryHandlers[this.tryHandlers.length - 1];
+            if (handler.functionInfo !== completion.functionInfo) {
+                break;
+            }
+            if (handler.phase !== 'finally' && handler.hasFinally) {
+                handler.phase = 'finally';
+                handler.pending = completion;
+                this.ip = handler.finallyAddress;
+                return true;
+            }
+            this.tryHandlers.pop();
+        }
+        return false;
+    }
+    routeJump(completion) {
+        while (this.tryHandlers.length > 0) {
+            const handler = this.tryHandlers[this.tryHandlers.length - 1];
+            if (handler.functionInfo !== completion.functionInfo) {
+                break;
+            }
+            if (handler.phase !== 'finally' &&
+                completion.address >= handler.startAddress &&
+                completion.address < handler.endAddress) {
+                this.ip = completion.address;
+                return;
+            }
+            if (handler.phase !== 'finally' && handler.hasFinally) {
+                handler.phase = 'finally';
+                handler.pending = completion;
+                this.ip = handler.finallyAddress;
+                return;
+            }
+            this.tryHandlers.pop();
+        }
+        this.ip = completion.address;
+    }
+    finishTryRegion() {
+        const handler = this.tryHandlers[this.tryHandlers.length - 1];
+        if (!handler || handler.functionInfo !== this.callingFunctionInfo || handler.phase === 'finally') {
+            throw new VMRunTimeError('TRY_END without an active try or catch region');
+        }
+        if (handler.hasFinally) {
+            handler.phase = 'finally';
+            handler.pending = { type: 'normal' };
+            this.ip = handler.finallyAddress;
+        }
+        else {
+            this.tryHandlers.pop();
+            this.ip = handler.endAddress;
+        }
+    }
+    finishFinally() {
+        const handler = this.tryHandlers.pop();
+        if (!handler || handler.phase !== 'finally') {
+            throw new VMRunTimeError('FINALLY_END without an active finally region');
+        }
+        const pending = handler.pending || { type: 'normal' };
+        if (pending.type === 'normal') {
+            this.ip = handler.endAddress;
+            return;
+        }
+        if (pending.type === 'return') {
+            pending.functionInfo.returnValue = pending.value;
+            this.setStack(0, pending.value);
+            if (!this.routeReturn(pending)) {
+                this.returnCurrentFunction();
+            }
+            return;
+        }
+        if (pending.type === 'jump') {
+            this.routeJump(pending);
+            return;
+        }
+        throw pending.value;
+    }
+    handleThrow(error, exceptionBoundary) {
+        while (this.tryHandlers.length > 0) {
+            const handler = this.tryHandlers[this.tryHandlers.length - 1];
+            if (exceptionBoundary) {
+                const boundaryIndex = this.callingFunctionInfos.indexOf(exceptionBoundary);
+                const handlerIndex = this.callingFunctionInfos.indexOf(handler.functionInfo);
+                if (handlerIndex < boundaryIndex) {
+                    return false;
+                }
+            }
+            if (this.callingFunctionInfo !== handler.functionInfo) {
+                this.popToFunction(handler.functionInfo);
+            }
+            if (handler.phase === 'try' && handler.hasCatch) {
+                handler.phase = 'catch';
+                this.error = error;
+                this.ip = handler.catchAddress;
+                return true;
+            }
+            if (handler.phase !== 'finally' && handler.hasFinally) {
+                handler.phase = 'finally';
+                handler.pending = { type: 'throw', value: error };
+                this.ip = handler.finallyAddress;
+                return true;
+            }
+            this.tryHandlers.pop();
+        }
+        return false;
+    }
     returnCurrentFunction() {
         const stack = this.stack;
         const fp = this.fp;
+        const completedFunction = this.callingFunctionInfo;
         this.fp = stack[fp];
         this.ip = stack[fp - 1];
         this.sp = fp - stack[fp - 2] - 4;
         this.stack.splice(this.sp + 1);
         if (this.callingFunctionInfo.returnValue === NO_RETURN_SYMBOL) {
-            this.stack[0] = undefined;
+            this.setStack(0, undefined);
         }
         this.allThis.pop();
         this.currentThis = this.allThis[this.allThis.length - 1];
         this.callingFunctionInfos.pop();
         this.callingFunctionInfo = this.callingFunctionInfos[this.callingFunctionInfos.length - 1];
+        this.withEnvironments = this.withEnvironments.filter((environment) => {
+            return environment.functionInfo !== completedFunction;
+        });
     }
     push(val) {
-        this.stack[++this.sp] = val;
+        this.setStack(++this.sp, val);
+    }
+    setStack(index, value) {
+        this.setArrayIndex(this.stack, index, value);
+    }
+    appendInternal(array, value) {
+        this.setArrayIndex(array, array.length, value);
+    }
+    setArrayIndex(array, index, value) {
+        if (!Object.prototype.hasOwnProperty.call(array, index) &&
+            index in array) {
+            Object.defineProperty(array, index, {
+                configurable: true,
+                enumerable: true,
+                value,
+                writable: true,
+            });
+        }
+        else {
+            array[index] = value;
+        }
+    }
+    findWithEnvironment(name) {
+        this.withEnvironments = this.withEnvironments.filter((environment) => {
+            return environment.functionInfo !== this.callingFunctionInfo || this.ip < environment.endAddress;
+        });
+        for (let i = this.withEnvironments.length - 1; i >= 0; i--) {
+            const environment = this.withEnvironments[i];
+            if (environment.functionInfo === this.callingFunctionInfo &&
+                name in environment.object) {
+                return environment;
+            }
+        }
+        const captured = this.callingFunctionInfo.capturedWithObjects || [];
+        for (let i = captured.length - 1; i >= 0; i--) {
+            if (name in captured[i]) {
+                return {
+                    object: captured[i],
+                    functionInfo: this.callingFunctionInfo,
+                    endAddress: Number.POSITIVE_INFINITY,
+                };
+            }
+        }
+        return undefined;
+    }
+    captureWithObjects() {
+        const objects = [...(this.callingFunctionInfo.capturedWithObjects || [])];
+        for (const environment of this.withEnvironments) {
+            if (environment.functionInfo === this.callingFunctionInfo &&
+                this.ip < environment.endAddress) {
+                objects.push(environment.object);
+            }
+        }
+        return objects;
+    }
+    readNameFallback(name, kind, fallback, typeofSafe) {
+        if (kind === 1) {
+            return this.parseValue(fallback.type, fallback.raw);
+        }
+        if (kind === 2) {
+            return this.callingFunctionInfo.argumentsValue;
+        }
+        if (this.ctx !== null && this.ctx !== undefined && name in Object(this.ctx)) {
+            return this.ctx[name];
+        }
+        if (INTRINSIC_GLOBALS.has(name)) {
+            return INTRINSIC_GLOBALS.get(name);
+        }
+        if (typeofSafe) {
+            return undefined;
+        }
+        throw new ReferenceError(`${name} is not defined`);
+    }
+    writeNameFallback(name, kind, fallback, value) {
+        if (kind === 1) {
+            this.setReg(fallback, { value });
+            return;
+        }
+        if (kind === 2) {
+            this.callingFunctionInfo.argumentsValue = value;
+            return;
+        }
+        if (this.callingFunctionInfo.strict && !(name in Object(this.ctx)) && !INTRINSIC_GLOBALS.has(name)) {
+            throw new ReferenceError(`${name} is not defined`);
+        }
+        const success = Reflect.set(this.ctx, name, value);
+        if (!success && this.callingFunctionInfo.strict) {
+            throw new TypeError(`Cannot assign to read only property '${String(name)}'`);
+        }
     }
     nextOperator() {
         return utils_1.readUInt8(this.codes, this.ip, ++this.ip);
     }
-    nextOperant() {
+    nextOperant(resolveValue = true) {
         const [operantType, value, byteLength] = utils_1.getOperatantByBuffer(this.codes, this.ip++);
         this.ip = this.ip + byteLength;
         if (operantType === 0) {
         }
         return {
             type: operantType,
-            value: this.parseValue(operantType, value),
+            value: resolveValue ? this.parseValue(operantType, value) : value,
             raw: value,
             index: operantType === 0 ? (this.fp + value) : value,
         };
@@ -795,55 +1402,56 @@ class VirtualMachine {
         this.setReg(o1, { value: ret });
     }
     callFunction(func, o, funcName, numArgs, isNewExpression) {
-        const stack = this.stack;
-        const f = func || o[funcName];
-        let isCallVMFunction = false;
+        const f = func !== void 0 ? func : o[funcName];
         const isNullOrUndefined = o === void 0 || o === null || o === this.ctx;
-        if ((f instanceof Callable) && !isNewExpression) {
+        return this.invokeFunction(f, o, !isNullOrUndefined, numArgs, isNewExpression);
+    }
+    callFunctionValue(func, receiver, numArgs, isNewExpression) {
+        return this.invokeFunction(func, receiver, true, numArgs, isNewExpression);
+    }
+    invokeFunction(func, receiver, hasReceiver, numArgs, isNewExpression) {
+        if (typeof func !== 'function') {
+            throw new TypeError('Value is not a function');
+        }
+        if (isNewExpression &&
+            func instanceof Callable &&
+            (this.getMetaFromFunc(func).meta[3] & 1) === 1) {
+            throw new TypeError('Arrow functions are not constructors');
+        }
+        if ((func instanceof Callable) && !isNewExpression) {
             const arg = new NumArgs(numArgs);
-            if (!isNullOrUndefined) {
-                if (typeof o[funcName] === 'function') {
-                    o[funcName](arg);
-                }
-                else {
-                    throw new VMRunTimeError(`The function ${funcName} is not a function`);
-                }
+            if (hasReceiver) {
+                func.call(receiver, arg);
             }
             else {
-                f(arg);
+                func(arg);
             }
-            isCallVMFunction = true;
+            return true;
         }
-        else {
-            const args = [];
-            for (let i = 0; i < numArgs; i++) {
-                args.unshift(stack[this.sp--]);
-            }
-            if (!isNullOrUndefined) {
-                stack[0] = isNewExpression
-                    ? new o[funcName](...args)
-                    : o[funcName](...args);
-            }
-            else {
-                stack[0] = isNewExpression
-                    ? new f(...args)
-                    : f(...args);
-            }
-            this.stack.splice(this.sp + 1);
+        const args = new Array(numArgs);
+        for (let i = 0; i < numArgs; i++) {
+            this.setArrayIndex(args, numArgs - i - 1, this.stack[this.sp--]);
         }
-        return isCallVMFunction;
+        this.setStack(0, isNewExpression
+            ? new func(...args)
+            : func.apply(hasReceiver ? receiver : void 0, args));
+        this.stack.splice(this.sp + 1);
+        return false;
     }
     popToFunction(targetFunctionInfo) {
         while (this.callingFunctionInfos[this.callingFunctionInfos.length - 1] !== targetFunctionInfo) {
             this.returnCurrentFunction();
         }
     }
-    parseToJsFunc(meta, closureScope) {
+    parseToJsFunc(meta, closureScope, lexicalThis, lexicalArguments, lexicalWithObjects = []) {
         const vm = this;
+        const isArrow = (meta[3] & 1) === 1;
+        const isStrict = (meta[3] & 2) === 2;
+        const usesArguments = (meta[3] & 4) === 4;
         const func = function (...args) {
             const [ip, _, localSize] = meta;
             vm.isRunning = true;
-            const n = args[0];
+            const n = args.length > 0 ? args[0] : undefined;
             const isCalledFromJs = !(n instanceof NumArgs);
             let numArgs = 0;
             let allArgs = [];
@@ -862,37 +1470,53 @@ class VirtualMachine {
                 closureScope,
                 variables: null,
                 args: allArgs,
+                argumentsValue: isArrow ? (lexicalArguments || []) : undefined,
+                func,
+                strict: isStrict,
+                capturedWithObjects: lexicalWithObjects,
                 returnValue: NO_RETURN_SYMBOL,
             };
-            vm.callingFunctionInfos.push(vm.callingFunctionInfo);
-            if (vm.allThis.length === 0) {
-                vm.currentThis = vm.ctx;
+            if (!isArrow && usesArguments) {
+                currentCallingFunctionInfo.argumentsValue = vm.createArgumentsObject(allArgs, func, isStrict, meta[1]);
+            }
+            vm.appendInternal(vm.callingFunctionInfos, vm.callingFunctionInfo);
+            if (isArrow) {
+                vm.currentThis = lexicalThis;
+            }
+            else if (isStrict) {
+                vm.currentThis = this;
             }
             else {
-                vm.currentThis = this || vm.ctx;
+                vm.currentThis = this === void 0 || this === null ? vm.ctx : Object(this);
             }
-            vm.allThis.push(vm.currentThis);
+            vm.appendInternal(vm.allThis, vm.currentThis);
             const stack = vm.stack;
             if (isCalledFromJs) {
-                stack[0] = undefined;
+                vm.setStack(0, undefined);
             }
-            stack[++vm.sp] = allArgs;
-            stack[++vm.sp] = numArgs;
-            stack[++vm.sp] = vm.ip;
-            stack[++vm.sp] = vm.fp;
+            vm.setStack(++vm.sp, allArgs);
+            vm.setStack(++vm.sp, numArgs);
+            vm.setStack(++vm.sp, vm.ip);
+            vm.setStack(++vm.sp, vm.fp);
             vm.ip = ip;
             vm.fp = vm.sp;
             vm.sp += localSize;
             if (isCalledFromJs) {
-                let callCount = 1;
-                while (callCount > 0 && vm.isRunning) {
-                    const [op, isCallVMFunction] = vm.fetchAndExecute();
-                    if (isCallVMFunction) {
-                        callCount++;
+                try {
+                    while (vm.callingFunctionInfos.includes(currentCallingFunctionInfo) &&
+                        vm.isRunning) {
+                        vm.executeNext(currentCallingFunctionInfo);
                     }
-                    else if (op === I.RET) {
-                        callCount--;
+                }
+                catch (e) {
+                    while (vm.callingFunctionInfos.includes(currentCallingFunctionInfo)) {
+                        const abandonedFrame = vm.callingFunctionInfo;
+                        vm.tryHandlers = vm.tryHandlers.filter((handler) => {
+                            return handler.functionInfo !== abandonedFrame;
+                        });
+                        vm.returnCurrentFunction();
                     }
+                    throw e;
                 }
                 if (currentCallingFunctionInfo.returnValue !== NO_RETURN_SYMBOL) {
                     return currentCallingFunctionInfo.returnValue;
@@ -905,7 +1529,57 @@ class VirtualMachine {
         }
         catch (e) { }
         vm.setMetaToFunc(func, meta);
+        try {
+            if (isStrict) {
+                defineRestrictedProperties(func, ['caller', 'arguments']);
+            }
+            else {
+                Object.defineProperty(func, 'caller', {
+                    configurable: true,
+                    enumerable: false,
+                    value: undefined,
+                    writable: true,
+                });
+            }
+        }
+        catch (e) { }
         return func;
+    }
+    createArgumentsObject(values, callee, strict, formalCount) {
+        const object = Object.create(Object.prototype);
+        const mapped = new Set();
+        Object.defineProperty(object, ARGUMENTS_META, {
+            value: { values, mapped },
+        });
+        Object.defineProperty(object, 'length', {
+            configurable: true,
+            enumerable: false,
+            value: values.length,
+            writable: true,
+        });
+        values.forEach((value, index) => {
+            Object.defineProperty(object, String(index), {
+                configurable: true,
+                enumerable: true,
+                value,
+                writable: true,
+            });
+            if (!strict && index < formalCount) {
+                mapped.add(index);
+            }
+        });
+        if (strict) {
+            defineRestrictedProperties(object, ['caller', 'callee']);
+        }
+        else {
+            Object.defineProperty(object, 'callee', {
+                configurable: true,
+                enumerable: false,
+                value: callee,
+                writable: true,
+            });
+        }
+        return object;
     }
     setMetaToFunc(func, meta) {
         Object.defineProperty(func, '__vm_func_info__', {
@@ -937,9 +1611,14 @@ const parseFunctionTable = (buffer) => {
     while (i < buffer.byteLength) {
         const ipEnd = i + 4;
         const ip = utils_1.readUInt32(buffer, i, ipEnd);
-        const numArgsAndLocal = new Uint16Array(buffer.slice(ipEnd, ipEnd + 2 * 2));
-        funcs.push([ip, numArgsAndLocal[0], numArgsAndLocal[1]]);
-        i += 8;
+        const numArgsLocalAndFlags = new Uint16Array(buffer.slice(ipEnd, ipEnd + 3 * 2));
+        funcs.push([
+            ip,
+            numArgsLocalAndFlags[0],
+            numArgsLocalAndFlags[1],
+            numArgsLocalAndFlags[2],
+        ]);
+        i += 10;
     }
     return funcs;
 };
@@ -949,6 +1628,20 @@ class Callable extends Function {
     }
 }
 exports.Callable = Callable;
+Object.defineProperty(Callable.prototype, 'constructor', {
+    configurable: true,
+    value: Function,
+    writable: true,
+});
+Object.defineProperty(Callable.prototype, 'bind', {
+    configurable: true,
+    value: function (...args) {
+        const bound = Function.prototype.bind.apply(this, args);
+        defineRestrictedProperties(bound, ['caller', 'arguments']);
+        return bound;
+    },
+    writable: true,
+});
 class NumArgs {
     constructor(numArgs) {
         this.numArgs = numArgs;
@@ -1174,21 +1867,46 @@ class Scope {
         const scope = Object.setPrototypeOf({ len: this.heap.length }, this.scope);
         return new Scope(scope, this.heap, this.isRestoreWhenChange);
     }
-    new(key) {
+    new(key, { mutable = true, initialized = true } = {}) {
         const index = this.heap.length;
         this.scope[key] = index;
-        this.heap.push(void 0);
+        this.heap.push({ value: void 0, mutable, initialized });
     }
     set(key, value) {
         if (!(key in this.scope)) {
             throw new Error('variable is used before decleration');
         }
         const index = this.scope[key];
-        this.heap[index] = value;
+        const cell = this.heap[index];
+        if (!cell.initialized) {
+            throw new ReferenceError('Cannot access binding before initialization');
+        }
+        if (!cell.mutable) {
+            throw new TypeError('Assignment to constant variable');
+        }
+        cell.value = value;
+    }
+    init(key, value) {
+        if (!(key in this.scope)) {
+            throw new ReferenceError('binding is not declared');
+        }
+        const cell = this.heap[this.scope[key]];
+        if (cell.initialized) {
+            throw new ReferenceError('binding is already initialized');
+        }
+        cell.value = value;
+        cell.initialized = true;
     }
     get(key) {
+        if (!(key in this.scope)) {
+            throw new ReferenceError('binding is not declared');
+        }
         const index = this.scope[key];
-        return this.heap[index];
+        const cell = this.heap[index];
+        if (!cell.initialized) {
+            throw new ReferenceError('Cannot access binding before initialization');
+        }
+        return cell.value;
     }
     printScope() {
         let scope = this.scope;
