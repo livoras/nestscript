@@ -1,4 +1,5 @@
 import { tm } from './utils'
+const { expect } = require('chai')
 
 /**
  * JavaScript semantic conformance regression tests. Keep the assertions in
@@ -109,6 +110,58 @@ describe('JavaScript semantic conformance', (): void => {
   })
 
   describe('evaluation order and references', (): void => {
+    it('preserves decoded operands while valueOf re-enters the VM', (): void => {
+      tm(`
+      const events = []
+
+      function boxed(value, label) {
+        return {
+          valueOf: function() {
+            events.push(label)
+            const adjusted = value + 1
+            return adjusted - 1
+          },
+        }
+      }
+
+      const result = boxed(4, 'left') + boxed(5, 'right')
+
+      expect(result).equal(9)
+      expect(events).to.be.deep.equal(['left', 'right'])
+      `)
+    })
+
+    it('preserves the destination while a property getter re-enters the VM', (): void => {
+      tm(`
+      let reads = 0
+      const object = {
+        get value() {
+          reads = reads + 1
+          return reads * 10
+        },
+      }
+
+      const result = object.value + object.value
+
+      expect(result).equal(30)
+      expect(reads).equal(2)
+      `)
+    })
+
+    it('keeps global binding accessors stable after later instructions execute', (): void => {
+      const context = tm(`
+      var first = 1
+      var second = 2
+      first = first + second
+      `)
+
+      expect(context.first).equal(3)
+      expect(context.second).equal(2)
+      context.first = 7
+      expect(context.first).equal(7)
+      expect(context.second).equal(2)
+    })
+
     it('implements delete for references and non-references', (): void => {
       tm(`
         var local = 1

@@ -1,7 +1,12 @@
 // tslint:disable: no-bitwise
 // tslint:disable: no-big-function
 // tslint:disable: no-dead-store
-import { parseStringsArray, getByProp, readUInt8, readInt16, readUInt32, readFloat64, readInt8, getOperatantByBuffer, getOperantName } from '../utils'
+import {
+  getFloat64OperatantValueByBuffer,
+  getInt32OperatantValueByBuffer,
+  parseStringsArray,
+  readUInt32,
+} from '../utils'
 import { Scope } from '../scope'
 
 export enum I {
@@ -77,6 +82,8 @@ export enum I {
 }
 
 const NO_RETURN_SYMBOL = Symbol()
+const CALL_VM_FUNCTION_FLAG = 1 << 8
+const OPCODE_MASK = CALL_VM_FUNCTION_FLAG - 1
 
 const ES5_WHITE_SPACE = /^[\u0009\u000B\u000C\u0020\u00A0\u000A\u000D\u2028\u2029\u1680\u180E\u2000-\u200A\u202F\u205F\u3000]+|[\u0009\u000B\u000C\u0020\u00A0\u000A\u000D\u2028\u2029\u1680\u180E\u2000-\u200A\u202F\u205F\u3000]+$/g
 const toES5Number = (value: any): number => Number(
@@ -206,6 +213,12 @@ export interface IOperant {
   index?: any,
 }
 
+interface IDecodedOperant {
+  type: IOperatantType
+  raw: number
+  nextIp: number
+}
+
 export type IClosureTable = {
   [x in number]: number
 }
@@ -252,6 +265,9 @@ export class VirtualMachine {
 
   public error: any
 
+  /** Immutable operand metadata, decoded lazily by its bytecode offset. */
+  private decodedOperants: Array<IDecodedOperant | undefined>
+
   constructor (
     public codes: Uint8Array,
     public functionsTable: FuncInfoMeta[],
@@ -260,6 +276,7 @@ export class VirtualMachine {
     public globalSize: number,
     public ctx: any,
   ) {
+    this.decodedOperants = new Array(codes.length)
     // These are immutable properties of the ES5 global object. Contexts are
     // supplied by the embedder, so normalize the descriptors at the boundary
     // instead of inheriting modern object-literal defaults from the harness.
@@ -302,7 +319,7 @@ export class VirtualMachine {
     const { globalSize, mainFunction } = this
     const { meta } = this.getMetaFromFunc(mainFunction)
     const [ip, numArgs, localSize] = meta
-    this.stack.splice(0)
+    this.stack.length = 0
     // Index 0 is the VM return register. Materialize it as an own data
     // property so numeric accessors installed on Object.prototype by guest
     // code cannot intercept writes to VM internals.
@@ -330,46 +347,94 @@ export class VirtualMachine {
     this.callFunctionValue(this.mainFunction, this.ctx, 0, false)
     this.isRunning = true
     while (this.isRunning) {
-      this.executeNext()
+      this.executeNextPacked()
     }
   }
 
   public executeNext(exceptionBoundary?: ICallingFunctionInfo): [I, boolean] {
+    const packed = this.executeNextPacked(exceptionBoundary)
+    return [packed & OPCODE_MASK, (packed & CALL_VM_FUNCTION_FLAG) !== 0]
+  }
+
+  private executeNextPacked(exceptionBoundary?: ICallingFunctionInfo): number {
     try {
-      return this.fetchAndExecute()
+      return this.fetchAndExecutePacked()
     } catch(e) {
       if (e instanceof VMRunTimeError) {
         throw e
       }
       if (this.handleThrow(e, exceptionBoundary)) {
-        return [I.THROW, false]
+        return I.THROW
       }
       throw e
     }
   }
 
+  public fetchAndExecute(): [I, boolean] {
+    const packed = this.fetchAndExecutePacked()
+    return [packed & OPCODE_MASK, (packed & CALL_VM_FUNCTION_FLAG) !== 0]
+  }
+
   public setReg(dst: IOperant, src: { value: any }): void {
+    this.writeReg(dst, src.value)
+  }
+
+  private writeReg(dst: IOperant, value: any): void {
     const callingFunctionInfo = this.callingFunctionInfo
     if (dst.type === IOperatantType.VAR_SYMBOL) {
       this.checkVariableScopeAndNew()
-      callingFunctionInfo.variables!.set(dst.index, src.value)
+      callingFunctionInfo.variables!.set(dst.index, value)
     } else if (dst.type === IOperatantType.CLOSURE_REGISTER) {
       this.checkClosureAndFork()
-      this.callingFunctionInfo.closureScope.set(dst.index, src.value)
+      this.callingFunctionInfo.closureScope.set(dst.index, value)
     } else if (dst.type === IOperatantType.REGISTER || dst.type === IOperatantType.RETURN_VALUE) {
       if (dst.type === IOperatantType.RETURN_VALUE) {
-        this.callingFunctionInfo.returnValue = src.value
+        this.callingFunctionInfo.returnValue = value
       }
       if (dst.raw <= -4) {
         const index = -4 - dst.raw
-        this.callingFunctionInfo.args[index] = src.value
+        this.callingFunctionInfo.args[index] = value
         const argsObject = this.callingFunctionInfo.argumentsValue
         const meta: IArgumentsMeta | undefined = argsObject && argsObject[ARGUMENTS_META]
         if (meta && meta.mapped.has(index) && Object.prototype.hasOwnProperty.call(argsObject, index)) {
-          Reflect.set(argsObject, index, src.value)
+          Reflect.set(argsObject, index, value)
         }
       } else {
-        this.setStack(dst.index, src.value)
+        this.setStack(dst.index, value)
+      }
+    } else {
+      console.error(dst)
+      throw new Error(`Cannot process register type ${dst.type}`)
+    }
+  }
+
+  private writeDecodedReg(dst: IDecodedOperant, value: any): void {
+    const callingFunctionInfo = this.callingFunctionInfo
+    const index = dst.type === IOperatantType.REGISTER ? this.fp + dst.raw : dst.raw
+    if (dst.type === IOperatantType.VAR_SYMBOL) {
+      this.checkVariableScopeAndNew()
+      callingFunctionInfo.variables!.set(index, value)
+    } else if (dst.type === IOperatantType.CLOSURE_REGISTER) {
+      this.checkClosureAndFork()
+      this.callingFunctionInfo.closureScope.set(index, value)
+    } else if (dst.type === IOperatantType.REGISTER || dst.type === IOperatantType.RETURN_VALUE) {
+      if (dst.type === IOperatantType.RETURN_VALUE) {
+        this.callingFunctionInfo.returnValue = value
+      }
+      if (dst.raw <= -4) {
+        const argumentIndex = -4 - dst.raw
+        this.callingFunctionInfo.args[argumentIndex] = value
+        const argsObject = this.callingFunctionInfo.argumentsValue
+        const meta: IArgumentsMeta | undefined = argsObject && argsObject[ARGUMENTS_META]
+        if (
+          meta &&
+          meta.mapped.has(argumentIndex) &&
+          Object.prototype.hasOwnProperty.call(argsObject, argumentIndex)
+        ) {
+          Reflect.set(argsObject, argumentIndex, value)
+        }
+      } else {
+        this.setStack(index, value)
       }
     } else {
       console.error(dst)
@@ -423,11 +488,11 @@ export class VirtualMachine {
   }
 
   // tslint:disable-next-line: no-big-function cognitive-complexity
-  public fetchAndExecute(): [I, boolean] {
+  private fetchAndExecutePacked(): number {
     if (!this.isRunning) {
       throw new VMRunTimeError('try to run again...')
     }
-    let op = this.nextOperator()
+    const op = this.nextOperator()
     // 用来判断是否嵌套调用 vm 函数
     let isCallVMFunction = false
     // tslint:disable-next-line: max-switch-cases
@@ -472,7 +537,7 @@ export class VirtualMachine {
     }
 
     case I.PUSH: {
-      const value = this.nextOperant().value
+      const value = this.nextOperantValue()
       this.push(value)
       break
     }
@@ -492,14 +557,13 @@ export class VirtualMachine {
       break
     }
     case I.MOV: {
-      const dst = this.nextOperant(false)
-      const src = this.nextOperant()
-      this.setReg(dst, src)
+      const dst = this.nextDecodedOperant()
+      const value = this.nextOperantValue()
+      this.writeDecodedReg(dst, value)
       break
     }
     case I.JMP: {
-      const address = this.nextOperant()
-      this.ip = address.value
+      this.ip = this.nextOperantValue()
       break
     }
     case I.ABRUPT_JUMP: {
@@ -508,27 +572,45 @@ export class VirtualMachine {
       break
     }
     case I.JE: {
-      this.jumpWithCondidtion((a: any, b: any): boolean => a === b)
+      const left = this.nextOperant().value
+      const right = this.nextOperant().value
+      const address = this.nextOperant().value
+      if (left === right) { this.ip = address }
       break
     }
     case I.JNE: {
-      this.jumpWithCondidtion((a: any, b: any): boolean => a !== b)
+      const left = this.nextOperant().value
+      const right = this.nextOperant().value
+      const address = this.nextOperant().value
+      if (left !== right) { this.ip = address }
       break
     }
     case I.JG: {
-      this.jumpWithCondidtion((a: any, b: any): boolean => a > b)
+      const left = this.nextOperant().value
+      const right = this.nextOperant().value
+      const address = this.nextOperant().value
+      if (left > right) { this.ip = address }
       break
     }
     case I.JL: {
-      this.jumpWithCondidtion((a: any, b: any): boolean => a < b)
+      const left = this.nextOperant().value
+      const right = this.nextOperant().value
+      const address = this.nextOperant().value
+      if (left < right) { this.ip = address }
       break
     }
     case I.JGE: {
-      this.jumpWithCondidtion((a: any, b: any): boolean => a >= b)
+      const left = this.nextOperant().value
+      const right = this.nextOperant().value
+      const address = this.nextOperant().value
+      if (left >= right) { this.ip = address }
       break
     }
     case I.JLE: {
-      this.jumpWithCondidtion((a: any, b: any): boolean => a <= b)
+      const left = this.nextOperant().value
+      const right = this.nextOperant().value
+      const address = this.nextOperant().value
+      if (left <= right) { this.ip = address }
       break
     }
     case I.JIF: {
@@ -540,10 +622,10 @@ export class VirtualMachine {
       break
     }
     case I.JF: {
-      const cond = this.nextOperant()
-      const address = this.nextOperant()
-      if (!cond.value) {
-        this.ip = address.value
+      const condition = this.nextOperantValue()
+      const address = this.nextOperantValue()
+      if (!condition) {
+        this.ip = address
       }
       break
     }
@@ -562,10 +644,9 @@ export class VirtualMachine {
       break
     }
     case I.CALL_REG: {
-      const o = this.nextOperant()
-      const f = o.value
-      const numArgs = this.nextOperant().value
-      const isNewExpression = this.nextOperant().value
+      const f = this.nextOperantValue()
+      const numArgs = this.nextOperantValue()
+      const isNewExpression = this.nextOperantValue()
       isCallVMFunction = this.callFunction(f, void 0, '', numArgs, isNewExpression)
       break
     }
@@ -589,7 +670,7 @@ export class VirtualMachine {
       } else {
         throw new ReferenceError(`${key} is not defined`)
       }
-      this.setReg(dst, { value: src })
+      this.writeReg(dst, src)
       break
     }
     case I.TYPEOF_CTX: {
@@ -601,10 +682,10 @@ export class VirtualMachine {
       } else if (INTRINSIC_GLOBALS.has(key)) {
         value = INTRINSIC_GLOBALS.get(key)
       } else {
-        this.setReg(dst, { value: 'undefined' })
+        this.writeReg(dst, 'undefined')
         break
       }
-      this.setReg(dst, { value: typeof value })
+      this.writeReg(dst, typeof value)
       break
     }
     case I.SET_CTX: {
@@ -653,7 +734,7 @@ export class VirtualMachine {
       } else {
         value = this.readNameFallback(name, fallbackKind, fallback, op === I.WITH_TYPEOF)
       }
-      this.setReg(dst, { value: op === I.WITH_TYPEOF ? typeof value : value })
+      this.writeReg(dst, op === I.WITH_TYPEOF ? typeof value : value)
       break
     }
     case I.WITH_SET: {
@@ -680,11 +761,11 @@ export class VirtualMachine {
       const fallback = this.nextOperant(false)
       const environment = this.findWithEnvironment(name)
       if (environment) {
-        this.setReg(dst, { value: environment.object[name] })
-        this.setReg(receiverDst, { value: environment.object })
+        this.writeReg(dst, environment.object[name])
+        this.writeReg(receiverDst, environment.object)
       } else {
-        this.setReg(dst, { value: this.readNameFallback(name, fallbackKind, fallback, false) })
-        this.setReg(receiverDst, { value: fallbackKind === 0 ? this.ctx : undefined })
+        this.writeReg(dst, this.readNameFallback(name, fallbackKind, fallback, false))
+        this.writeReg(receiverDst, fallbackKind === 0 ? this.ctx : undefined)
       }
       break
     }
@@ -707,13 +788,13 @@ export class VirtualMachine {
       if (!deleted && this.callingFunctionInfo.strict) {
         throw new TypeError(`Cannot delete property '${String(name)}'`)
       }
-      this.setReg(dst, { value: deleted })
+      this.writeReg(dst, deleted)
       break
     }
     case I.NEW_OBJ: {
       const dst = this.nextOperant(false)
       const o = {}
-      this.setReg(dst, { value: o })
+      this.writeReg(dst, o)
       break
     }
     case I.NEW_REG: {
@@ -721,7 +802,7 @@ export class VirtualMachine {
       const pattern = this.nextOperant()
       const flags = this.nextOperant()
       try {
-        this.setReg(dst, { value: new RegExp(pattern.value, flags.value) })
+        this.writeReg(dst, new RegExp(pattern.value, flags.value))
       } catch(e) {
         throw new VMRunTimeError(e)
       }
@@ -730,13 +811,13 @@ export class VirtualMachine {
     case I.NEW_ARR: {
       const dst = this.nextOperant(false)
       const o: any[] = []
-      this.setReg(dst, { value: o })
+      this.writeReg(dst, o)
       break
     }
     case I.SET_KEY: {
-      const o = this.nextOperant().value
-      const key = this.nextOperant().value
-      const value = this.nextOperant().value
+      const o = this.nextOperantValue()
+      const key = this.nextOperantValue()
+      const value = this.nextOperantValue()
       const success = Reflect.set(o, key, value)
       if (!success && this.callingFunctionInfo.strict) {
         throw new TypeError(`Cannot assign to read only property '${String(key)}'`)
@@ -784,124 +865,169 @@ export class VirtualMachine {
         this.callingFunctionInfo.argumentsValue,
         this.captureWithObjects(),
       )
-      this.setReg(dst, { value: func })
+      this.writeReg(dst, func)
       break
     }
     case I.MOV_PROP: {
-      const dst = this.nextOperant(false)
-      const o = this.nextOperant()
-      const k = this.nextOperant()
-      let v = o.value[k.value] // getByProp(o.value, k.value)
+      const dst = this.nextDecodedOperant()
+      const o = this.nextOperantValue()
+      const k = this.nextOperantValue()
+      let v = o[k]
       // Host Object(number) instances inherit the host Number constructor.
       // Present the context's ES5 Number constructor at the guest boundary.
-      if (k.value === 'constructor' && v === Number && this.ctx.Number === ES5Number) {
+      if (k === 'constructor' && v === Number && this.ctx.Number === ES5Number) {
         v = ES5Number
       }
-      this.setReg(dst, { value: v })
+      this.writeDecodedReg(dst, v)
       break
     }
     case I.LT: {
-      this.binaryExpression((a, b): any => a < b)
+      const dst = this.nextDecodedOperant()
+      const left = this.parseValue(dst.type, dst.raw)
+      const right = this.nextOperantValue()
+      this.writeDecodedReg(dst, left < right)
       break
     }
     case I.GT: {
-      this.binaryExpression((a, b): any => a > b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value > right)
       break
     }
     case I.EQ: {
-      this.binaryExpression((a, b): any => a === b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value === right)
       break
     }
     case I.NE: {
-      this.binaryExpression((a, b): any => a !== b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value !== right)
       break
     }
     case I.WEQ: {
       // tslint:disable-next-line: triple-equals
-      this.binaryExpression((a, b): any => a == b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value == right)
       break
     }
     case I.WNE: {
       // tslint:disable-next-line: triple-equals
-      this.binaryExpression((a, b): any => a != b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value != right)
       break
     }
     case I.LE: {
-      this.binaryExpression((a, b): any => a <= b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value <= right)
       break
     }
     case I.GE: {
-      this.binaryExpression((a, b): any => a >= b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value >= right)
       break
     }
     case I.ADD: {
-      this.binaryExpression((a, b): any => a + b)
+      const dst = this.nextDecodedOperant()
+      const left = this.parseValue(dst.type, dst.raw)
+      const right = this.nextOperantValue()
+      this.writeDecodedReg(dst, left + right)
       break
     }
     case I.SUB: {
-      this.binaryExpression((a, b): any => a - b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value - right)
       break
     }
     case I.MUL: {
-      this.binaryExpression((a, b): any => a * b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value * right)
       break
     }
     case I.DIV: {
-      this.binaryExpression((a, b): any => a / b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value / right)
       break
     }
     case I.MOD: {
-      this.binaryExpression((a, b): any => a % b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value % right)
       break
     }
     case I.AND: {
       // tslint:disable-next-line: no-bitwise
-      this.binaryExpression((a, b): any => a & b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value & right)
       break
     }
     case I.OR: {
       // tslint:disable-next-line: no-bitwise
-      this.binaryExpression((a, b): any => a | b)
+      const dst = this.nextDecodedOperant()
+      const left = this.parseValue(dst.type, dst.raw)
+      const right = this.nextOperantValue()
+      this.writeDecodedReg(dst, left | right)
       break
     }
     case I.XOR: {
       // tslint:disable-next-line: no-bitwise
-      this.binaryExpression((a, b): any => a ^ b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value ^ right)
       break
     }
     case I.SHL: {
       // tslint:disable-next-line: no-bitwise
-      this.binaryExpression((a, b): any => a << b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value << right)
       break
     }
     case I.SHR: {
       // tslint:disable-next-line: no-bitwise
-      this.binaryExpression((a, b): any => a >> b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value >> right)
       break
     }
     case I.ZSHR: {
       // tslint:disable-next-line: no-bitwise
-      this.binaryExpression((a, b): any => a >>> b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value >>> right)
       break
     }
     case I.LG_AND: {
-      this.binaryExpression((a, b): any => a && b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value && right)
       break
     }
     case I.LG_OR: {
-      this.binaryExpression((a, b): any => a || b)
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value || right)
       break
     }
     case I.INST_OF: {
-      this.binaryExpression((a, b): any => {
-        return a instanceof b
-      })
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value instanceof right)
       break
     }
     case I.IN: {
-      this.binaryExpression((a, b): any => {
-        return a in b
-      })
+      const dst = this.nextOperant()
+      const right = this.nextOperant().value
+      this.writeReg(dst, dst.value in right)
       break
     }
     case I.ALLOC: {
@@ -911,30 +1037,34 @@ export class VirtualMachine {
       break
     }
     case I.PLUS: {
-      this.uniaryExpression((val: any): any => toES5Number(val))
+      const dst = this.nextOperant()
+      this.writeReg(dst, toES5Number(dst.value))
       break
     }
     case I.MINUS: {
-      this.uniaryExpression((val: any): any => -val)
+      const dst = this.nextOperant()
+      this.writeReg(dst, -dst.value)
       break
     }
     case I.VOID: {
-      // tslint:disable-next-line: no-unused-expression
-      this.uniaryExpression((val: any): any => void val)
+      const dst = this.nextOperant()
+      this.writeReg(dst, void dst.value)
       break
     }
     case I.NOT: {
       // tslint:disable-next-line: no-bitwise
-      this.uniaryExpression((val: any): any => ~val)
+      const dst = this.nextOperant()
+      this.writeReg(dst, ~dst.value)
       break
     }
     case I.NEG: {
-      // tslint:disable-next-line: no-bitwise
-      this.uniaryExpression((val: any): any => !val)
+      const dst = this.nextOperant()
+      this.writeReg(dst, !dst.value)
       break
     }
     case I.TYPE_OF: {
-      this.uniaryExpression((val: any): any => typeof val)
+      const dst = this.nextOperant()
+      this.writeReg(dst, typeof dst.value)
       break
     }
     case I.DEL: {
@@ -965,7 +1095,7 @@ export class VirtualMachine {
       if (!deleted && this.callingFunctionInfo.strict) {
         throw new TypeError(`Cannot delete property '${String(key)}'`)
       }
-      this.setReg(dst, { value: deleted })
+      this.writeReg(dst, deleted)
       break
     }
     case I.DELETE_CTX: {
@@ -977,11 +1107,11 @@ export class VirtualMachine {
       if (!deleted && this.callingFunctionInfo.strict) {
         throw new TypeError(`Cannot delete property '${String(key)}'`)
       }
-      this.setReg(dst, { value: deleted })
+      this.writeReg(dst, deleted)
       break
     }
     case I.MOV_THIS: {
-      this.setReg(this.nextOperant(false), { value: this.currentThis })
+      this.writeReg(this.nextOperant(false), this.currentThis)
       break
     }
     case I.TRY: {
@@ -1018,12 +1148,12 @@ export class VirtualMachine {
     }
     case I.GET_ERR: {
       const o = this.nextOperant(false)
-      this.setReg(o, { value: this.error })
+      this.writeReg(o, this.error)
       break
     }
     case I.MOV_ARGS: {
       const dst = this.nextOperant(false)
-      this.setReg(dst, { value: this.callingFunctionInfo.argumentsValue })
+      this.writeReg(dst, this.callingFunctionInfo.argumentsValue)
       break
     }
     case I.SET_ARGS: {
@@ -1038,9 +1168,9 @@ export class VirtualMachine {
       forIn:
       // tslint:disable-next-line: forin
       for (const i in target.value) {
-        this.setReg(dst, { value: i })
+        this.writeReg(dst, i)
         while (true) {
-          const o = this.fetchAndExecute()[0]
+          const o = this.fetchAndExecutePacked() & OPCODE_MASK
           if (o === I.BREAK_FORIN) {
             break forIn
           }
@@ -1069,7 +1199,7 @@ export class VirtualMachine {
       for (const key in target) {
         this.appendInternal(keys, key)
       }
-      this.setReg(dst, { value: { index: 0, keys } })
+      this.writeReg(dst, { index: 0, keys })
       break
     }
     case I.FORIN_NEXT: {
@@ -1079,7 +1209,7 @@ export class VirtualMachine {
       if (iterator.index >= iterator.keys.length) {
         this.ip = endAddress
       } else {
-        this.setReg(dst, { value: iterator.keys[iterator.index++] })
+        this.writeReg(dst, iterator.keys[iterator.index++])
       }
       break
     }
@@ -1104,7 +1234,7 @@ export class VirtualMachine {
       throw new VMRunTimeError("Unknow command " + op + " " + I[op],)
     }
 
-    return [op, isCallVMFunction]
+    return op | (isCallVMFunction ? CALL_VM_FUNCTION_FLAG : 0)
   }
 
   public checkClosureAndFork(): void {
@@ -1273,7 +1403,7 @@ export class VirtualMachine {
     // 减去参数数量，减去三个 fp ip numArgs args
     this.sp = fp - stack[fp - 2] - 4
     // 清空上一帧
-    this.stack.splice(this.sp + 1)
+    this.stack.length = this.sp + 1
     if (this.callingFunctionInfo.returnValue === NO_RETURN_SYMBOL) {
       this.setStack(0, undefined)
     }
@@ -1281,9 +1411,11 @@ export class VirtualMachine {
     this.currentThis = this.allThis[this.allThis.length - 1]
     this.callingFunctionInfos.pop()
     this.callingFunctionInfo = this.callingFunctionInfos[this.callingFunctionInfos.length - 1]
-    this.withEnvironments = this.withEnvironments.filter((environment): boolean => {
-      return environment.functionInfo !== completedFunction
-    })
+    if (this.withEnvironments.length > 0) {
+      this.withEnvironments = this.withEnvironments.filter((environment): boolean => {
+        return environment.functionInfo !== completedFunction
+      })
+    }
   }
 
   public push(val: any): void {
@@ -1383,7 +1515,7 @@ export class VirtualMachine {
 
   private writeNameFallback(name: string, kind: number, fallback: IOperant, value: any): void {
     if (kind === 1) {
-      this.setReg(fallback, { value })
+      this.writeReg(fallback, value)
       return
     }
     if (kind === 2) {
@@ -1400,19 +1532,42 @@ export class VirtualMachine {
   }
 
   public nextOperator(): I {
-    return readUInt8(this.codes, this.ip, ++this.ip)
+    return this.codes[this.ip++] as I
+  }
+
+  private nextDecodedOperant(): IDecodedOperant {
+    const startIp = this.ip
+    let decoded = this.decodedOperants[startIp]
+    if (decoded === undefined) {
+      const head = this.codes[startIp]
+      const operantType = (head & 0b11110000) as IOperatantType
+      const byteLength = head & 0b00001111
+      const valueOffset = startIp + 1
+      decoded = {
+        type: operantType,
+        raw: operantType === IOperatantType.NUMBER
+          ? getFloat64OperatantValueByBuffer(this.codes, valueOffset, byteLength)
+          : getInt32OperatantValueByBuffer(this.codes, valueOffset, byteLength),
+        nextIp: valueOffset + byteLength,
+      }
+      this.decodedOperants[startIp] = decoded
+    }
+    this.ip = decoded.nextIp
+    return decoded
+  }
+
+  private nextOperantValue(): any {
+    const decoded = this.nextDecodedOperant()
+    return this.parseValue(decoded.type, decoded.raw)
   }
 
   public nextOperant(resolveValue: boolean = true): IOperant {
-    const [operantType, value, byteLength] = getOperatantByBuffer(this.codes, this.ip++)
-    this.ip = this.ip + byteLength
-    if (operantType === IOperatantType.REGISTER) {
-    }
+    const decoded = this.nextDecodedOperant()
     return {
-      type: operantType,
-      value: resolveValue ? this.parseValue(operantType, value) : value,
-      raw: value,
-      index: operantType === IOperatantType.REGISTER ? (this.fp + value) : value,
+      type: decoded.type,
+      value: resolveValue ? this.parseValue(decoded.type, decoded.raw) : decoded.raw,
+      raw: decoded.raw,
+      index: decoded.type === IOperatantType.REGISTER ? (this.fp + decoded.raw) : decoded.raw,
     }
   }
 
@@ -1470,14 +1625,14 @@ export class VirtualMachine {
   public uniaryExpression(exp: (a: any) => any): void {
     const o = this.nextOperant()
     const ret = exp(o.value)
-    this.setReg(o, { value: ret })
+    this.writeReg(o, ret)
   }
 
   public binaryExpression(exp: (a: any, b: any) => any): void {
     const o1 = this.nextOperant()
     const o2 = this.nextOperant()
     const ret = exp(o1.value, o2.value)
-    this.setReg(o1, { value: ret })
+    this.writeReg(o1, ret)
   }
 
   // tslint:disable-next-line: cognitive-complexity
@@ -1538,7 +1693,7 @@ export class VirtualMachine {
     this.setStack(0, isNewExpression
       ? new func(...args)
       : func.apply(hasReceiver ? receiver : void 0, args))
-    this.stack.splice(this.sp + 1)
+    this.stack.length = this.sp + 1
     return false
   }
 
@@ -1641,7 +1796,7 @@ export class VirtualMachine {
             vm.callingFunctionInfos.includes(currentCallingFunctionInfo) &&
             vm.isRunning
           ) {
-            vm.executeNext(currentCallingFunctionInfo)
+            vm.executeNextPacked(currentCallingFunctionInfo)
           }
         } catch(e) {
           // An exception escaping to native JavaScript must leave the VM at
