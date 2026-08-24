@@ -1,431 +1,257 @@
 <p align="center">
-  <img height="120" src="https://github.com/livoras/nestscript/blob/master/docs/logo.png?raw=true">
-  <br/>
-
-  <a href="https://github.com/livoras/nestscript/actions">
-    <img src='https://github.com/livoras/nestscript/workflows/Node.js%20CI/badge.svg'>
-  </a>
-
-  <a href="https://codecov.io/github/livoras/nestscript?branch=master">
-    <img src="https://codecov.io/github/livoras/nestscript/coverage.svg?branch=master">
-  </a>
-
-  <a href="https://david-dm.org/livoras/nestscript">
-    <img src="https://david-dm.org/livoras/nestscript.svg">
-  </a>
-
-  <!-- <a src="https://badge.fury.io/js/nestscript">
-    <img src="https://badge.fury.io/js/nestscript.svg">
-  </a> -->
-
-<!-- [![Dependency Status](https://david-dm.org/livoras/nestscript.svg)](https://david-dm.org/livoras/nestscript)
-[![npm version](https://badge.fury.io/js/nestscript.svg)](https://badge.fury.io/js/nestscript)  -->
-
+  <img src="docs/logo.svg" alt="NestScript" height="120">
 </p>
 
+<h1 align="center">NestScript</h1>
 
-# nestscript
+<p align="center">
+  A JavaScript bytecode toolchain and virtual machine for environments where
+  <code>eval</code>, <code>new Function</code>, and other forms of dynamic code
+  generation are unavailable or prohibited.
+</p>
 
-A script nested in JavaScript, dynamically runs code in environment without `eval` and `new Function`.
+<p align="center">
+  <a href="https://github.com/livoras/nestscript/actions/workflows/node.js.yml"><img src="https://github.com/livoras/nestscript/actions/workflows/node.js.yml/badge.svg" alt="CI status"></a>
+  <a href="https://www.npmjs.com/package/nestscript"><img src="https://img.shields.io/npm/v/nestscript.svg" alt="npm version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/livoras/nestscript.svg" alt="MIT license"></a>
+</p>
 
-`nestscript` 可以让你在没有 `eval` 和 `new Function` 的 JavaScript 环境中运行二进制指令文件。
+NestScript compiles a single JavaScript file ahead of time into a compact
+binary program. The binary is then executed by a virtual machine implemented
+entirely in TypeScript/JavaScript. The target runtime never parses or evaluates
+the original source code.
 
-原理上就是把 JavaScript 先编译成 `nestscript` 的 IR 指令，然后把指令编译成二进制的文件。只要在环境中引入使用 JavaScript 编写的 `nestscript` 的虚拟机，都可以执行 `nestscript` 的二进制文件。你可以把它用在 Web 前端、微信小程序等场景。
+This model is useful in WeChat Mini Programs, CSP-restricted web applications,
+embedded JavaScript runtimes, and other hosts that allow ordinary JavaScript
+execution but reject dynamic source evaluation.
 
-它包含三部分：
+> [!IMPORTANT]
+> NestScript is an execution mechanism, not a security sandbox. Guest code can
+> call functions and mutate objects exposed through the host context. Only run
+> bytecode you trust, and expose the smallest practical host API.
 
-1. **代码生成器**：将 JavaScript 编译成 `nestscript` 中间指令。
-2. **汇编器**：将中间指令编译成可运行在 `nestscript` 虚拟机的二进制文件。
-3. **虚拟机**：执行汇编器生成的二进制文件。
+## How it works
 
-理论上你可以将任意语言编译成 `nestscript` 指令集，但是目前 `nestscript` 只包含了一个代码生成器，目前支持将 JavaScript 编译成 `nestscript` 指令。
+![NestScript compilation and runtime architecture](docs/architecture.png)
 
+Compilation normally happens in a trusted Node.js build environment. A target
+application only needs the VM, the compiled bytecode, and an explicit object
+containing the host capabilities available to the program.
 
-<img src="https://github.com/livoras/nestscript/blob/master/docs/process.png?raw=true">
+The toolchain has three main components:
 
-目前支持单文件 ES5 编译，并且已经成功编译并运行一些经典的 JavaScript 第三方库，例如 moment.js、lodash.js、mqtt.js。并且有日活百万级产品在生产环境使用。
+- **Code generator** — parses JavaScript and emits NestScript assembly.
+- **Assembler** — encodes assembly into the NestScript binary format.
+- **Virtual machine** — executes that binary without `eval` or generated host
+  JavaScript.
 
 ## Installation
 
-```bash
+```sh
 npm install nestscript
 ```
 
-## 快速尝试
+The package installs the `nsc` command-line tool and includes the browser VM at
+`node_modules/nestscript/dist/vm.js`. You can invoke the CLI through `npx`
+without a global installation.
 
-### 新建一个文件，例如 `main.js`：
+## Quick start
 
-```javascript
-console.log("hello world")
+Create `main.js`:
+
+```js
+function greet(name) {
+  return 'Hello, ' + name + '!'
+}
+
+console.log(greet('NestScript'))
 ```
 
-### 编译成二进制：
+Compile it to bytecode:
 
-```bash
-npx nsc compile main.js main
+```sh
+npx nsc compile main.js main.nsc
 ```
 
-这会将 `main.js` 编译成 `main` 二进制文件
+Run the bytecode with the Node.js host context provided by the CLI:
 
-### 通过虚拟机运行二进制：
-
-```bash
-npx nsc run main
+```sh
+npx nsc run main.nsc
 ```
 
-会看到终端输出 `hello world`。这个 `main` 二进制文件，可以在任何一个包含了 nestscript 虚拟机，也就是 `dist/vm.js` 文件的环境中运行。
+Expected output:
 
-例如你可以把这个 `main` 二进制分发到 CND，然后通过网络下载到包含 `dist/vm.js` 文件的小程序中动态执行。
+```text
+Hello, NestScript!
+```
 
-## Example
+The resulting `main.nsc` file contains bytecode, not JavaScript source. It can
+be distributed independently and executed wherever a compatible NestScript VM
+is available.
 
-为了展示它的作用，我们编译了一个开源的的伪 3D 游戏 [javascript-racer](https://github.com/jakesgordon/javascript-racer/)。可以通过这个网址查看效果：[https://livoras.github.io/nestscript-demo/index.html](https://livoras.github.io/nestscript-demo/index.html)
+## Embedding the VM
 
-![游戏图片](https://github.com/livoras/nestscript-demo/blob/master/demo.png?raw=true)
+### Browser or web-like runtime
 
-查看源代码（[nestscript-demo](https://github.com/livoras/nestscript-demo)）可以看到，我们在网页中引入了一个虚拟机 `vm.js`。游戏的主体逻辑都通过 nestscript 编译成了一个二进制文件 `game`，然后通过 `fetch`下载这个二进制文件，然后给到虚拟机解析、运行。
+The browser bundle is available at `dist/vm.js`. When loaded as a script, it
+exposes `createVMFromArrayBuffer` on `window`:
 
 ```html
-<!-- 引入 nestscript 虚拟机 -->
-<script src="./nestscript/dist/vm.js"></script>
-
-<!-- 下载二进制文件 `game`，并且用虚拟机运行 -->
+<script src="/vendor/nestscript/vm.js"></script>
 <script>
-   fetch('./game').then((res) => {
-      res.arrayBuffer().then((data) => {
-         const vm = createVMFromArrayBuffer(data, window)
-         vm.run()
-      })
-   })
+  fetch('/programs/main.nsc')
+    .then(function (response) {
+      return response.arrayBuffer()
+    })
+    .then(function (bytecode) {
+      var context = {
+        console: console,
+        Date: Date,
+        Math: Math
+      }
+
+      var vm = createVMFromArrayBuffer(bytecode, context)
+      vm.run()
+    })
 </script>
 ```
 
-达到的效果和原来的开源的游戏效果完全一致
+The same pattern applies to runtimes with a platform-specific networking API:
+download the file as an `ArrayBuffer`, construct the VM, and call `run()`.
 
-* 原来用 JS 运行的效果：[http://codeincomplete.com/projects/racer/v4.final.html](http://codeincomplete.com/projects/racer/v4.final.html)
-* 用虚拟机运行 nestscript 二进制的效果：[https://livoras.github.io/nestscript-demo/index.html](https://livoras.github.io/nestscript-demo/index.html)
+For production deployments, compile during the build or release process and
+ship only the binary plus the VM to the target runtime.
 
-### demo 原理
+## Host context
 
-编译的过程非常简单，只不过是把原来游戏的几个逻辑文件合并在一起：
+`createVMFromArrayBuffer(bytecode, context)` uses `context` as the program's
+global object and returns a `VirtualMachine`. Host values are not imported
+automatically; execution starts only when `vm.run()` is called.
 
-```bash
-cat common.js stats.js main.js > game.js
-```
+```js
+const context = {
+  console: console,
+  Date: Date,
+  Math: Math,
+  reportMetric: function (name, value) {
+    // Bridge into the host application.
+  }
+}
 
-然后用 nestscript 编译成二进制文件：
-
-```bash
-nsc compile game.js game
-```
-
-再在 html 中引入虚拟机 vm.js，然后通过网络请求获取 game 二进制文件，接着运行二进制：
-
-```html
-<!-- 引入 nestscript 虚拟机 -->
-<script src="./nestscript/dist/vm.js"></script>
-
-<!-- 下载二进制文件 `game`，并且用虚拟机运行 -->
-<script>
-   fetch('./game').then((res) => {
-      res.arrayBuffer().then((data) => {
-         const vm = createVMFromArrayBuffer(data, window)
-         vm.run()
-      })
-   })
-</script>
-```
-
-## API
-
-### nsc compile [source.js] [binary]
-
-把 JavaScript 文件编译成二进制，例如 `npx nsc compile game.js game`。注意，目前仅支持 ES5 的语法。
-
-### nsc run [binary]
-
-通过 nestscript 虚拟机运行编译好的二进制，例如 `npx nsc run game`
-
-### createVMFromArrayBuffer(buffer: ArrayBuffer, context: any)
-
-由 `dist/vm.js` 提供的方法，解析编译好的二进制文件，返回一个虚拟机实例，并且可以准备执行。例如:
-
-```javascript
-const vm = createVMFromArrayBuffer(buffer, context)
-```
-
-`buffer` 指的是二进制用 JavaScript 的 ArrayBuffer 的展示形式；
-
-`context` 相当于传给虚拟机的一个全局运行环境，因为虚拟机的运行环境和外部分离开来的。它对 window、global 这些已有的 JavaScript 环境无知，所以需要手动传入一个 `context` 来告知虚拟机目前的全局环境。虚拟机的全局变量、属性都会从传入的 `contenxt` 中拿到。
-
-例如，如果代码只用到全局的 `Date` 属性，那么除了可以直接传入 `window` 对象以外，还可以这么做：
-
-```javascript
-const vm = createVMFromArrayBuffer(buffer, { Date })
-```
-
-### VirtualMachine::run()
-
-`createVMFromArrayBuffer` 返回的虚拟机实例有 `run` 方法可以运行代码：
-
-```javascript
-const vm = createVMFromArrayBuffer(buffer, { Date })
+const vm = createVMFromArrayBuffer(bytecode, context)
 vm.run()
 ```
 
-## nestscript 指令集
+Keep the following properties in mind:
 
-```
-MOV, ADD, SUB, MUL, DIV, MOD,
-EXP, NEG, INC, DEC,
+- Global declarations and assignments may modify the context object.
+- Guest code can invoke any function reachable from the context.
+- Objects reachable from the context are shared with the host, not copied.
+- Providing a fresh, purpose-built context is safer than passing `window`,
+  `globalThis`, or another unrestricted global object.
 
-LT, GT, EQ, LE, GE, NE,
-LG_AND, LG_OR, XOR, NOT, SHL, SHR,
+NestScript does not authenticate bytecode downloaded over the network. If
+bytecode is delivered remotely, protect it with the same integrity and trust
+controls used for any executable application asset.
 
-JMP, JE, JNE, JG, JL, JIF, JF,
-JGE, JLE, PUSH, POP, CALL, PRINT,
-RET, PAUSE, EXIT,
+## Compatibility
 
-CALL_CTX, CALL_VAR, CALL_REG, MOV_CTX, MOV_PROP,
-SET_CTX,
-NEW_OBJ, NEW_ARR, SET_KEY,
-FUNC, ALLOC,
-```
+NestScript is currently focused on **single-file ES5 program semantics**. It
+supports functions and closures, objects and arrays, constructors, control
+flow, exceptions, strict mode, `with`, and interaction with explicitly supplied
+host objects.
 
-详情请见 [nestscript 指令集手册](https://github.com/livoras/nestscript/blob/master/docs/ir.md)。
+The following boundaries are intentional or currently important:
 
-例如使用指令编写的，斐波那契数列：
+- `eval` and the `Function` constructor are not supported for guest source.
+- ES modules (`import` and `export`) and classes are not supported.
+- Built-in objects such as `Date`, `RegExp`, and `JSON` come from the host
+  context; their exact behavior therefore depends on that host.
+- The binary format is not versioned. Compile bytecode with the same
+  NestScript revision used to build the target VM.
+- A successfully parsed modern syntax construct is not necessarily part of the
+  supported language contract; ES5 is the compatibility target.
 
-```javascript
-func @@main() {
-    CLS @fibonacci;
-    REG %r0;
-    FUNC $RET @@f0;
-    FUNC @fibonacci @@f0;
-    MOV %r0 10;
-    PUSH %r0;
-    CALL_REG @fibonacci 1 false;
-}
-func @@f0(.n) {
-    REG %r0;
-    REG %r1;
-    REG %r2;
-    REG %r3;
-    MOV %r0 .n;
-    MOV %r1 1;
-    LT %r0 %r1;
-    JF %r0 _l1_;
-    MOV %r1 0;
-    MOV $RET %r1;
-    RET;
-    JMP _l0_;
-LABEL _l1_:
-LABEL _l0_:
-    MOV %r0 .n;
-    MOV %r1 2;
-    LE %r0 %r1;
-    JF %r0 _l3_;
-    MOV %r1 1;
-    MOV $RET %r1;
-    RET;
-    JMP _l2_;
-LABEL _l3_:
-LABEL _l2_:
-    MOV %r2 .n;
-    MOV %r3 1;
-    SUB %r2 %r3;
-    PUSH %r2;
-    CALL_REG @fibonacci 1 false;
-    MOV %r0 $RET;
-    MOV %r2 .n;
-    MOV %r3 2;
-    SUB %r2 %r3;
-    PUSH %r2;
-    CALL_REG @fibonacci 1 false;
-    MOV %r1 $RET;
-    ADD %r0 %r1;
-    MOV $RET %r0;
-    RET;
-}
+### Test262 status
+
+NestScript includes an isolated runner for the official historical Test262
+`es5-tests` branch. At revision `04f4dc4`, the measured results are:
+
+| Scope | Executed | Passed | Failed | Pass rate |
+| --- | ---: | ---: | ---: | ---: |
+| ES5 core language, chapters 6–14 | 2,745 | 2,745 | 0 | 100.00% |
+| Full ES5 suite, including host built-ins | 10,613 | 10,271 | 342 | 96.78% |
+
+Tests that require `eval` or the `Function` constructor are reported separately
+and excluded from these denominators. The full-suite result also reflects
+modern host built-ins and runner limits, so it should not be read as a pure VM
+language score.
+
+See [the detailed results](test262/RESULTS.md) and
+[runner documentation](test262/README.md) for the pinned upstream revision,
+methodology, skip policy, and failure classification.
+
+## CLI reference
+
+| Command | Description |
+| --- | --- |
+| `nsc compile <source.js> <output>` | Compile JavaScript directly to binary bytecode. |
+| `nsc codegen <source.js> <output.nes>` | Emit human-readable NestScript assembly. |
+| `nsc run <bytecode>` | Execute bytecode with the CLI's Node.js host context. |
+
+Examples:
+
+```sh
+npx nsc codegen main.js main.nes
+npx nsc compile main.js main.nsc
+npx nsc run main.nsc
 ```
 
-## TODO
-- [ ] `export`，`import` 模块支持
-- [ ] `class` 支持
-- [ ] 中间代码优化
-  - [x] 基本中间代码优化
-  - [ ] 属性访问优化
-- [ ] 文档：
-  - [ ] IR 指令手册
-  - [x] 安装文档
-  - [x] 使用手册
-  - [x] 使用 demo
-- [x] `null`, `undefined` keyword
-- [x] 正则表达式
-- [x] label 语法
-- [x] `try catch`
-  - [x] try catch block
-  - [x] error 对象获取
-- [x] ForInStatement
-- [x] 支持 function.length
+## Instruction set
 
-* * *
+NestScript assembly is a low-level intermediate representation with operations
+for arithmetic, comparisons, property access, branching, function calls,
+closures, exception handling, and object creation. The assembler converts this
+representation into the binary consumed by the VM.
 
-## Change Log
-### 2020-10-10
-* 函数调用的时候延迟 new Scope 和 scope.fork 可以很好提升性能（~500ms）
+The binary format is currently an internal interface. The authoritative
+definitions are the [VM opcode enum](src/vm/vm.ts) and the
+[assembler implementation](src/assembler.ts).
 
-### 2020-10-09
-* 性能优化：不使用 `XXXBuffer.set` 从 buffer 读取指令速度更快
+## Example application
 
-### 2020-09-18
-* 解决 try catch 调用栈退出到 catch 的函数的地方
+The [NestScript Racer demo](https://livoras.github.io/nestscript-demo/) runs the
+game logic from a remotely loaded NestScript binary. Its source and integration
+code are available in the
+[nestscript-demo repository](https://github.com/livoras/nestscript-demo).
 
-### 2020-09-08
-* 重新设计闭包、普通变量的实现方式，使用 scope chain、block chain
-* 实现块级作用域
-* 使用块级作用域实现 `error` 参数在 `catch` 的使用
+## Development
 
-### 2020-08-25
-* 闭包的形式应该是:
-  * FUNC 每次都返回一个新的函数，并且记录上一层的 closure table
-  * 调用的时候根据旧的 closure table 构建新的 closure table 
+```sh
+git clone https://github.com/livoras/nestscript.git
+cd nestscript
+npm install
+npm test
+```
 
-### 2020-08-21
-* fix 闭包生成的顺序问题
-* 编译第三方库 moment.js, moment.min.js, lodash.js, lodash.min.js 成功并把编译加入测试
+Run the TypeScript check without emitting files:
 
-### 2020-08-20
-* 编译 moment.js 成功
-* fix if else 语句的顺序问题
+```sh
+npx tsc --noEmit
+```
 
-### 2020-08-19
-* ForInStatement
+To reproduce the ES5 conformance run, follow
+[test262/README.md](test262/README.md).
 
-### 2020-08-14
-* 编译 lodash 成功
+## Contributing
 
-### 2020-08-14
-* `arguments` 参数支持
+Bug reports and focused pull requests are welcome. For semantic changes, add a
+small regression test that demonstrates the observable JavaScript behavior and
+run the relevant Test262 subset when practical.
 
-### 2020-08-12
-* fix 闭包问题
-* 继续编译 lodash：发现没有 try catch 的实现
+Please use [GitHub Issues](https://github.com/livoras/nestscript/issues) for bug
+reports and compatibility discussions.
 
-### 2020-08-11
-* 继续编译 lodash，发现了运行时闭包声明顺序导致无法获取闭包的 bug
+## License
 
-### 2020-08-10
-* 编译 lodash 成功(运行失败)
-* 给函数参数增加闭包声明
-* UpdateExpression 的前后缀表达存储
-
-### 2020-08-06
-* 完成 label 语法：循环、block label
-
-### 2020-08-05
-* `null`, `undefined`
-* 正则表达式字面量
-
-### 2020-08-03
-* `while`, `do while`, `continue` codegen
-* 更多测试
-
-### 2020-07-31
-* 第一版 optimizer 完成
-
-### 2020-07-30
-* 设计代码优化器的流程图
-
-### 2020-07-29
-* 把操作数的字节数存放在类型的字节末端，让操作数的字节数量可以动态获取
-* 对于 Number 类型使用 Float64 来存储，对于其他类型的操作数用 Int32 存储
-* 可以较好地压缩二进制程序的大小.
-
-### 2020-07-27
-* 重新设计操作数的生成规则
-
-### 2020-07-23
-* 函数的调用有几种情况
-  * vm 调用自身函数
-  * vm 调用外部函数
-  * 外部调用 vm 的函数
-* 所以：
-  * vm 在调用函数的时候需要区分是那个环境的函数（函数包装 + instanceof）
-    * 如果是自身的函数，不需要对参数进行操作
-    * 如果是外部函数，需要把已经入栈的函数出栈再传给外部函数
-  * 内部函数在被调用的时候，需要区分是那个环境调用的（NumArgs 包装 + instanceof）
-    * 如果来自己的调用，不需要进行特别的操作
-    * 如果是来自外部的调用，需要把参数入栈，并且要嵌入内部循环等待虚拟机函数结束以后再返回
-* 让函数可以正确绑定 this，不管是 vm 内部还是外部的
-
-### 2020-07-22
-* 代码生成中表达式结果的处理原则：所有没有向下一层传递 s.r0 的都要处理 s.r0
-* 三目运算符 A ? B : C 的 codegen（复用 IfStatement）
-
-### 2020-07-21
-* 自动包装 @@main 函数，这样就不需要主动提供 main 函数，更接近 JS
-
-### 2020-07-20
-* 更多测试
-* 完成 +=, -=, *=, /= 操作符
-
-### 2020-07-17
-* 新增测试 & CI
-* uinary expression 的实现：+, -, ~, !, void, delete
-
-### 2020-07-16
-* 逻辑表达式 "&&" 和 "||" 的 codegen 和虚拟机实现
-* 完成闭包在虚拟机中的实现
-
-### 2020-07-15
-* 完成闭包变量的标记方式：内层函数“污染”外层的方式
-* 重构代码生成的方式，使用函数数组延迟代码生成，这样可以在标记完闭包变量以后再进行 codegen
-* 设计闭包变量和普通变量的标记方式“@xxx”表示闭包变量，“%xxx”表示普通自动生成的寄存器
-* 下一步设计闭包变量在汇编器和虚拟机中的生成和调取机制
-
-### 2020-07-13
-* 设计闭包的实现
-* 实现 `CALL_REG R0 3` 指令，可以把函数缓存到变量中随后进行调用
-
-### 2020-07-10
-* 支持回调函数的 codegen
-* 完成基本的 JS -> 汇编的转化和运行
-* 循环 codegen
-* 三种值的更新和获取
-  * Identifier
-    * context
-    * variables
-  * Memeber
-
-### 2020-07-09
-* 完成二进制表达式的 codegen
-* 完成简单的赋值语句
-* 完成对象属性访问的 codegen
-* if 语句的 codegen
-
-### 2020-07-03
-* 确定使用动态分配 & 释放寄存器方案
-* 表达式计算值存储到寄存器方案，寄存器名称外层生成、传入、释放
-
-### 2020-06-22
-* 开始使用 acorn 解析 ast，准备把 ast 编译成 IR 指令
-
-### 2020-06-19
-* `FUNC R0 sayHi`: 构建 JS 函数封装 `sayHi` 函数并存放到 R0 寄存器，可以用作 JS 的回调参数，见 `example/callback.nes`
-* `CALL_VAR R0 "forEach" 1`: 调用寄存器里面存值的某个方法
-* `MOV_PROP R0 R1 "length"`: 将 R1 寄存器的值的 "length" 的值放到 R0 寄存器中
-
-### 2020-06-18
-* 完成
-  * `NEW_ARR R0`: 字面量数组
-  * `NEW_OBJ R0`: 字面量对象
-  * `SET_KEY R0 "0" "hello"`: 设置某个寄存器里面的 key value 值
-  * `CALL_CTX "console" "log" 1`: 调用 ctx 里面的某个函数方法
-  * `MOV_CTX R0 "console.log"`: 把 ctx 某个值移动到寄存器
-
-### 2020-06-17
-* 完成基本的汇编器和虚拟机
-* 完成命令行工具 nsc，可以 `nsc compile src dest` 将文本代码 -> 二进制文件，并且用 `nsc run file` 执行
-* 斐波那契数列计算例子
-* 编译打包成第三方包
+NestScript is released under the [MIT License](LICENSE).
