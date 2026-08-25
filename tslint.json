@@ -1,5 +1,5 @@
 {
-  "extends": ["tslint:recommended", "tslint-eslint-rules", "tslint-sonarts"],
+  "extends": ["tslint:recommended", "tslint-eslint-rules"],
   "rules": {
     "no-empty": false,
     "no-console": false,
