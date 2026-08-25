@@ -93,8 +93,6 @@ export const parseAssembler = (code: string, isRawString: boolean = false): IPar
   const NO_SET_FUNCTION_INFO_ERROR = 'current function info is not set.'
 
   const isEmpyty = (c: string): boolean => /\s/.test(c)
-  let j = 0
-  let k = 0
   let isEscape = false
 
   while (i < code.length) {
@@ -105,13 +103,10 @@ export const parseAssembler = (code: string, isRawString: boolean = false): IPar
       if (isEmpyty(c)) {
         if (!token) { continue }
         if (token !== 'func') {
-          console.log('->', operants)
           throw new Error('INIT Unexpected token ' + token)
         }
         token = ''
         tokenizingState = TokenizingState.FUNCTION_NAME
-        k++
-        // console.log(k, 'coount ')
         currentFunctionInfo = { functionName: '', params: [], instructions: [] }
         codes = currentFunctionInfo.instructions
       } else {
@@ -237,7 +232,6 @@ export const parseAssembler = (code: string, isRawString: boolean = false): IPar
     }
 
     if (c === '}') {
-      j++
       if (operants.length > 0) {
         codes.push(operants)
       }

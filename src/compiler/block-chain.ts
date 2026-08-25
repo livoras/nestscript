@@ -1,4 +1,4 @@
-import { VariableType } from './codegen'
+import { VariableType } from './types'
 
 export interface IBlock {
   variables: Map<string, any>
@@ -13,12 +13,14 @@ export interface IFuncBlock extends IBlock {
 
 export class BlockChain {
   public closureCounter: number = 0
-  private static globalBlockNameIndex: number = 0
+  private readonly nameCounter: { value: number }
 
   constructor(
     public chain: (IBlock | IFuncBlock)[],
     public currentFuncBlock?: IFuncBlock,
+    nameCounter: { value: number } = { value: 0 },
   ) {
+    this.nameCounter = nameCounter
     if (this.chain.length === 0) {
       this.closureCounter = 0
     }
@@ -30,7 +32,7 @@ export class BlockChain {
       closures: new Map<string, any>(),
       isForceBlock: false,
     }
-    return new BlockChain([ ...this.chain, block], this.currentFuncBlock)
+    return new BlockChain([ ...this.chain, block], this.currentFuncBlock, this.nameCounter)
   }
 
   public newFuncBlock(params?: Map<string, any>): BlockChain {
@@ -41,7 +43,7 @@ export class BlockChain {
       blockNameIndex: 0,
       isForceBlock: false,
     }
-    return new BlockChain([...this.chain, funcBlock], funcBlock)
+    return new BlockChain([...this.chain, funcBlock], funcBlock, this.nameCounter)
   }
 
   // tslint:disable-next-line: cognitive-complexity
@@ -195,7 +197,7 @@ export class BlockChain {
     if (this.currentFuncBlock) {
       return this.currentFuncBlock.blockNameIndex++
     } else {
-      return BlockChain.globalBlockNameIndex++
+      return this.nameCounter.value++
     }
   }
 }

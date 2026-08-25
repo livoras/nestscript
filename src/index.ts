@@ -1,5 +1,18 @@
-export * from "./assembler"
-export * from "./vm/vm"
-export * from "./vm/vm2"
-export * from "./codegen"
-export * from "./js"
+export {
+  CallSite,
+  FunctionMeta,
+  Instruction,
+  Opcode,
+  Program,
+  UnsupportedOpcodeError,
+  VirtualMachine,
+  compileProgramFromAssembly,
+  compileProgramFromJavaScript,
+  deserializeProgram,
+  serializeProgram,
+} from './vm'
+export {
+  compileJavaScriptToBytecode,
+  createVMFromArrayBuffer,
+  createVMFromJavaScript,
+} from './js'

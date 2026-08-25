@@ -1,9 +1,21 @@
 {
   "name": "nestscript",
-  "version": "1.0.10",
+  "version": "2.0.0",
   "description": "A JavaScript bytecode toolchain and virtual machine for runtimes without dynamic code evaluation.",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/src/index.d.ts",
+      "require": "./build/src/index.js",
+      "default": "./build/src/index.js"
+    },
+    "./runtime": {
+      "types": "./build/src/vm.d.ts",
+      "require": "./build/src/vm.js",
+      "default": "./build/src/vm.js"
+    }
+  },
   "bin": {
     "nsc": "nsc/bin/run"
   },
@@ -15,9 +27,9 @@
     "README.zh-CN.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.release.json && webpack",
+    "clean": "node scripts/clean.js",
+    "build": "npm run clean && tsc -p tsconfig.release.json && webpack",
     "benchmark:runtime": "node -r ts-node/register performance/runtime.bench.ts",
-    "benchmark:vm2": "node -r ts-node/register performance/register-vm2.bench.ts",
     "cov": "nyc -r lcov -e .ts -x \"*.test.ts\" npm run test",
     "prepack": "npm run build",
     "prepublishOnly": "npm test && tsc --noEmit",

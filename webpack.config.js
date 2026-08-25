@@ -4,7 +4,7 @@ module.exports = {
     mode: "none",
     stats: "errors-only",
     entry: {
-        "vm": "./build/src/vm/vm.js",
+        "vm": "./build/src/vm.js",
     },
     optimization: {
         minimize: false,
@@ -31,6 +31,13 @@ module.exports = {
     },
     output: {
         path: path.resolve(__dirname, 'dist'),
-        libraryTarget: "commonjs"
+        filename: "vm.js",
+        library: {
+            name: "NestScript",
+            type: "umd",
+        },
+        // `this` keeps the UMD wrapper compatible with older webview and
+        // mini-program runtimes that do not expose `globalThis`.
+        globalObject: "this",
     },
 };

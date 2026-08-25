@@ -1,28 +1,25 @@
-import { VirtualMachine, createVMFromArrayBuffer } from './vm/vm'
 import {
-  RegisterVirtualMachine,
-  compileV2FromJavaScript,
-  createRegisterVMFromArrayBuffer,
-  createRegisterVMFromJavaScript,
-  serializeV2Program,
-} from './vm/vm2'
-import { generateAssemblyFromJs } from './codegen'
-import { parseCodeToProgram } from './assembler'
+  compileProgramFromJavaScript,
+  createVMFromArrayBuffer as createRuntimeFromArrayBuffer,
+  createVMFromJavaScript as createRuntimeFromJavaScript,
+  Program,
+  serializeProgram,
+  VirtualMachine,
+} from './vm'
 
-export const createVMFromJavaScript = (jsCode: string, ctx: any = {}): VirtualMachine => {
-  const asmCodes = generateAssemblyFromJs(jsCode)
-  const buffer = parseCodeToProgram(asmCodes).buffer
-  return createVMFromArrayBuffer(buffer, ctx)
+/** Compile JavaScript source into the canonical NestScript bytecode format. */
+export const compileJavaScriptToBytecode = (source: string): ArrayBuffer => {
+  return serializeProgram(compileProgramFromJavaScript(source))
 }
 
-export const createVMFromJavaScriptV2 = (jsCode: string, ctx: any = {}): RegisterVirtualMachine => {
-  return createRegisterVMFromJavaScript(jsCode, ctx)
+/** Create a VM from serialized NestScript bytecode. */
+export const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMachine => {
+  return createRuntimeFromArrayBuffer(buffer, ctx)
 }
 
-export const compileJavaScriptToV2Bytecode = (jsCode: string): ArrayBuffer => {
-  return serializeV2Program(compileV2FromJavaScript(jsCode))
+/** Compile and create a VM in one step. */
+export const createVMFromJavaScript = (source: string, ctx: any = {}): VirtualMachine => {
+  return createRuntimeFromJavaScript(source, ctx)
 }
 
-export const createVMFromV2ArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): RegisterVirtualMachine => {
-  return createRegisterVMFromArrayBuffer(buffer, ctx)
-}
+export { Program, VirtualMachine }

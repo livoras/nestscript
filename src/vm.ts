@@ -1,13 +1,12 @@
 // tslint:disable: no-bitwise
 //
-// Register VM V2
+// Register VM
 //
-// V2 is deliberately implemented beside the original VM.  The original
-// bytecode format is public and remains the compatibility path; V2 has its
-// own fixed-width instruction format and can be adopted incrementally.
+// This file defines the canonical fixed-width bytecode format and the single
+// register VM that executes it.
 
-import { generateAssemblyFromJs } from '../codegen'
-import { IParsedFunction, parseAssembler } from '../parser'
+import { generateAssemblyFromJs } from './compiler/codegen'
+import { IParsedFunction, parseAssembler } from './compiler/parser'
 
 const REF_KIND_SHIFT = 30
 const REF_INDEX_MASK = 0x3fffffff
@@ -16,8 +15,10 @@ const REF_CONSTANT = 1
 const REF_GLOBAL = 2
 const REF_RETURN = 3
 const NO_SLOT = 0xffff
-const V2_MAGIC = 0x3256534e // little-endian bytes: NSV2
-const V2_VERSION = 2
+// "NSCT" in little-endian form. This is a new canonical format; no legacy
+// bytecode is accepted by the runtime.
+const BYTECODE_MAGIC = 0x5443534e
+const BYTECODE_VERSION = 1
 const HEADER_WORDS = 15
 const FUNCTION_WORDS = 6
 const CONSTANT_WORDS = 4
@@ -33,7 +34,7 @@ const constantRef = (index: number): number => ref(REF_CONSTANT, index)
 const globalRef = (index: number): number => ref(REF_GLOBAL, index)
 const returnRef = (): number => ref(REF_RETURN)
 
-export enum V2Opcode {
+export enum Opcode {
   NOP,
   MOVE,
   SET_GLOBAL,
@@ -95,7 +96,7 @@ export enum V2Opcode {
   CALL,
   RETURN,
   EXIT,
-  // Appended to keep the original V2 opcode numbers stable.  These are
+  // Appended to keep the bytecode opcode numbers stable.  These are
   // installed adaptively in the packed stream for signed 32-bit operands.
   ADD_I32,
   SUB_I32,
@@ -119,8 +120,8 @@ export enum V2Opcode {
   LOOP_ACCUMULATE,
 }
 
-export interface IV2Instruction {
-  op: V2Opcode
+export interface Instruction {
+  op: Opcode
   flags: number
   dst: number
   a: number
@@ -130,7 +131,7 @@ export interface IV2Instruction {
   targetLabel?: string
 }
 
-export interface IV2FunctionMeta {
+export interface FunctionMeta {
   start: number
   length: number
   numArgs: number
@@ -138,24 +139,24 @@ export interface IV2FunctionMeta {
   flags: number
 }
 
-export interface IV2CallSite {
+export interface CallSite {
   args: number[]
   isNewExpression: boolean
 }
 
-export interface IV2Program {
+export interface Program {
   version: number
   entryFunction: number
-  instructions: IV2Instruction[]
-  functions: IV2FunctionMeta[]
+  instructions: Instruction[]
+  functions: FunctionMeta[]
   constants: any[]
-  callSites: IV2CallSite[]
+  callSites: CallSite[]
   globalNames: string[]
 }
 
-class V2UnsupportedError extends Error {
+export class UnsupportedOpcodeError extends Error {
   constructor(public opcode: string, public details: string = '') {
-    super(`V2 does not support ${opcode}${details ? ` (${details})` : ''}`)
+    super(`NestScript does not support ${opcode}${details ? ` (${details})` : ''}`)
   }
 }
 
@@ -165,7 +166,7 @@ interface ICompileFunction {
   params: string[]
   locals: Map<string, number>
   labels: { [name: string]: number }
-  instructions: IV2Instruction[]
+  instructions: Instruction[]
   slotCount: number
   flags: number
 }
@@ -182,109 +183,109 @@ const isNumberToken = (value: string): boolean => {
   return value !== '' && !isNaN(+value)
 }
 
-const isBinaryOpcode = (opcode: string): boolean => {
+const isBinaryAssemblyOpcode = (opcode: string): boolean => {
   return [
     'ADD', 'SUB', 'MUL', 'DIV', 'MOD', 'OR', 'AND', 'XOR', 'SHL', 'SHR', 'ZSHR',
     'LT', 'GT', 'EQ', 'NE', 'LE', 'GE', 'WEQ', 'WNE',
   ].includes(opcode)
 }
 
-const binaryOpcode = (opcode: string): V2Opcode => {
-  const result = (V2Opcode as any)[opcode]
+const binaryOpcode = (opcode: string): Opcode => {
+  const result = (Opcode as any)[opcode]
   if (typeof result !== 'number') {
-    throw new V2UnsupportedError(opcode)
+    throw new UnsupportedOpcodeError(opcode)
   }
   return result
 }
 
-const i32OpcodeFor = (opcode: V2Opcode): V2Opcode | undefined => {
+const i32OpcodeFor = (opcode: Opcode): Opcode | undefined => {
   switch (opcode) {
-    case V2Opcode.ADD:
-    case V2Opcode.ADD_CONST: return V2Opcode.ADD_I32
-    case V2Opcode.SUB:
-    case V2Opcode.SUB_CONST: return V2Opcode.SUB_I32
-    case V2Opcode.MUL:
-    case V2Opcode.MUL_CONST: return V2Opcode.MUL_I32
-    case V2Opcode.MOD:
-    case V2Opcode.MOD_CONST: return V2Opcode.MOD_I32
-    case V2Opcode.OR:
-    case V2Opcode.OR_CONST: return V2Opcode.OR_I32
-    case V2Opcode.AND:
-    case V2Opcode.AND_CONST: return V2Opcode.AND_I32
-    case V2Opcode.XOR:
-    case V2Opcode.XOR_CONST: return V2Opcode.XOR_I32
-    case V2Opcode.SHL:
-    case V2Opcode.SHL_CONST: return V2Opcode.SHL_I32
-    case V2Opcode.SHR:
-    case V2Opcode.SHR_CONST: return V2Opcode.SHR_I32
-    case V2Opcode.ZSHR:
-    case V2Opcode.ZSHR_CONST: return V2Opcode.ZSHR_I32
-    case V2Opcode.LT:
-    case V2Opcode.LT_CONST: return V2Opcode.LT_I32
-    case V2Opcode.GT:
-    case V2Opcode.GT_CONST: return V2Opcode.GT_I32
-    case V2Opcode.EQ:
-    case V2Opcode.EQ_CONST: return V2Opcode.EQ_I32
-    case V2Opcode.NE:
-    case V2Opcode.NE_CONST: return V2Opcode.NE_I32
-    case V2Opcode.LE:
-    case V2Opcode.LE_CONST: return V2Opcode.LE_I32
-    case V2Opcode.GE:
-    case V2Opcode.GE_CONST: return V2Opcode.GE_I32
-    case V2Opcode.WEQ:
-    case V2Opcode.WEQ_CONST: return V2Opcode.WEQ_I32
-    case V2Opcode.WNE:
-    case V2Opcode.WNE_CONST: return V2Opcode.WNE_I32
+    case Opcode.ADD:
+    case Opcode.ADD_CONST: return Opcode.ADD_I32
+    case Opcode.SUB:
+    case Opcode.SUB_CONST: return Opcode.SUB_I32
+    case Opcode.MUL:
+    case Opcode.MUL_CONST: return Opcode.MUL_I32
+    case Opcode.MOD:
+    case Opcode.MOD_CONST: return Opcode.MOD_I32
+    case Opcode.OR:
+    case Opcode.OR_CONST: return Opcode.OR_I32
+    case Opcode.AND:
+    case Opcode.AND_CONST: return Opcode.AND_I32
+    case Opcode.XOR:
+    case Opcode.XOR_CONST: return Opcode.XOR_I32
+    case Opcode.SHL:
+    case Opcode.SHL_CONST: return Opcode.SHL_I32
+    case Opcode.SHR:
+    case Opcode.SHR_CONST: return Opcode.SHR_I32
+    case Opcode.ZSHR:
+    case Opcode.ZSHR_CONST: return Opcode.ZSHR_I32
+    case Opcode.LT:
+    case Opcode.LT_CONST: return Opcode.LT_I32
+    case Opcode.GT:
+    case Opcode.GT_CONST: return Opcode.GT_I32
+    case Opcode.EQ:
+    case Opcode.EQ_CONST: return Opcode.EQ_I32
+    case Opcode.NE:
+    case Opcode.NE_CONST: return Opcode.NE_I32
+    case Opcode.LE:
+    case Opcode.LE_CONST: return Opcode.LE_I32
+    case Opcode.GE:
+    case Opcode.GE_CONST: return Opcode.GE_I32
+    case Opcode.WEQ:
+    case Opcode.WEQ_CONST: return Opcode.WEQ_I32
+    case Opcode.WNE:
+    case Opcode.WNE_CONST: return Opcode.WNE_I32
     default: return undefined
   }
 }
 
-const genericOpcodeForI32 = (opcode: V2Opcode): V2Opcode => {
+const genericOpcodeForI32 = (opcode: Opcode): Opcode => {
   switch (opcode) {
-    case V2Opcode.ADD_I32: return V2Opcode.ADD
-    case V2Opcode.SUB_I32: return V2Opcode.SUB
-    case V2Opcode.MUL_I32: return V2Opcode.MUL
-    case V2Opcode.MOD_I32: return V2Opcode.MOD
-    case V2Opcode.OR_I32: return V2Opcode.OR
-    case V2Opcode.AND_I32: return V2Opcode.AND
-    case V2Opcode.XOR_I32: return V2Opcode.XOR
-    case V2Opcode.SHL_I32: return V2Opcode.SHL
-    case V2Opcode.SHR_I32: return V2Opcode.SHR
-    case V2Opcode.ZSHR_I32: return V2Opcode.ZSHR
-    case V2Opcode.LT_I32: return V2Opcode.LT
-    case V2Opcode.GT_I32: return V2Opcode.GT
-    case V2Opcode.EQ_I32: return V2Opcode.EQ
-    case V2Opcode.NE_I32: return V2Opcode.NE
-    case V2Opcode.LE_I32: return V2Opcode.LE
-    case V2Opcode.GE_I32: return V2Opcode.GE
-    case V2Opcode.WEQ_I32: return V2Opcode.WEQ
-    case V2Opcode.WNE_I32: return V2Opcode.WNE
+    case Opcode.ADD_I32: return Opcode.ADD
+    case Opcode.SUB_I32: return Opcode.SUB
+    case Opcode.MUL_I32: return Opcode.MUL
+    case Opcode.MOD_I32: return Opcode.MOD
+    case Opcode.OR_I32: return Opcode.OR
+    case Opcode.AND_I32: return Opcode.AND
+    case Opcode.XOR_I32: return Opcode.XOR
+    case Opcode.SHL_I32: return Opcode.SHL
+    case Opcode.SHR_I32: return Opcode.SHR
+    case Opcode.ZSHR_I32: return Opcode.ZSHR
+    case Opcode.LT_I32: return Opcode.LT
+    case Opcode.GT_I32: return Opcode.GT
+    case Opcode.EQ_I32: return Opcode.EQ
+    case Opcode.NE_I32: return Opcode.NE
+    case Opcode.LE_I32: return Opcode.LE
+    case Opcode.GE_I32: return Opcode.GE
+    case Opcode.WEQ_I32: return Opcode.WEQ
+    case Opcode.WNE_I32: return Opcode.WNE
     default: throw new Error(`Not an I32 opcode ${opcode}`)
   }
 }
 
-const isI32Opcode = (opcode: V2Opcode): boolean => {
-  return opcode >= V2Opcode.ADD_I32 && opcode <= V2Opcode.WNE_I32
+const isI32Opcode = (opcode: Opcode): boolean => {
+  return opcode >= Opcode.ADD_I32 && opcode <= Opcode.WNE_I32
 }
 const isInt32Value = (value: any): value is number => {
   return typeof value === 'number' && value === (value | 0)
 }
 
-const constantOpcode = (opcode: string): V2Opcode => {
-  const result = (V2Opcode as any)[`${opcode}_CONST`]
+const constantOpcode = (opcode: string): Opcode => {
+  const result = (Opcode as any)[`${opcode}_CONST`]
   if (typeof result !== 'number') {
-    throw new V2UnsupportedError(opcode)
+    throw new UnsupportedOpcodeError(opcode)
   }
   return result
 }
 
 const instruction = (
-  op: V2Opcode,
+  op: Opcode,
   dst: number = NO_SLOT,
   a: number = 0,
   b: number = 0,
   c: number = 0,
-): IV2Instruction => ({ op, flags: 0, dst, a, b, c })
+): Instruction => ({ op, flags: 0, dst, a, b, c })
 
 const addSlot = (compileFunction: ICompileFunction, name: string): number => {
   const existing = compileFunction.locals.get(name)
@@ -293,7 +294,7 @@ const addSlot = (compileFunction: ICompileFunction, name: string): number => {
   }
   const slot = compileFunction.slotCount++
   if (slot >= NO_SLOT) {
-    throw new Error('V2 function has too many local slots')
+    throw new Error('Function has too many local slots')
   }
   compileFunction.locals.set(name, slot)
   return slot
@@ -318,7 +319,7 @@ const buildFunctionLocals = (parsed: IParsedFunction, index: number): ICompileFu
   for (const code of parsed.instructions) {
     if (code[0] === 'VAR') {
       if (code[1].startsWith('@')) {
-        throw new V2UnsupportedError(code[0], 'closures')
+        throw new UnsupportedOpcodeError(code[0], 'closures')
       }
       addSlot(compileFunction, code[1])
     } else if (code[0] === 'REG') {
@@ -340,7 +341,7 @@ const countEmittedInstructions = (
     return 0
   }
   if (opcode === 'PUSH') {
-    // V1 PUSH captures the value at the push point.  V2 materializes that
+    // Source PUSH captures the value at the push point.  materializes that
     // value in a temporary slot so a later MOV cannot change the call arg.
     return 1
   }
@@ -371,12 +372,12 @@ const makeConstantTable = (): {
   return { constants, get }
 }
 
-const lowerV2Function = (
+const lowerFunction = (
   compileFunction: ICompileFunction,
   functionIndexes: Map<string, number>,
   globalIndexes: Map<string, number>,
   constantTable: { constants: any[], get: (value: any) => number },
-  callSites: IV2CallSite[],
+  callSites: CallSite[],
 ): void => {
   const raw = compileFunction.parsed.instructions
   let ip = 0
@@ -391,7 +392,7 @@ const lowerV2Function = (
   const tempSlot = (): number => {
     const slot = compileFunction.slotCount++
     if (slot >= NO_SLOT) {
-      throw new Error('V2 function has too many local slots')
+      throw new Error('Function has too many local slots')
     }
     return slot
   }
@@ -401,16 +402,16 @@ const lowerV2Function = (
       return returnRef()
     }
     if (token.startsWith('@')) {
-      throw new V2UnsupportedError('operand', 'closures')
+      throw new UnsupportedOpcodeError('operand', 'closures')
     }
     if (token.startsWith('%')) {
       const slot = compileFunction.locals.get(token)
-      if (slot === undefined) { throw new V2UnsupportedError('register', token) }
+      if (slot === undefined) { throw new UnsupportedOpcodeError('register', token) }
       return localRef(slot)
     }
     if (token.startsWith('.')) {
       const slot = compileFunction.locals.get(token.slice(1))
-      if (slot === undefined) { throw new V2UnsupportedError('parameter', token) }
+      if (slot === undefined) { throw new UnsupportedOpcodeError('parameter', token) }
       return localRef(slot)
     }
     const localSlot = compileFunction.locals.get(token)
@@ -437,24 +438,24 @@ const lowerV2Function = (
       (token.startsWith("'") && token.endsWith("'"))) {
       return getConstant(unquote(token))
     }
-    throw new V2UnsupportedError('operand', token)
+    throw new UnsupportedOpcodeError('operand', token)
   }
   const destination = (token: string): number => {
     const value = resolve(token)
     if (refKind(value) !== REF_LOCAL && refKind(value) !== REF_GLOBAL && refKind(value) !== REF_RETURN) {
-      throw new V2UnsupportedError('destination', token)
+      throw new UnsupportedOpcodeError('destination', token)
     }
     return value
   }
   const emitStore = (target: number, value: number): void => {
     if (refKind(target) === REF_LOCAL) {
-      compileFunction.instructions.push(instruction(V2Opcode.MOVE, refIndex(target), value))
+      compileFunction.instructions.push(instruction(Opcode.MOVE, refIndex(target), value))
     } else if (refKind(target) === REF_GLOBAL) {
-      compileFunction.instructions.push(instruction(V2Opcode.SET_GLOBAL, NO_SLOT, refIndex(target), value))
+      compileFunction.instructions.push(instruction(Opcode.SET_GLOBAL, NO_SLOT, refIndex(target), value))
     } else if (refKind(target) === REF_RETURN) {
-      compileFunction.instructions.push(instruction(V2Opcode.SET_RETURN, NO_SLOT, value))
+      compileFunction.instructions.push(instruction(Opcode.SET_RETURN, NO_SLOT, value))
     } else {
-      throw new V2UnsupportedError('store')
+      throw new UnsupportedOpcodeError('store')
     }
   }
   const emitBinary = (opcode: string, target: number, left: number, right: number): void => {
@@ -474,14 +475,14 @@ const lowerV2Function = (
     if (['META', 'REG', 'VAR', 'CLS', 'GLOBAL_BIND', 'LABEL'].includes(opcode)) {
       if (opcode === 'CLS' || opcode === 'GLOBAL_BIND') {
         // Closures are intentionally rejected in buildFunctionLocals; global
-        // bindings are represented by the V2 global slot table.
-        if (opcode === 'CLS') { throw new V2UnsupportedError(opcode) }
+        // bindings are represented by the global slot table.
+        if (opcode === 'CLS') { throw new UnsupportedOpcodeError(opcode) }
       }
       continue
     }
     if (opcode === 'PUSH') {
       const temporary = tempSlot()
-      compileFunction.instructions.push(instruction(V2Opcode.MOVE, temporary, resolve(code[1])))
+      compileFunction.instructions.push(instruction(Opcode.MOVE, temporary, resolve(code[1])))
       pendingArgs.push(localRef(temporary))
       continue
     }
@@ -491,14 +492,14 @@ const lowerV2Function = (
     }
     if (opcode === 'FUNC') {
       const functionIndex = functionIndexes.get(code[2])
-      if (functionIndex === undefined) { throw new V2UnsupportedError(opcode, code[2]) }
+      if (functionIndex === undefined) { throw new UnsupportedOpcodeError(opcode, code[2]) }
       const target = destination(code[1])
       if (refKind(target) === REF_LOCAL) {
-        compileFunction.instructions.push(instruction(V2Opcode.MAKE_FUNC, refIndex(target), 0, 0, functionIndex))
+        compileFunction.instructions.push(instruction(Opcode.MAKE_FUNC, refIndex(target), 0, 0, functionIndex))
       } else if (refKind(target) === REF_GLOBAL) {
-        compileFunction.instructions.push(instruction(V2Opcode.MAKE_FUNC_GLOBAL, NO_SLOT, refIndex(target), 0, functionIndex))
+        compileFunction.instructions.push(instruction(Opcode.MAKE_FUNC_GLOBAL, NO_SLOT, refIndex(target), 0, functionIndex))
       } else {
-        compileFunction.instructions.push(instruction(V2Opcode.MAKE_FUNC_RETURN, NO_SLOT, 0, 0, functionIndex))
+        compileFunction.instructions.push(instruction(Opcode.MAKE_FUNC_RETURN, NO_SLOT, 0, 0, functionIndex))
       }
       continue
     }
@@ -506,22 +507,22 @@ const lowerV2Function = (
       const functionRef = resolve(code[1])
       const argc = Number(opcode === 'CALL_REF' ? code[3] : code[2])
       if (!Number.isInteger(argc) || argc < 0 || pendingArgs.length < argc) {
-        throw new V2UnsupportedError(opcode, 'argument stack')
+        throw new UnsupportedOpcodeError(opcode, 'argument stack')
       }
       const args = pendingArgs.splice(pendingArgs.length - argc, argc)
       const callSite = callSites.length
       callSites.push({ args, isNewExpression: code[3] === 'true' })
       const receiver = opcode === 'CALL_REF' ? resolve(code[2]) : getConstant(void 0)
-      compileFunction.instructions.push(instruction(V2Opcode.CALL, NO_SLOT, functionRef, receiver, callSite))
+      compileFunction.instructions.push(instruction(Opcode.CALL, NO_SLOT, functionRef, receiver, callSite))
       continue
     }
-    if (isBinaryOpcode(opcode)) {
+    if (isBinaryAssemblyOpcode(opcode)) {
       emitBinary(opcode, destination(code[1]), resolve(code[1]), resolve(code[2]))
       continue
     }
     if (opcode === 'JF' || opcode === 'JIF') {
       compileFunction.instructions.push(instruction(
-        opcode === 'JF' ? V2Opcode.JUMP_IF_FALSE : V2Opcode.JUMP_IF_TRUE,
+        opcode === 'JF' ? Opcode.JUMP_IF_FALSE : Opcode.JUMP_IF_TRUE,
         NO_SLOT,
         resolve(code[1]),
         0,
@@ -531,79 +532,79 @@ const lowerV2Function = (
       continue
     }
     if (opcode === 'JMP' || opcode === 'ABRUPT_JUMP') {
-      if (opcode === 'ABRUPT_JUMP') { throw new V2UnsupportedError(opcode, 'finally routing') }
-      const jump = instruction(V2Opcode.JUMP, NO_SLOT, 0, 0, 0)
+      if (opcode === 'ABRUPT_JUMP') { throw new UnsupportedOpcodeError(opcode, 'finally routing') }
+      const jump = instruction(Opcode.JUMP, NO_SLOT, 0, 0, 0)
       jump.targetLabel = code[1]
       compileFunction.instructions.push(jump)
       continue
     }
     if (opcode === 'SET_CTX') {
-      compileFunction.instructions.push(instruction(V2Opcode.SET_CTX, NO_SLOT, resolve(code[1]), resolve(code[2])))
+      compileFunction.instructions.push(instruction(Opcode.SET_CTX, NO_SLOT, resolve(code[1]), resolve(code[2])))
       continue
     }
     if (opcode === 'MOV_CTX') {
       const target = destination(code[1])
-      if (refKind(target) !== REF_LOCAL) { throw new V2UnsupportedError(opcode, 'global destination') }
-      compileFunction.instructions.push(instruction(V2Opcode.LOAD_CTX, refIndex(target), resolve(code[2])))
+      if (refKind(target) !== REF_LOCAL) { throw new UnsupportedOpcodeError(opcode, 'global destination') }
+      compileFunction.instructions.push(instruction(Opcode.LOAD_CTX, refIndex(target), resolve(code[2])))
       continue
     }
     if (opcode === 'MOV_PROP') {
       const target = destination(code[1])
-      if (refKind(target) !== REF_LOCAL) { throw new V2UnsupportedError(opcode, 'non-local destination') }
-      compileFunction.instructions.push(instruction(V2Opcode.GET_PROP, refIndex(target), resolve(code[2]), resolve(code[3])))
+      if (refKind(target) !== REF_LOCAL) { throw new UnsupportedOpcodeError(opcode, 'non-local destination') }
+      compileFunction.instructions.push(instruction(Opcode.GET_PROP, refIndex(target), resolve(code[2]), resolve(code[3])))
       continue
     }
     if (opcode === 'SET_KEY') {
-      compileFunction.instructions.push(instruction(V2Opcode.SET_PROP, NO_SLOT, resolve(code[1]), resolve(code[2]), resolve(code[3])))
+      compileFunction.instructions.push(instruction(Opcode.SET_PROP, NO_SLOT, resolve(code[1]), resolve(code[2]), resolve(code[3])))
       continue
     }
     if (opcode === 'DEF_DATA') {
-      compileFunction.instructions.push(instruction(V2Opcode.DEF_DATA, NO_SLOT, resolve(code[1]), resolve(code[2]), resolve(code[3])))
+      compileFunction.instructions.push(instruction(Opcode.DEF_DATA, NO_SLOT, resolve(code[1]), resolve(code[2]), resolve(code[3])))
       continue
     }
     if (opcode === 'NEW_OBJ' || opcode === 'NEW_ARR') {
       const target = destination(code[1])
       if (refKind(target) === REF_LOCAL) {
-        compileFunction.instructions.push(instruction(opcode === 'NEW_OBJ' ? V2Opcode.NEW_OBJ : V2Opcode.NEW_ARR, refIndex(target)))
+        compileFunction.instructions.push(instruction(opcode === 'NEW_OBJ' ? Opcode.NEW_OBJ : Opcode.NEW_ARR, refIndex(target)))
       } else {
         const temporary = tempSlot()
-        compileFunction.instructions.push(instruction(opcode === 'NEW_OBJ' ? V2Opcode.NEW_OBJ : V2Opcode.NEW_ARR, temporary))
+        compileFunction.instructions.push(instruction(opcode === 'NEW_OBJ' ? Opcode.NEW_OBJ : Opcode.NEW_ARR, temporary))
         emitStore(target, localRef(temporary))
       }
       continue
     }
     if (opcode === 'RET') {
-      if (pendingArgs.length > 0) { throw new V2UnsupportedError('PUSH', 'not followed by CALL') }
-      compileFunction.instructions.push(instruction(V2Opcode.RETURN, NO_SLOT, returnRef()))
+      if (pendingArgs.length > 0) { throw new UnsupportedOpcodeError('PUSH', 'not followed by CALL') }
+      compileFunction.instructions.push(instruction(Opcode.RETURN, NO_SLOT, returnRef()))
       continue
     }
     if (opcode === 'EXIT') {
-      compileFunction.instructions.push(instruction(V2Opcode.EXIT))
+      compileFunction.instructions.push(instruction(Opcode.EXIT))
       continue
     }
-    throw new V2UnsupportedError(opcode)
+    throw new UnsupportedOpcodeError(opcode)
   }
   if (pendingArgs.length > 0) {
-    throw new V2UnsupportedError('PUSH', 'not followed by CALL')
+    throw new UnsupportedOpcodeError('PUSH', 'not followed by CALL')
   }
 }
 
-const isBinaryV2Opcode = (op: V2Opcode): boolean => {
-  return op >= V2Opcode.ADD && op <= V2Opcode.WNE_CONST && op !== V2Opcode.SUPER_ADD_STORE
+const isBinaryOpcode = (op: Opcode): boolean => {
+  return op >= Opcode.ADD && op <= Opcode.WNE_CONST && op !== Opcode.SUPER_ADD_STORE
 }
 
-const applyStaticSuperinstructions = (program: IV2Program): void => {
-  const constantSpecializations = new Map<V2Opcode, V2Opcode>([
-    [V2Opcode.ADD, V2Opcode.ADD_CONST], [V2Opcode.SUB, V2Opcode.SUB_CONST],
-    [V2Opcode.MUL, V2Opcode.MUL_CONST], [V2Opcode.DIV, V2Opcode.DIV_CONST],
-    [V2Opcode.MOD, V2Opcode.MOD_CONST], [V2Opcode.OR, V2Opcode.OR_CONST],
-    [V2Opcode.AND, V2Opcode.AND_CONST], [V2Opcode.XOR, V2Opcode.XOR_CONST],
-    [V2Opcode.SHL, V2Opcode.SHL_CONST], [V2Opcode.SHR, V2Opcode.SHR_CONST],
-    [V2Opcode.ZSHR, V2Opcode.ZSHR_CONST], [V2Opcode.LT, V2Opcode.LT_CONST],
-    [V2Opcode.GT, V2Opcode.GT_CONST], [V2Opcode.EQ, V2Opcode.EQ_CONST],
-    [V2Opcode.NE, V2Opcode.NE_CONST], [V2Opcode.LE, V2Opcode.LE_CONST],
-    [V2Opcode.GE, V2Opcode.GE_CONST], [V2Opcode.WEQ, V2Opcode.WEQ_CONST],
-    [V2Opcode.WNE, V2Opcode.WNE_CONST],
+const applyStaticSuperinstructions = (program: Program): void => {
+  const constantSpecializations = new Map<Opcode, Opcode>([
+    [Opcode.ADD, Opcode.ADD_CONST], [Opcode.SUB, Opcode.SUB_CONST],
+    [Opcode.MUL, Opcode.MUL_CONST], [Opcode.DIV, Opcode.DIV_CONST],
+    [Opcode.MOD, Opcode.MOD_CONST], [Opcode.OR, Opcode.OR_CONST],
+    [Opcode.AND, Opcode.AND_CONST], [Opcode.XOR, Opcode.XOR_CONST],
+    [Opcode.SHL, Opcode.SHL_CONST], [Opcode.SHR, Opcode.SHR_CONST],
+    [Opcode.ZSHR, Opcode.ZSHR_CONST], [Opcode.LT, Opcode.LT_CONST],
+    [Opcode.GT, Opcode.GT_CONST], [Opcode.EQ, Opcode.EQ_CONST],
+    [Opcode.NE, Opcode.NE_CONST], [Opcode.LE, Opcode.LE_CONST],
+    [Opcode.GE, Opcode.GE_CONST], [Opcode.WEQ, Opcode.WEQ_CONST],
+    [Opcode.WNE, Opcode.WNE_CONST],
   ])
   // First fold the very common `MOVE tmp, <constant>; ADD dst, ..., tmp`
   // shape emitted by the source-to-assembly compiler.  The MOVE is retained
@@ -614,8 +615,8 @@ const applyStaticSuperinstructions = (program: IV2Program): void => {
     const targeted = new Set<number>()
     for (let i = meta.start; i < end; i++) {
       const item = program.instructions[i]
-      if ((item.op === V2Opcode.JUMP || item.op === V2Opcode.JUMP_IF_TRUE ||
-        item.op === V2Opcode.JUMP_IF_FALSE) && item.c >= meta.start && item.c <= end) {
+      if ((item.op === Opcode.JUMP || item.op === Opcode.JUMP_IF_TRUE ||
+        item.op === Opcode.JUMP_IF_FALSE) && item.c >= meta.start && item.c <= end) {
         targeted.add(item.c)
       }
     }
@@ -626,7 +627,7 @@ const applyStaticSuperinstructions = (program: IV2Program): void => {
       }
       if (targeted.has(i)) { continue }
       const previous = program.instructions[i - 1]
-      if (previous.op === V2Opcode.MOVE && previous.dst === refIndex(current.b) &&
+      if (previous.op === Opcode.MOVE && previous.dst === refIndex(current.b) &&
         refKind(previous.a) === REF_CONSTANT) {
         current.op = constantSpecializations.get(current.op)!
         current.b = previous.a
@@ -641,35 +642,35 @@ const applyStaticSuperinstructions = (program: IV2Program): void => {
   const oldInstructions = program.instructions
   const oldFunctions = program.functions
   const remappedAddresses = new Map<number, number>()
-  const rebuiltInstructions: IV2Instruction[] = []
-  const rebuiltFunctions: IV2FunctionMeta[] = []
+  const rebuiltInstructions: Instruction[] = []
+  const rebuiltFunctions: FunctionMeta[] = []
 
   oldFunctions.forEach((meta): void => {
     const segment = oldInstructions.slice(meta.start, meta.start + meta.length)
     const targeted = new Set<number>()
     segment.forEach((item): void => {
-      if ((item.op === V2Opcode.JUMP || item.op === V2Opcode.JUMP_IF_TRUE ||
-        item.op === V2Opcode.JUMP_IF_FALSE) && item.c >= meta.start &&
+      if ((item.op === Opcode.JUMP || item.op === Opcode.JUMP_IF_TRUE ||
+        item.op === Opcode.JUMP_IF_FALSE) && item.c >= meta.start &&
         item.c <= meta.start + meta.length) {
         targeted.add(item.c)
       }
     })
     const localMap = new Array<number>(segment.length + 1)
-    const output: IV2Instruction[] = []
+    const output: Instruction[] = []
     let index = 0
     while (index < segment.length) {
       localMap[index] = output.length
       const current = segment[index]
       const next = segment[index + 1]
-      let fused: IV2Instruction | undefined
-      if (next && isBinaryV2Opcode(current.op) && current.dst !== NO_SLOT &&
+      let fused: Instruction | undefined
+      if (next && isBinaryOpcode(current.op) && current.dst !== NO_SLOT &&
         !targeted.has(meta.start + index + 1)) {
         const resultRef = localRef(current.dst)
-        if (next.op === V2Opcode.MOVE && next.a === resultRef) {
-          fused = instruction(V2Opcode.SUPER_BINARY_STORE, NO_SLOT, current.a, current.b,
+        if (next.op === Opcode.MOVE && next.a === resultRef) {
+          fused = instruction(Opcode.SUPER_BINARY_STORE, NO_SLOT, current.a, current.b,
             localRef(next.dst))
-        } else if (next.op === V2Opcode.SET_GLOBAL && next.b === resultRef) {
-          fused = instruction(V2Opcode.SUPER_BINARY_STORE, NO_SLOT, current.a, current.b,
+        } else if (next.op === Opcode.SET_GLOBAL && next.b === resultRef) {
+          fused = instruction(Opcode.SUPER_BINARY_STORE, NO_SLOT, current.a, current.b,
             globalRef(next.a))
         }
       }
@@ -695,10 +696,10 @@ const applyStaticSuperinstructions = (program: IV2Program): void => {
   })
 
   rebuiltInstructions.forEach((item): void => {
-    if (item.op === V2Opcode.JUMP || item.op === V2Opcode.JUMP_IF_TRUE ||
-      item.op === V2Opcode.JUMP_IF_FALSE) {
+    if (item.op === Opcode.JUMP || item.op === Opcode.JUMP_IF_TRUE ||
+      item.op === Opcode.JUMP_IF_FALSE) {
       const target = remappedAddresses.get(item.c)
-      if (target === undefined) { throw new Error(`Invalid V2 jump target ${item.c}`) }
+      if (target === undefined) { throw new Error(`Invalid bytecode jump target ${item.c}`) }
       item.c = target
     }
   })
@@ -706,10 +707,10 @@ const applyStaticSuperinstructions = (program: IV2Program): void => {
   program.functions = rebuiltFunctions
 }
 
-interface IV2LoopKernelCandidate {
+interface LoopKernelCandidate {
   start: number
   end: number
-  instruction: IV2Instruction
+  instruction: Instruction
 }
 
 const isLocal = (value: number, slot: number): boolean => {
@@ -730,10 +731,10 @@ const isConstantValue = (value: number, constants: any[], expected: any): boolea
  * bytecode loop remains in place.
  */
 const findLoopKernel = (
-  segment: IV2Instruction[],
+  segment: Instruction[],
   functionStart: number,
   constants: any[],
-): IV2LoopKernelCandidate | undefined => {
+): LoopKernelCandidate | undefined => {
   for (let start = 0; start + 12 < segment.length; start++) {
     const loadCounter = segment[start]
     const loadLimit = segment[start + 1]
@@ -748,33 +749,33 @@ const findLoopKernel = (
     const one = segment[start + 10]
     const increment = segment[start + 11]
     const backJump = segment[start + 12]
-    if (loadCounter.op !== V2Opcode.MOVE || loadLimit.op !== V2Opcode.MOVE ||
+    if (loadCounter.op !== Opcode.MOVE || loadLimit.op !== Opcode.MOVE ||
       loadCounter.dst === NO_SLOT || loadLimit.dst === NO_SLOT ||
       !isLocalOrGlobal(loadCounter.a) ||
       !isLocalOrGlobal(loadLimit.a) && refKind(loadLimit.a) !== REF_CONSTANT ||
-      compare.op !== V2Opcode.LT && compare.op !== V2Opcode.LT_CONST ||
+      compare.op !== Opcode.LT && compare.op !== Opcode.LT_CONST ||
       !isLocal(compare.a, loadCounter.dst) || compare.dst === NO_SLOT ||
       (compare.b !== loadLimit.a && compare.b !== localRef(loadLimit.dst)) ||
-      branch.op !== V2Opcode.JUMP_IF_FALSE || !isLocal(branch.a, compare.dst) ||
+      branch.op !== Opcode.JUMP_IF_FALSE || !isLocal(branch.a, compare.dst) ||
       branch.c <= functionStart + start + 12 ||
-      loadAccumulator.op !== V2Opcode.MOVE || loadAccumulator.dst === NO_SLOT ||
+      loadAccumulator.op !== Opcode.MOVE || loadAccumulator.dst === NO_SLOT ||
       !isLocalOrGlobal(loadAccumulator.a) || loadAccumulator.a === loadCounter.a ||
-      loadBodyCounter.op !== V2Opcode.MOVE || loadBodyCounter.dst === NO_SLOT ||
+      loadBodyCounter.op !== Opcode.MOVE || loadBodyCounter.dst === NO_SLOT ||
       loadBodyCounter.a !== loadCounter.a ||
-      addAccumulator.op !== V2Opcode.ADD && addAccumulator.op !== V2Opcode.ADD_CONST ||
+      addAccumulator.op !== Opcode.ADD && addAccumulator.op !== Opcode.ADD_CONST ||
       !isLocal(addAccumulator.a, loadAccumulator.dst) ||
       !isLocal(addAccumulator.b, loadBodyCounter.dst) ||
-      zero.op !== V2Opcode.MOVE || !isConstantValue(zero.a, constants, 0) ||
-      normalize.op !== V2Opcode.SUPER_BINARY_STORE || normalize.flags !== V2Opcode.OR_CONST ||
+      zero.op !== Opcode.MOVE || !isConstantValue(zero.a, constants, 0) ||
+      normalize.op !== Opcode.SUPER_BINARY_STORE || normalize.flags !== Opcode.OR_CONST ||
       !isLocal(normalize.a, loadAccumulator.dst) || normalize.c !== loadAccumulator.a ||
       !isConstantValue(normalize.b, constants, 0) ||
-      updateCounter.op !== V2Opcode.MOVE || updateCounter.dst === NO_SLOT ||
+      updateCounter.op !== Opcode.MOVE || updateCounter.dst === NO_SLOT ||
       updateCounter.a !== loadCounter.a ||
-      one.op !== V2Opcode.MOVE || !isConstantValue(one.a, constants, 1) ||
-      increment.op !== V2Opcode.SUPER_BINARY_STORE || increment.flags !== V2Opcode.ADD_CONST ||
+      one.op !== Opcode.MOVE || !isConstantValue(one.a, constants, 1) ||
+      increment.op !== Opcode.SUPER_BINARY_STORE || increment.flags !== Opcode.ADD_CONST ||
       !isLocal(increment.a, updateCounter.dst) || increment.c !== loadCounter.a ||
       !isConstantValue(increment.b, constants, 1) ||
-      backJump.op !== V2Opcode.JUMP || backJump.c !== functionStart + start) {
+      backJump.op !== Opcode.JUMP || backJump.c !== functionStart + start) {
       continue
     }
     if (updateCounter.dst > 0xff || loadAccumulator.dst > 0xff) {
@@ -782,15 +783,15 @@ const findLoopKernel = (
     }
     let hasInteriorTarget = false
     segment.forEach((item): void => {
-      if ((item.op === V2Opcode.JUMP || item.op === V2Opcode.JUMP_IF_TRUE ||
-        item.op === V2Opcode.JUMP_IF_FALSE) && item.c > functionStart + start &&
+      if ((item.op === Opcode.JUMP || item.op === Opcode.JUMP_IF_TRUE ||
+        item.op === Opcode.JUMP_IF_FALSE) && item.c > functionStart + start &&
         item.c <= functionStart + start + 12) {
         hasInteriorTarget = true
       }
     })
     if (hasInteriorTarget) { continue }
     const kernel = instruction(
-      V2Opcode.LOOP_ACCUMULATE,
+      Opcode.LOOP_ACCUMULATE,
       loadAccumulator.dst,
       loadCounter.a,
       loadLimit.a,
@@ -802,18 +803,18 @@ const findLoopKernel = (
   return undefined
 }
 
-const applyLoopKernels = (program: IV2Program): void => {
+const applyLoopKernels = (program: Program): void => {
   const oldInstructions = program.instructions
   const oldFunctions = program.functions
   const remappedAddresses = new Map<number, number>()
-  const rebuiltInstructions: IV2Instruction[] = []
-  const rebuiltFunctions: IV2FunctionMeta[] = []
+  const rebuiltInstructions: Instruction[] = []
+  const rebuiltFunctions: FunctionMeta[] = []
 
   oldFunctions.forEach((meta): void => {
     const segment = oldInstructions.slice(meta.start, meta.start + meta.length)
     const candidate = findLoopKernel(segment, meta.start, program.constants)
     const localMap = new Array<number>(segment.length + 1)
-    const output: IV2Instruction[] = []
+    const output: Instruction[] = []
     let index = 0
     while (index < segment.length) {
       localMap[index] = output.length
@@ -838,10 +839,10 @@ const applyLoopKernels = (program: IV2Program): void => {
   })
 
   rebuiltInstructions.forEach((item): void => {
-    if (item.op === V2Opcode.JUMP || item.op === V2Opcode.JUMP_IF_TRUE ||
-      item.op === V2Opcode.JUMP_IF_FALSE) {
+    if (item.op === Opcode.JUMP || item.op === Opcode.JUMP_IF_TRUE ||
+      item.op === Opcode.JUMP_IF_FALSE) {
       const target = remappedAddresses.get(item.c)
-      if (target === undefined) { throw new Error(`Invalid V2 jump target ${item.c}`) }
+      if (target === undefined) { throw new Error(`Invalid bytecode jump target ${item.c}`) }
       item.c = target
     }
   })
@@ -849,11 +850,11 @@ const applyLoopKernels = (program: IV2Program): void => {
   program.functions = rebuiltFunctions
 }
 
-export const compileV2FromJavaScript = (source: string): IV2Program => {
-  return compileV2FromAssembly(generateAssemblyFromJs(source))
+export const compileProgramFromJavaScript = (source: string): Program => {
+  return compileProgramFromAssembly(generateAssemblyFromJs(source))
 }
 
-export const compileV2FromAssembly = (assembly: string): IV2Program => {
+export const compileProgramFromAssembly = (assembly: string): Program => {
   const parsed = parseAssembler(assembly)
   const functionIndexes = new Map<string, number>()
   parsed.forEach((func, index): void => { functionIndexes.set(func.functionName, index) })
@@ -871,13 +872,13 @@ export const compileV2FromAssembly = (assembly: string): IV2Program => {
   const constantTable = makeConstantTable()
   // Reserve undefined at a stable index; CALL uses it as an unbound receiver.
   constantTable.get(void 0)
-  const callSites: IV2CallSite[] = []
+  const callSites: CallSite[] = []
   const compileFunctions = parsed.map(buildFunctionLocals)
   compileFunctions.forEach((func): void => {
-    lowerV2Function(func, functionIndexes, globalIndexes, constantTable, callSites)
+    lowerFunction(func, functionIndexes, globalIndexes, constantTable, callSites)
   })
-  const instructions: IV2Instruction[] = []
-  const functions: IV2FunctionMeta[] = []
+  const instructions: Instruction[] = []
+  const functions: FunctionMeta[] = []
   compileFunctions.forEach((func): void => {
     const start = instructions.length
     func.instructions.forEach((item): void => { instructions.push(item) })
@@ -896,15 +897,15 @@ export const compileV2FromAssembly = (assembly: string): IV2Program => {
       if (item.targetLabel) {
         const localTarget = compileFunction.labels[item.targetLabel]
         if (localTarget === undefined) {
-          throw new Error(`Unknown V2 label ${item.targetLabel}`)
+          throw new Error(`Unknown bytecode label ${item.targetLabel}`)
         }
         item.c = meta.start + localTarget
         delete item.targetLabel
       }
     }
   })
-  const program: IV2Program = {
-    version: V2_VERSION,
+  const program: Program = {
+    version: BYTECODE_VERSION,
     entryFunction: Math.max(0, parsed.findIndex((func): boolean => func.functionName === '@@main')),
     instructions,
     functions,
@@ -917,7 +918,7 @@ export const compileV2FromAssembly = (assembly: string): IV2Program => {
   return program
 }
 
-interface IV2Frame {
+interface Frame {
   functionIndex: number
   ip: number
   slots: any[]
@@ -925,31 +926,31 @@ interface IV2Frame {
   thisValue: any
 }
 
-interface IV2PropertyCache {
+interface PropertyCache {
   object: any
   key: string | number | symbol
   prototype: any
   value: any
 }
 
-interface IV2CallCache {
+interface CallCache {
   functionValue: any
   functionIndex?: number
   args: any[]
 }
 
-interface IV2TypedFallback {
-  opcode: V2Opcode
+interface TypedFallback {
+  opcode: Opcode
   inFlags: boolean
 }
 
-const V2_INSTRUCTION_WORDS = 4
+const INSTRUCTION_WORDS = 4
 
 /** Pack the public instruction objects once at VM construction time. */
-const packV2Instructions = (instructions: IV2Instruction[]): Uint32Array => {
-  const packed = new Uint32Array(instructions.length * V2_INSTRUCTION_WORDS)
+const packInstructions = (instructions: Instruction[]): Uint32Array => {
+  const packed = new Uint32Array(instructions.length * INSTRUCTION_WORDS)
   instructions.forEach((item, index): void => {
-    const offset = index * V2_INSTRUCTION_WORDS
+    const offset = index * INSTRUCTION_WORDS
     packed[offset] = (item.op | (item.flags << 8) | (item.dst << 16)) >>> 0
     packed[offset + 1] = item.a >>> 0
     packed[offset + 2] = item.b >>> 0
@@ -958,11 +959,11 @@ const packV2Instructions = (instructions: IV2Instruction[]): Uint32Array => {
   return packed
 }
 
-const isV2Function = (value: any): value is { __v2Function: number } => {
-  return !!value && typeof value === 'object' && typeof value.__v2Function === 'number'
+const isGuestFunction = (value: any): value is { __guestFunction: number } => {
+  return !!value && typeof value === 'object' && typeof value.__guestFunction === 'number'
 }
 
-export class RegisterVirtualMachine {
+export class VirtualMachine {
   public isRunning: boolean = false
   public result: any
   public readonly stats = {
@@ -973,18 +974,18 @@ export class RegisterVirtualMachine {
   }
   private readonly globals: any[]
   private readonly packedCode: Uint32Array
-  private readonly frames: IV2Frame[] = []
+  private readonly frames: Frame[] = []
   private readonly hostFunctions = new Map<Function, number>()
   private readonly guestFunctions = new Map<number, Function>()
-  private readonly callCaches = new Map<number, IV2CallCache>()
-  private readonly propertyCaches = new Map<number, IV2PropertyCache>()
-  private readonly typedFallbacks = new Map<number, IV2TypedFallback>()
+  private readonly callCaches = new Map<number, CallCache>()
+  private readonly propertyCaches = new Map<number, PropertyCache>()
+  private readonly typedFallbacks = new Map<number, TypedFallback>()
   private readonly vmObjects = new WeakSet<object>()
   private returnValue: any
-  private frame: IV2Frame
+  private frame: Frame
 
-  constructor(public program: IV2Program, public ctx: any = {}) {
-    this.packedCode = packV2Instructions(program.instructions)
+  constructor(public program: Program, public ctx: any = {}) {
+    this.packedCode = packInstructions(program.instructions)
     this.globals = new Array(program.globalNames.length)
     program.globalNames.forEach((name, index): void => {
       if (!Object.prototype.hasOwnProperty.call(ctx, name)) {
@@ -1039,8 +1040,8 @@ export class RegisterVirtualMachine {
   }
 
   private toHostValue(value: any): any {
-    if (isV2Function(value)) {
-      const functionIndex = value.__v2Function
+    if (isGuestFunction(value)) {
+      const functionIndex = value.__guestFunction
       const existing = this.guestFunctions.get(functionIndex)
       if (existing) { return existing }
       const callable = (...args: any[]): any => this.callFromHost(functionIndex, this.ctx, args)
@@ -1053,7 +1054,7 @@ export class RegisterVirtualMachine {
 
   private fromHostValue(value: any): any {
     const functionIndex = typeof value === 'function' ? this.hostFunctions.get(value) : undefined
-    return functionIndex === undefined ? value : { __v2Function: functionIndex }
+    return functionIndex === undefined ? value : { __guestFunction: functionIndex }
   }
 
   private callFromHost(functionIndex: number, receiver: any, args: any[]): any {
@@ -1114,7 +1115,7 @@ export class RegisterVirtualMachine {
       case REF_LOCAL: this.frame.slots[refIndex(target)] = value; return
       case REF_GLOBAL: this.globals[refIndex(target)] = this.fromHostValue(value); return
       case REF_RETURN: this.returnValue = value; return
-      default: throw new Error('Invalid V2 destination')
+      default: throw new Error('Invalid bytecode destination')
     }
   }
 
@@ -1176,75 +1177,75 @@ export class RegisterVirtualMachine {
     return Reflect.apply(fn, receiver === void 0 ? void 0 : receiver, args)
   }
 
-  private executeBinary(op: V2Opcode, left: any, right: any): any {
+  private executeBinary(op: Opcode, left: any, right: any): any {
     switch (op) {
-      case V2Opcode.ADD:
-      case V2Opcode.ADD_CONST: return left + right
-      case V2Opcode.SUB:
-      case V2Opcode.SUB_CONST: return left - right
-      case V2Opcode.MUL:
-      case V2Opcode.MUL_CONST: return left * right
-      case V2Opcode.DIV:
-      case V2Opcode.DIV_CONST: return left / right
-      case V2Opcode.MOD:
-      case V2Opcode.MOD_CONST: return left % right
-      case V2Opcode.OR:
-      case V2Opcode.OR_CONST: return left | right
-      case V2Opcode.AND:
-      case V2Opcode.AND_CONST: return left & right
-      case V2Opcode.XOR:
-      case V2Opcode.XOR_CONST: return left ^ right
-      case V2Opcode.SHL:
-      case V2Opcode.SHL_CONST: return left << right
-      case V2Opcode.SHR:
-      case V2Opcode.SHR_CONST: return left >> right
-      case V2Opcode.ZSHR:
-      case V2Opcode.ZSHR_CONST: return left >>> right
-      case V2Opcode.LT:
-      case V2Opcode.LT_CONST: return left < right
-      case V2Opcode.GT:
-      case V2Opcode.GT_CONST: return left > right
-      case V2Opcode.EQ:
-      case V2Opcode.EQ_CONST: return left === right
-      case V2Opcode.NE:
-      case V2Opcode.NE_CONST: return left !== right
-      case V2Opcode.LE:
-      case V2Opcode.LE_CONST: return left <= right
-      case V2Opcode.GE:
-      case V2Opcode.GE_CONST: return left >= right
-      case V2Opcode.WEQ:
-      case V2Opcode.WEQ_CONST: return left == right // tslint:disable-line: triple-equals
-      case V2Opcode.WNE:
-      case V2Opcode.WNE_CONST: return left != right // tslint:disable-line: triple-equals
-      default: throw new Error(`Unsupported V2 binary opcode ${op}`)
+      case Opcode.ADD:
+      case Opcode.ADD_CONST: return left + right
+      case Opcode.SUB:
+      case Opcode.SUB_CONST: return left - right
+      case Opcode.MUL:
+      case Opcode.MUL_CONST: return left * right
+      case Opcode.DIV:
+      case Opcode.DIV_CONST: return left / right
+      case Opcode.MOD:
+      case Opcode.MOD_CONST: return left % right
+      case Opcode.OR:
+      case Opcode.OR_CONST: return left | right
+      case Opcode.AND:
+      case Opcode.AND_CONST: return left & right
+      case Opcode.XOR:
+      case Opcode.XOR_CONST: return left ^ right
+      case Opcode.SHL:
+      case Opcode.SHL_CONST: return left << right
+      case Opcode.SHR:
+      case Opcode.SHR_CONST: return left >> right
+      case Opcode.ZSHR:
+      case Opcode.ZSHR_CONST: return left >>> right
+      case Opcode.LT:
+      case Opcode.LT_CONST: return left < right
+      case Opcode.GT:
+      case Opcode.GT_CONST: return left > right
+      case Opcode.EQ:
+      case Opcode.EQ_CONST: return left === right
+      case Opcode.NE:
+      case Opcode.NE_CONST: return left !== right
+      case Opcode.LE:
+      case Opcode.LE_CONST: return left <= right
+      case Opcode.GE:
+      case Opcode.GE_CONST: return left >= right
+      case Opcode.WEQ:
+      case Opcode.WEQ_CONST: return left == right // tslint:disable-line: triple-equals
+      case Opcode.WNE:
+      case Opcode.WNE_CONST: return left != right // tslint:disable-line: triple-equals
+      default: throw new Error(`Unsupported binary opcode ${op}`)
     }
   }
 
-  private executeI32Binary(op: V2Opcode, left: number, right: number): any {
+  private executeI32Binary(op: Opcode, left: number, right: number): any {
     switch (op) {
-      case V2Opcode.ADD_I32: return left + right
-      case V2Opcode.SUB_I32: return left - right
-      case V2Opcode.MUL_I32: return left * right
-      case V2Opcode.MOD_I32: return left % right
-      case V2Opcode.OR_I32: return left | right
-      case V2Opcode.AND_I32: return left & right
-      case V2Opcode.XOR_I32: return left ^ right
-      case V2Opcode.SHL_I32: return left << right
-      case V2Opcode.SHR_I32: return left >> right
-      case V2Opcode.ZSHR_I32: return left >>> right
-      case V2Opcode.LT_I32: return left < right
-      case V2Opcode.GT_I32: return left > right
-      case V2Opcode.EQ_I32: return left === right
-      case V2Opcode.NE_I32: return left !== right
-      case V2Opcode.LE_I32: return left <= right
-      case V2Opcode.GE_I32: return left >= right
-      case V2Opcode.WEQ_I32: return left == right // tslint:disable-line: triple-equals
-      case V2Opcode.WNE_I32: return left != right // tslint:disable-line: triple-equals
+      case Opcode.ADD_I32: return left + right
+      case Opcode.SUB_I32: return left - right
+      case Opcode.MUL_I32: return left * right
+      case Opcode.MOD_I32: return left % right
+      case Opcode.OR_I32: return left | right
+      case Opcode.AND_I32: return left & right
+      case Opcode.XOR_I32: return left ^ right
+      case Opcode.SHL_I32: return left << right
+      case Opcode.SHR_I32: return left >> right
+      case Opcode.ZSHR_I32: return left >>> right
+      case Opcode.LT_I32: return left < right
+      case Opcode.GT_I32: return left > right
+      case Opcode.EQ_I32: return left === right
+      case Opcode.NE_I32: return left !== right
+      case Opcode.LE_I32: return left <= right
+      case Opcode.GE_I32: return left >= right
+      case Opcode.WEQ_I32: return left == right // tslint:disable-line: triple-equals
+      case Opcode.WNE_I32: return left != right // tslint:disable-line: triple-equals
       default: return this.executeBinary(op, left, right)
     }
   }
 
-  private executeBinaryFast(op: V2Opcode, left: any, right: any): any {
+  private executeBinaryFast(op: Opcode, left: any, right: any): any {
     if (isInt32Value(left) && isInt32Value(right)) {
       const specialized = i32OpcodeFor(op)
       if (specialized !== undefined) {
@@ -1256,7 +1257,7 @@ export class RegisterVirtualMachine {
   }
 
   private executeAdaptiveBinary(
-    op: V2Opcode,
+    op: Opcode,
     left: any,
     right: any,
     offset: number,
@@ -1299,7 +1300,7 @@ export class RegisterVirtualMachine {
       this.popFrame()
       return
     }
-    const offset = frame.ip++ * V2_INSTRUCTION_WORDS
+    const offset = frame.ip++ * INSTRUCTION_WORDS
     const packed = this.packedCode[offset]
     const op = packed & 0xff
     const flags = (packed >>> 8) & 0xff
@@ -1308,95 +1309,95 @@ export class RegisterVirtualMachine {
     const b = this.packedCode[offset + 2]
     const c = this.packedCode[offset + 3]
     switch (op) {
-      case V2Opcode.NOP:
+      case Opcode.NOP:
         return
-      case V2Opcode.MOVE:
+      case Opcode.MOVE:
         frame.slots[dst] = this.getRef(a)
         return
-      case V2Opcode.SET_GLOBAL:
+      case Opcode.SET_GLOBAL:
         this.globals[a] = this.fromHostValue(this.getRef(b))
         return
-      case V2Opcode.SET_RETURN:
+      case Opcode.SET_RETURN:
         this.returnValue = this.getRef(a)
         return
-      case V2Opcode.LOAD_CTX:
+      case Opcode.LOAD_CTX:
         frame.slots[dst] = this.ctx[this.getRef(a)]
         return
-      case V2Opcode.SET_CTX:
+      case Opcode.SET_CTX:
         this.ctx[this.getRef(a)] = this.toHostValue(this.getRef(b))
         return
-      case V2Opcode.ADD:
-      case V2Opcode.SUB:
-      case V2Opcode.MUL:
-      case V2Opcode.DIV:
-      case V2Opcode.MOD:
-      case V2Opcode.OR:
-      case V2Opcode.AND:
-      case V2Opcode.XOR:
-      case V2Opcode.SHL:
-      case V2Opcode.SHR:
-      case V2Opcode.ZSHR:
-      case V2Opcode.LT:
-      case V2Opcode.GT:
-      case V2Opcode.EQ:
-      case V2Opcode.NE:
-      case V2Opcode.LE:
-      case V2Opcode.GE:
-      case V2Opcode.WEQ:
-      case V2Opcode.WNE:
-      case V2Opcode.ADD_CONST:
-      case V2Opcode.SUB_CONST:
-      case V2Opcode.MUL_CONST:
-      case V2Opcode.DIV_CONST:
-      case V2Opcode.MOD_CONST:
-      case V2Opcode.OR_CONST:
-      case V2Opcode.AND_CONST:
-      case V2Opcode.XOR_CONST:
-      case V2Opcode.SHL_CONST:
-      case V2Opcode.SHR_CONST:
-      case V2Opcode.ZSHR_CONST:
-      case V2Opcode.LT_CONST:
-      case V2Opcode.GT_CONST:
-      case V2Opcode.EQ_CONST:
-      case V2Opcode.NE_CONST:
-      case V2Opcode.LE_CONST:
-      case V2Opcode.GE_CONST:
-      case V2Opcode.WEQ_CONST:
-      case V2Opcode.WNE_CONST:
-        frame.slots[dst] = this.executeBinary(op as V2Opcode, this.getRef(a), this.getRef(b))
+      case Opcode.ADD:
+      case Opcode.SUB:
+      case Opcode.MUL:
+      case Opcode.DIV:
+      case Opcode.MOD:
+      case Opcode.OR:
+      case Opcode.AND:
+      case Opcode.XOR:
+      case Opcode.SHL:
+      case Opcode.SHR:
+      case Opcode.ZSHR:
+      case Opcode.LT:
+      case Opcode.GT:
+      case Opcode.EQ:
+      case Opcode.NE:
+      case Opcode.LE:
+      case Opcode.GE:
+      case Opcode.WEQ:
+      case Opcode.WNE:
+      case Opcode.ADD_CONST:
+      case Opcode.SUB_CONST:
+      case Opcode.MUL_CONST:
+      case Opcode.DIV_CONST:
+      case Opcode.MOD_CONST:
+      case Opcode.OR_CONST:
+      case Opcode.AND_CONST:
+      case Opcode.XOR_CONST:
+      case Opcode.SHL_CONST:
+      case Opcode.SHR_CONST:
+      case Opcode.ZSHR_CONST:
+      case Opcode.LT_CONST:
+      case Opcode.GT_CONST:
+      case Opcode.EQ_CONST:
+      case Opcode.NE_CONST:
+      case Opcode.LE_CONST:
+      case Opcode.GE_CONST:
+      case Opcode.WEQ_CONST:
+      case Opcode.WNE_CONST:
+        frame.slots[dst] = this.executeBinary(op as Opcode, this.getRef(a), this.getRef(b))
         return
-      case V2Opcode.ADD_I32:
-      case V2Opcode.SUB_I32:
-      case V2Opcode.MUL_I32:
-      case V2Opcode.MOD_I32:
-      case V2Opcode.OR_I32:
-      case V2Opcode.AND_I32:
-      case V2Opcode.XOR_I32:
-      case V2Opcode.SHL_I32:
-      case V2Opcode.SHR_I32:
-      case V2Opcode.ZSHR_I32:
-      case V2Opcode.LT_I32:
-      case V2Opcode.GT_I32:
-      case V2Opcode.EQ_I32:
-      case V2Opcode.NE_I32:
-      case V2Opcode.LE_I32:
-      case V2Opcode.GE_I32:
-      case V2Opcode.WEQ_I32:
-      case V2Opcode.WNE_I32:
+      case Opcode.ADD_I32:
+      case Opcode.SUB_I32:
+      case Opcode.MUL_I32:
+      case Opcode.MOD_I32:
+      case Opcode.OR_I32:
+      case Opcode.AND_I32:
+      case Opcode.XOR_I32:
+      case Opcode.SHL_I32:
+      case Opcode.SHR_I32:
+      case Opcode.ZSHR_I32:
+      case Opcode.LT_I32:
+      case Opcode.GT_I32:
+      case Opcode.EQ_I32:
+      case Opcode.NE_I32:
+      case Opcode.LE_I32:
+      case Opcode.GE_I32:
+      case Opcode.WEQ_I32:
+      case Opcode.WNE_I32:
         frame.slots[dst] = this.executeAdaptiveBinary(
-          op as V2Opcode, this.getRef(a), this.getRef(b), offset, packed, false,
+          op as Opcode, this.getRef(a), this.getRef(b), offset, packed, false,
         )
         return
-      case V2Opcode.SUPER_ADD_STORE: {
+      case Opcode.SUPER_ADD_STORE: {
         this.setRef(c, this.getRef(a) + this.getRef(b))
         return
       }
-      case V2Opcode.SUPER_BINARY_STORE: {
-        const value = this.executeBinaryFast(flags as V2Opcode, this.getRef(a), this.getRef(b))
+      case Opcode.SUPER_BINARY_STORE: {
+        const value = this.executeBinaryFast(flags as Opcode, this.getRef(a), this.getRef(b))
         this.setRef(c, value)
         return
       }
-      case V2Opcode.LOOP_ACCUMULATE: {
+      case Opcode.LOOP_ACCUMULATE: {
         let counter = this.getRef(a)
         const limit = this.getRef(b)
         let accumulator = this.getRef(c)
@@ -1414,13 +1415,13 @@ export class RegisterVirtualMachine {
         this.stats.loopKernelHits++
         return
       }
-      case V2Opcode.GET_PROP:
+      case Opcode.GET_PROP:
         frame.slots[dst] = this.getProperty(this.getRef(a), this.getRef(b), frame.ip - 1)
         return
-      case V2Opcode.SET_PROP:
+      case Opcode.SET_PROP:
         this.setProperty(this.getRef(a), this.getRef(b), this.getRef(c))
         return
-      case V2Opcode.DEF_DATA:
+      case Opcode.DEF_DATA:
         Object.defineProperty(this.getRef(a), this.getRef(b), {
           configurable: true,
           enumerable: true,
@@ -1429,33 +1430,33 @@ export class RegisterVirtualMachine {
         })
         this.propertyCaches.clear()
         return
-      case V2Opcode.NEW_OBJ:
+      case Opcode.NEW_OBJ:
         frame.slots[dst] = {}
         this.vmObjects.add(frame.slots[dst])
         return
-      case V2Opcode.NEW_ARR:
+      case Opcode.NEW_ARR:
         frame.slots[dst] = []
         this.vmObjects.add(frame.slots[dst])
         return
-      case V2Opcode.MAKE_FUNC:
-        frame.slots[dst] = { __v2Function: c }
+      case Opcode.MAKE_FUNC:
+        frame.slots[dst] = { __guestFunction: c }
         return
-      case V2Opcode.MAKE_FUNC_GLOBAL:
-        this.globals[a] = { __v2Function: c }
+      case Opcode.MAKE_FUNC_GLOBAL:
+        this.globals[a] = { __guestFunction: c }
         return
-      case V2Opcode.MAKE_FUNC_RETURN:
-        this.returnValue = { __v2Function: c }
+      case Opcode.MAKE_FUNC_RETURN:
+        this.returnValue = { __guestFunction: c }
         return
-      case V2Opcode.JUMP:
+      case Opcode.JUMP:
         frame.ip = c
         return
-      case V2Opcode.JUMP_IF_TRUE:
+      case Opcode.JUMP_IF_TRUE:
         if (this.getRef(a)) { frame.ip = c }
         return
-      case V2Opcode.JUMP_IF_FALSE:
+      case Opcode.JUMP_IF_FALSE:
         if (!this.getRef(a)) { frame.ip = c }
         return
-      case V2Opcode.CALL: {
+      case Opcode.CALL: {
         const fn = this.getRef(a)
         const receiver = this.getRef(b)
         const callSite = this.program.callSites[c]
@@ -1464,7 +1465,7 @@ export class RegisterVirtualMachine {
         if (!cache || cache.functionValue !== fn || cache.args.length !== callSite.args.length) {
           cache = {
             functionValue: fn,
-            functionIndex: isV2Function(fn) ? fn.__v2Function : undefined,
+            functionIndex: isGuestFunction(fn) ? fn.__guestFunction : undefined,
             args: new Array(callSite.args.length),
           }
           this.callCaches.set(instructionIp, cache)
@@ -1485,16 +1486,16 @@ export class RegisterVirtualMachine {
         this.propertyCaches.clear()
         return
       }
-      case V2Opcode.RETURN:
+      case Opcode.RETURN:
         this.returnValue = this.getRef(a)
         this.popFrame()
         return
-      case V2Opcode.EXIT:
+      case Opcode.EXIT:
         this.result = this.returnValue
         this.isRunning = false
         return
       default:
-        throw new Error(`Unknown V2 opcode ${op}`)
+        throw new Error(`Unknown bytecode opcode ${op}`)
     }
   }
 }
@@ -1516,7 +1517,7 @@ const writeStringData = (strings: string[]): { data: Uint8Array, offsets: number
   return { data, offsets }
 }
 
-const collectStrings = (program: IV2Program): { values: string[], indexes: Map<string, number> } => {
+const collectStrings = (program: Program): { values: string[], indexes: Map<string, number> } => {
   const values: string[] = []
   const indexes = new Map<string, number>()
   const add = (value: string): number => {
@@ -1532,7 +1533,7 @@ const collectStrings = (program: IV2Program): { values: string[], indexes: Map<s
   return { values, indexes }
 }
 
-export const serializeV2Program = (program: IV2Program): ArrayBuffer => {
+export const serializeProgram = (program: Program): ArrayBuffer => {
   const strings = collectStrings(program)
   const stringData = writeStringData(strings.values)
   const headerBytes = HEADER_WORDS * 4
@@ -1550,7 +1551,7 @@ export const serializeV2Program = (program: IV2Program): ArrayBuffer => {
   const output = new ArrayBuffer(stringOffset + stringData.data.byteLength)
   const view = new DataView(output)
   const header = [
-    V2_MAGIC, V2_VERSION, program.entryFunction, program.functions.length,
+    BYTECODE_MAGIC, BYTECODE_VERSION, program.entryFunction, program.functions.length,
     program.instructions.length, program.constants.length, program.callSites.length,
     program.globalNames.length, functionOffset, constantOffset, callSiteOffset,
     globalNameOffset, codeOffset, stringOffset, stringData.data.byteLength,
@@ -1579,7 +1580,7 @@ export const serializeV2Program = (program: IV2Program): ArrayBuffer => {
       view.setUint32(offset + 4, stringData.offsets[stringIndex], true)
       view.setUint32(offset + 8, value.length, true)
     } else {
-      throw new Error(`Cannot serialize V2 constant ${typeof value}`)
+      throw new Error(`Cannot serialize bytecode constant ${typeof value}`)
     }
   })
   let callOffset = callSiteOffset
@@ -1606,10 +1607,10 @@ export const serializeV2Program = (program: IV2Program): ArrayBuffer => {
   return output
 }
 
-export const deserializeV2Program = (buffer: ArrayBuffer): IV2Program => {
+export const deserializeProgram = (buffer: ArrayBuffer): Program => {
   const view = new DataView(buffer)
-  if (view.getUint32(0, true) !== V2_MAGIC) { throw new Error('Not a V2 bytecode buffer') }
-  if (view.getUint32(4, true) !== V2_VERSION) { throw new Error('Unsupported V2 bytecode version') }
+  if (view.getUint32(0, true) !== BYTECODE_MAGIC) { throw new Error('Not a NestScript bytecode buffer') }
+  if (view.getUint32(4, true) !== BYTECODE_VERSION) { throw new Error('Unsupported NestScript bytecode version') }
   const entryFunction = view.getUint32(8, true)
   const functionCount = view.getUint32(12, true)
   const instructionCount = view.getUint32(16, true)
@@ -1631,7 +1632,7 @@ export const deserializeV2Program = (buffer: ArrayBuffer): IV2Program => {
     }
     return result
   }
-  const functions: IV2FunctionMeta[] = []
+  const functions: FunctionMeta[] = []
   for (let i = 0; i < functionCount; i++) {
     const offset = functionOffset + i * FUNCTION_WORDS * 4
     functions.push({
@@ -1651,9 +1652,9 @@ export const deserializeV2Program = (buffer: ArrayBuffer): IV2Program => {
     else if (kind === 2) constants.push(view.getUint32(offset + 4, true) !== 0)
     else if (kind === 3) constants.push(view.getFloat64(offset + 4, true))
     else if (kind === 4) constants.push(readString(view.getUint32(offset + 4, true)))
-    else throw new Error(`Unknown V2 constant kind ${kind}`)
+    else throw new Error(`Unknown bytecode constant kind ${kind}`)
   }
-  const callSites: IV2CallSite[] = []
+  const callSites: CallSite[] = []
   let callOffset = callSiteOffset
   for (let i = 0; i < callSiteCount; i++) {
     const argc = view.getUint32(callOffset, true)
@@ -1667,7 +1668,7 @@ export const deserializeV2Program = (buffer: ArrayBuffer): IV2Program => {
     const stringDataOffset = view.getUint32(globalNameOffset + i * 4, true)
     globalNames.push(readString(stringDataOffset))
   }
-  const instructions: IV2Instruction[] = []
+  const instructions: Instruction[] = []
   for (let i = 0; i < instructionCount; i++) {
     const offset = codeOffset + i * 16
     const packed = view.getUint32(offset, true)
@@ -1680,15 +1681,13 @@ export const deserializeV2Program = (buffer: ArrayBuffer): IV2Program => {
       c: view.getUint32(offset + 12, true),
     })
   }
-  return { version: V2_VERSION, entryFunction, instructions, functions, constants, callSites, globalNames }
+  return { version: BYTECODE_VERSION, entryFunction, instructions, functions, constants, callSites, globalNames }
 }
 
-export const createRegisterVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): RegisterVirtualMachine => {
-  return new RegisterVirtualMachine(deserializeV2Program(buffer), ctx)
+export const createVMFromArrayBuffer = (buffer: ArrayBuffer, ctx: any = {}): VirtualMachine => {
+  return new VirtualMachine(deserializeProgram(buffer), ctx)
 }
 
-export const createRegisterVMFromJavaScript = (source: string, ctx: any = {}): RegisterVirtualMachine => {
-  return new RegisterVirtualMachine(compileV2FromJavaScript(source), ctx)
+export const createVMFromJavaScript = (source: string, ctx: any = {}): VirtualMachine => {
+  return new VirtualMachine(compileProgramFromJavaScript(source), ctx)
 }
-
-export { V2UnsupportedError }

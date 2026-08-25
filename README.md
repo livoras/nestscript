@@ -9,9 +9,9 @@
 </p>
 
 <p align="center">
-  A JavaScript bytecode toolchain and virtual machine for environments where
-  <code>eval</code>, <code>new Function</code>, and other forms of dynamic code
-  generation are unavailable or prohibited.
+  A JavaScript-to-bytecode compiler and a compact register virtual machine for
+  runtimes where <code>eval</code>, <code>new Function</code>, and dynamic source
+  execution are unavailable.
 </p>
 
 <p align="center">
@@ -20,39 +20,33 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/livoras/nestscript.svg" alt="MIT license"></a>
 </p>
 
-NestScript compiles a single JavaScript file ahead of time into a compact
-binary program. The binary is then executed by a virtual machine implemented
-entirely in TypeScript/JavaScript. The target runtime never parses or evaluates
-the original source code.
+NestScript compiles source code ahead of time into a fixed-width binary program.
+The target runtime loads that program and executes it with a JavaScript VM; it
+never parses or evaluates the original source.
 
-This model is useful in WeChat Mini Programs, CSP-restricted web applications,
-embedded JavaScript runtimes, and other hosts that allow ordinary JavaScript
-execution but reject dynamic source evaluation.
+This is useful for WeChat Mini Programs, CSP-restricted applications, embedded
+JavaScript hosts, and other environments that allow ordinary JavaScript but
+reject dynamic code generation.
 
 > [!IMPORTANT]
 > NestScript is an execution mechanism, not a security sandbox. Guest code can
-> call functions and mutate objects exposed through the host context. Only run
-> bytecode you trust, and expose the smallest practical host API.
+> call functions and mutate objects exposed through the host context. Execute
+> only trusted bytecode and expose the smallest practical host API.
 
-## How it works
+## Architecture
 
 ![NestScript compilation and runtime architecture](docs/architecture.png)
 
-Compilation normally happens in a trusted Node.js build environment. A target
-application only needs the VM, the compiled bytecode, and an explicit object
-containing the host capabilities available to the program.
+The repository has one runtime and one public bytecode contract:
 
-The toolchain has three main components:
+1. The compiler parses JavaScript and lowers it through an internal assembly
+   representation.
+2. The bytecode writer emits a versioned, fixed-width instruction stream.
+3. The register VM executes packed instructions with numeric fast paths,
+   static superinstructions, property caches, call caches, and loop kernels.
 
-- **Code generator** — parses JavaScript and emits NestScript assembly.
-- **Assembler** — encodes assembly into the NestScript binary format.
-- **Virtual machine** — executes that binary without `eval` or generated host
-  JavaScript.
-
-The repository keeps the compiler and runtime in one TypeScript package. The
-legacy stack remains available for compatibility, while the register-based V2
-runtime is implemented as an independent path so it can evolve without
-changing the original bytecode contract.
+The compiler is intended for a trusted build step. The deployed application
+needs only the runtime bundle, bytecode, and an explicit host context.
 
 ## Installation
 
@@ -60,9 +54,8 @@ changing the original bytecode contract.
 npm install nestscript
 ```
 
-The package installs the `nsc` command-line tool and includes the browser VM at
-`node_modules/nestscript/dist/vm.js`. You can invoke the CLI through `npx`
-without a global installation.
+The package includes the `nsc` command-line compiler and the browser bundle at
+`dist/vm.js`.
 
 ## Quick start
 
@@ -73,167 +66,94 @@ function greet(name) {
   return 'Hello, ' + name + '!'
 }
 
-console.log(greet('NestScript'))
+result = greet('NestScript')
 ```
 
-Compile it to bytecode:
+Compile and run it:
 
 ```sh
 npx nsc compile main.js main.nsc
-```
-
-Run the bytecode with the Node.js host context provided by the CLI:
-
-```sh
 npx nsc run main.nsc
 ```
 
-Expected output:
+The generated `main.nsc` contains bytecode, not source text.
 
-```text
-Hello, NestScript!
+## JavaScript API
+
+```js
+const {
+  compileJavaScriptToBytecode,
+  createVMFromArrayBuffer,
+  createVMFromJavaScript,
+} = require('nestscript')
+
+const context = {
+  console,
+  Math,
+  reportMetric(name, value) {
+    // Host application bridge.
+  },
+}
+
+const bytecode = compileJavaScriptToBytecode('result = 40 + 2')
+const vm = createVMFromArrayBuffer(bytecode, context)
+vm.run()
+console.log(context.result) // 42
 ```
 
-The resulting `main.nsc` file contains bytecode, not JavaScript source. It can
-be distributed independently and executed wherever a compatible NestScript VM
-is available.
+`createVMFromJavaScript` is convenient for trusted Node.js tooling. In a
+restricted runtime, compile during the build and ship only the resulting
+`ArrayBuffer`.
 
-## Embedding the VM
+The context object is the guest global object. Values are shared with the host,
+so guest code can invoke exposed functions and mutate exposed objects. Do not
+pass an unrestricted `window` or `globalThis` object when a smaller context is
+enough.
 
-### Browser or web-like runtime
+## Browser and mini-program runtimes
 
-The browser bundle is available at `dist/vm.js`. When loaded as a script, it
-exposes `createVMFromArrayBuffer` on `window`:
+Load `dist/vm.js` as a UMD script. It exposes the package API as `NestScript`
+on the host global object:
 
 ```html
 <script src="/vendor/nestscript/vm.js"></script>
 <script>
   fetch('/programs/main.nsc')
-    .then(function (response) {
-      return response.arrayBuffer()
-    })
+    .then(function (response) { return response.arrayBuffer() })
     .then(function (bytecode) {
-      var context = {
+      var vm = NestScript.createVMFromArrayBuffer(bytecode, {
         console: console,
-        Date: Date,
-        Math: Math
-      }
-
-      var vm = createVMFromArrayBuffer(bytecode, context)
+        Math: Math,
+      })
       vm.run()
     })
 </script>
 ```
 
-The same pattern applies to runtimes with a platform-specific networking API:
-download the file as an `ArrayBuffer`, construct the VM, and call `run()`.
+The same loading model works with platform networking APIs that return an
+`ArrayBuffer`, including WeChat Mini Programs.
 
-For production deployments, compile during the build or release process and
-ship only the binary plus the VM to the target runtime.
+## Supported language surface
 
-## Host context
+The canonical compiler currently covers the performance-critical core used by
+the VM benchmarks: variables, literals, arithmetic and comparison operators,
+branches, loops, functions, calls, object and array creation, property access,
+global/context access, and host function calls.
 
-`createVMFromArrayBuffer(bytecode, context)` uses `context` as the program's
-global object and returns a `VirtualMachine`. Host values are not imported
-automatically; execution starts only when `vm.run()` is called.
+Unsupported syntax fails during compilation with `UnsupportedOpcodeError`; it is
+never silently evaluated by the host. ES modules, classes, `eval`, and the
+`Function` constructor are outside the contract. Closure capture, exception
+routing, and several legacy reference operations are also pending compiler
+lowering work. Keep the source-level compatibility matrix in tests when adding
+new syntax.
 
-```js
-const context = {
-  console: console,
-  Date: Date,
-  Math: Math,
-  reportMetric: function (name, value) {
-    // Bridge into the host application.
-  }
-}
-
-const vm = createVMFromArrayBuffer(bytecode, context)
-vm.run()
-```
-
-Keep the following properties in mind:
-
-- Global declarations and assignments may modify the context object.
-- Guest code can invoke any function reachable from the context.
-- Objects reachable from the context are shared with the host, not copied.
-- Providing a fresh, purpose-built context is safer than passing `window`,
-  `globalThis`, or another unrestricted global object.
-
-NestScript does not authenticate bytecode downloaded over the network. If
-bytecode is delivered remotely, protect it with the same integrity and trust
-controls used for any executable application asset.
-
-## Compatibility
-
-NestScript is currently focused on **single-file ES5 program semantics**. It
-supports functions and closures, objects and arrays, constructors, control
-flow, exceptions, strict mode, `with`, and interaction with explicitly supplied
-host objects.
-
-The following boundaries are intentional or currently important:
-
-- `eval` and the `Function` constructor are not supported for guest source.
-- ES modules (`import` and `export`) and classes are not supported.
-- Built-in objects such as `Date`, `RegExp`, and `JSON` come from the host
-  context; their exact behavior therefore depends on that host.
-- The legacy V1 binary format has no version marker. V2 binaries carry an
-  explicit format version. In both cases, compile bytecode with the same
-  NestScript release used to build the target VM.
-- A successfully parsed modern syntax construct is not necessarily part of the
-  supported language contract; ES5 is the compatibility target.
-
-### Test262 status
-
-NestScript includes an isolated runner for the official historical Test262
-`es5-tests` branch. At revision `04f4dc4`, the measured results are:
-
-| Scope | Executed | Passed | Failed | Pass rate |
-| --- | ---: | ---: | ---: | ---: |
-| ES5 core language, chapters 6–14 | 2,745 | 2,745 | 0 | 100.00% |
-| Full ES5 suite, including host built-ins | 10,613 | 10,271 | 342 | 96.78% |
-
-Tests that require `eval` or the `Function` constructor are reported separately
-and excluded from these denominators. The full-suite result also reflects
-modern host built-ins and runner limits, so it should not be read as a pure VM
-language score.
-
-See [the detailed results](test262/RESULTS.md) and
-[runner documentation](test262/README.md) for the pinned upstream revision,
-methodology, skip policy, and failure classification.
-
-## CLI reference
+## CLI
 
 | Command | Description |
 | --- | --- |
-| `nsc compile <source.js> <output>` | Compile JavaScript directly to binary bytecode. |
-| `nsc codegen <source.js> <output.nes>` | Emit human-readable NestScript assembly. |
-| `nsc run <bytecode>` | Execute bytecode with the CLI's Node.js host context. |
-
-Examples:
-
-```sh
-npx nsc codegen main.js main.nes
-npx nsc compile main.js main.nsc
-npx nsc run main.nsc
-```
-
-## Instruction set
-
-NestScript assembly is a low-level intermediate representation with operations
-for arithmetic, comparisons, property access, branching, function calls,
-closures, exception handling, and object creation. The assembler converts this
-representation into the binary consumed by the VM.
-
-The binary format is currently an internal interface. The authoritative
-definitions are the [VM opcode enum](src/vm/vm.ts) and the
-[assembler implementation](src/assembler.ts).
-
-## Example application
-
-The [NestScript Racer demo](https://livoras.github.io/nestscript-demo/) runs the
-game logic from a remotely loaded NestScript binary. Its source and integration
-code are available in the
-[nestscript-demo repository](https://github.com/livoras/nestscript-demo).
+| `nsc compile <source.js> <output>` | Compile JavaScript to binary bytecode. |
+| `nsc codegen <source.js> <output.nes>` | Emit the internal assembly form for inspection. |
+| `nsc run <bytecode>` | Execute bytecode with a Node.js host context. |
 
 ## Development
 
@@ -242,34 +162,26 @@ git clone https://github.com/livoras/nestscript.git
 cd nestscript
 npm install
 npm test
+npm run build
 ```
 
-Run the TypeScript check without emitting files:
+Project layout:
 
-```sh
-npx tsc --noEmit
-```
+- `src/compiler/` — parser, source lowering, and compiler-only IR helpers.
+- `src/vm.ts` — the single packed register VM and bytecode serializer.
+- `src/js.ts` — source-oriented convenience API.
+- `src/cli.ts` — the Node.js CLI adapter.
+- `dist/vm.js` — generated UMD browser bundle.
+- `test/` — canonical runtime and bytecode regression tests.
 
-The important project boundaries are:
+Performance checks are available with `npm run test:performance`. They report
+iterations per second and validate the expected result for every benchmark.
 
-- `src/` — parser, optimizer, assembler, public API, and V1/V2 runtimes.
-- `src/cli.ts` — the typed Node.js CLI adapter used by `nsc`.
-- `nsc/bin/` — the minimal npm executable shim; it contains no compiler logic.
-- `dist/vm.js` — the generated browser bundle.
-- `test/` and `test262/` — regression tests and the pinned ES5 conformance
-  runner.
+## Security and trust
 
-To reproduce the ES5 conformance run, follow
-[test262/README.md](test262/README.md).
-
-## Contributing
-
-Bug reports and focused pull requests are welcome. For semantic changes, add a
-small regression test that demonstrates the observable JavaScript behavior and
-run the relevant Test262 subset when practical.
-
-Please use [GitHub Issues](https://github.com/livoras/nestscript/issues) for bug
-reports and compatibility discussions.
+NestScript is not a sandbox. Treat bytecode like executable application code,
+authenticate remotely delivered programs, and expose a deliberately small host
+context.
 
 ## License
 

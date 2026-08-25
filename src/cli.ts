@@ -1,10 +1,10 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import {
+  compileJavaScriptToBytecode,
   createVMFromArrayBuffer,
-  generateAssemblyFromJs,
-  parseCodeToProgram,
 } from './index'
+import { generateAssemblyFromJs } from './compiler/codegen'
 
 // The CLI is intentionally a thin Node.js adapter around the library API.
 // The generated package entry point is build/src/cli.js; the nsc shim only
@@ -60,8 +60,7 @@ const createNodeContext = (): any => ({
 
 const compile = (sourceFile: string, outputFile: string): void => {
   const source = fs.readFileSync(resolvePath(sourceFile), 'utf8')
-  const assembly = generateAssemblyFromJs(source)
-  fs.writeFileSync(resolvePath(outputFile), parseCodeToProgram(assembly))
+  fs.writeFileSync(resolvePath(outputFile), Buffer.from(compileJavaScriptToBytecode(source)))
   console.log('Compile done!')
 }
 

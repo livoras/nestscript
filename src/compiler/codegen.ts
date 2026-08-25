@@ -5,16 +5,9 @@
 const acorn = require("acorn")
 const walk = require("acorn-walk")
 import * as et from "estree"
-import { CategoriesPriorityQueue } from './utils'
+import { CategoriesPriorityQueue } from './priority-queue'
 import { BlockChain, IBlock, IFuncBlock } from './block-chain'
-
-export const enum VariableType {
-  NO_EXIST = -1,
-  FUNCTION = 1,
-  VARIABLE = 2,
-  CLOSURE = 3,
-  ARGUMENTS = 4,
-}
+import { VariableType } from './types'
 
 interface IScope {
   funcName: string, // for debug.

@@ -1,6 +1,4 @@
-import { generateAssemblyFromJs } from '../src/codegen'
-import { parseCodeToProgram } from '../src/assembler'
-import { createVMFromArrayBuffer } from '../src/vm/vm'
+import { compileJavaScriptToBytecode, createVMFromArrayBuffer } from '../src'
 
 interface IBenchmarkCase {
   name: string
@@ -100,8 +98,7 @@ const median = (values: number[]): number => {
 }
 
 const compile = (source: string): ArrayBuffer => {
-  const bytecode = parseCodeToProgram(generateAssemblyFromJs(source))
-  return Uint8Array.from(bytecode).buffer
+  return compileJavaScriptToBytecode(source)
 }
 
 const measure = (benchmark: IBenchmarkCase): IBenchmarkResult => {

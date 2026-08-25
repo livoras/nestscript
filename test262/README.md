@@ -1,8 +1,8 @@
-# Test262 ES5 compatibility runner
+# Test262 runner
 
-This runner measures NestScript against the official Test262 `es5-tests`
-branch. The suite stays outside this repository so that NestScript does not
-vendor thousands of upstream files.
+This runner measures the canonical bytecode compiler and VM against the
+historical Test262 `es5-tests` branch. The suite stays outside this repository
+so that NestScript does not vendor thousands of upstream files.
 
 Clone the pinned upstream branch next to this repository:
 
@@ -37,4 +37,7 @@ so a broken loop cannot hang the whole conformance run. Every case executes in
 a fresh process because Test262 cases may make non-configurable changes to
 shared intrinsic prototypes.
 
-The latest measured baseline and interpretation are in [RESULTS.md](RESULTS.md).
+Results from the pre-2.0 compatibility runtime are archived in
+[RESULTS.md](RESULTS.md) for historical reference. The single-engine 2.0
+runtime intentionally reports unsupported syntax as a compile failure; update
+the results file only after completing a full run for the current release.
