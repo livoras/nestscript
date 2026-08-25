@@ -1,6 +1,6 @@
 {
   "name": "nestscript",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "A JavaScript bytecode toolchain and virtual machine for runtimes without dynamic code evaluation.",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
@@ -17,6 +17,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.release.json && webpack",
     "benchmark:runtime": "node -r ts-node/register performance/runtime.bench.ts",
+    "benchmark:vm2": "node -r ts-node/register performance/register-vm2.bench.ts",
     "start": "npx nodemon --watch example/main.js --exec 'make js'",
     "cov": "nyc -r lcov -e .ts -x \"*.test.ts\" npm run test",
     "prepack": "npm run build",

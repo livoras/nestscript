@@ -1,3 +1,5 @@
 export * from "./assembler"
 export * from "./vm/vm"
+export * from "./vm/vm2"
 export * from "./codegen"
+export * from "./js"
