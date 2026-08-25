@@ -2,7 +2,6 @@
 
 import { parseAssembler, IParsedFunction } from './parser'
 import { I, IOperatantType } from './vm/vm'
-const fs = require('fs')
 
 class CodeBlock {
   public toCodeBlocks = new Set<number>()
@@ -67,12 +66,6 @@ class CodeBlockGraph {
     })
   }
 
-  public print(): void {
-    for (const [_, cb] of this.blockMap.entries()) {
-      console.log('--->', cb.index, cb.codes, cb.toCodeBlocks)
-    }
-  }
-
   public optimize(): void {
     [...this.blockMap.entries()].forEach(([i, codeBlock]): void => {
       codeBlock.codes = optimizeCodes(codeBlock.codes)
@@ -98,16 +91,12 @@ ${codeString.trimRight()}\n}`
 }
 
 export const optimizeCode = (code: string): string => {
-  // return code
   const ret = parseAssembler(code, true).reduce((r: string, func: IParsedFunction): string => {
     const cb = new CodeBlockGraph(func)
     cb.optimize()
     return r + '\n' + cb.output()
   }, '').trim()
-  // fs.writeFileSync('opt.nes', ret, 'utf-8')
   return ret
-  // console.log(funcs)
-  // console.log(func.instructions.join('\n'))
 }
 
 const enum OU {
@@ -353,9 +342,8 @@ const optimizeCodes = (codes: any[]): any[] => {
         try {
           useType = codeToUseAge[I[operator]][j - 1]
           isGetOperant = useType === OU.GET
-        } catch(e) {
-          console.log('ERROR operator --> ', operator)
-          throw new Error(e)
+        } catch (e) {
+          throw new Error(`Unknown optimizer operand usage for ${operator}: ${e}`)
         }
         if (!isInCandidates(operant)) { return }
         if (isGetOperant) {

@@ -101,7 +101,7 @@ typings/
 
 # TernJS port file
 .tern-port
-bin.png
-.vscode
-build
-opt.nes
+
+# Local editor settings and TypeScript build output
+.vscode/
+build/

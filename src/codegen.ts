@@ -1052,7 +1052,6 @@ const parseToCode = (ast: any): void => {
       if (op !== 'delete') {
         const reg = s.r0 || newReg()
         if (!reg) {
-          console.log((node.argument as any).callee.body.body[0])
           throw new Error('! regster should not be null')
         }
         getValueOfNode(node.argument, reg, s, c)

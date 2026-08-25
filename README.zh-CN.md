@@ -44,6 +44,9 @@ TypeScript/JavaScript 实现的虚拟机执行。目标运行环境不需要解�
 - **虚拟机（Virtual Machine）**：在不使用 `eval` 或动态生成宿主 JavaScript
   的情况下执行字节码。
 
+仓库将编译器和运行时统一维护在一个 TypeScript 软件包中。为保持兼容性，原有的传统执行
+路径仍然保留；基于寄存器的 V2 虚拟机作为独立路径实现，可以持续演进而不改变原始字节码契约。
+
 ## 安装
 
 ```sh
@@ -160,7 +163,8 @@ NestScript 当前以**单文件 ES5 程序语义**为主要兼容目标，支持
 - 虚拟机内的源码不支持 `eval` 和 `Function` 构造器。
 - 不支持 ES Modules（`import` 和 `export`）以及 `class`。
 - `Date`、`RegExp`、`JSON` 等内置对象由 Host Context 提供，其具体行为取决于宿主环境。
-- 二进制格式目前没有版本标识。编译字节码时，应使用与目标虚拟机相同的 NestScript 版本。
+- 传统 V1 二进制格式没有版本标识；V2 字节码包含明确的格式版本。无论使用哪种格式，编译
+  字节码时都应使用与目标虚拟机相同的 NestScript 版本。
 - 现代语法即使能够被解析，也不代表属于正式支持范围；当前兼容性承诺以 ES5 为准。
 
 ### Test262 测试结果
@@ -224,6 +228,14 @@ npm test
 ```sh
 npx tsc --noEmit
 ```
+
+项目中的主要边界如下：
+
+- `src/`：解析器、优化器、汇编器、公共 API，以及 V1/V2 虚拟机实现。
+- `src/cli.ts`：`nsc` 使用的类型化 Node.js CLI 适配层。
+- `nsc/bin/`：最小化的 npm 可执行文件入口，不包含编译逻辑。
+- `dist/vm.js`：生成的浏览器版虚拟机 bundle。
+- `test/` 与 `test262/`：回归测试和固定版本的 ES5 兼容性测试执行器。
 
 如需复现 ES5 兼容性测试，请参阅 [test262/README.md](test262/README.md)。
 

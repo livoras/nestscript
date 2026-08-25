@@ -1,6 +1,6 @@
 {
   "name": "nestscript",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "A JavaScript bytecode toolchain and virtual machine for runtimes without dynamic code evaluation.",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
@@ -18,14 +18,12 @@
     "build": "tsc -p tsconfig.release.json && webpack",
     "benchmark:runtime": "node -r ts-node/register performance/runtime.bench.ts",
     "benchmark:vm2": "node -r ts-node/register performance/register-vm2.bench.ts",
-    "start": "npx nodemon --watch example/main.js --exec 'make js'",
     "cov": "nyc -r lcov -e .ts -x \"*.test.ts\" npm run test",
     "prepack": "npm run build",
     "prepublishOnly": "npm test && tsc --noEmit",
     "test": "mocha --timeout 60000 -r ts-node/register test/**/*.spec.ts",
     "test:performance": "node -r ts-node/register performance/runtime.bench.ts --assert",
-    "test262": "tsc --outDir build/test262-run --sourceMap false && node build/test262-run/test262/runner.js",
-    "watch": "nodemon --watch src --watch test -e ts --exec 'npm test'"
+    "test262": "tsc --outDir build/test262-run --sourceMap false && node build/test262-run/test262/runner.js"
   },
   "repository": {
     "type": "git",
@@ -52,10 +50,10 @@
     "@types/chai": "^4.2.11",
     "@types/estree": "0.0.44",
     "@types/mocha": "^10.0.10",
+    "@types/node": "^14.0.13",
     "chai": "^4.2.0",
     "chai-spies": "^1.0.0",
     "mocha": "^11.8.0",
-    "nodemon": "^3.1.14",
     "nyc": "^18.0.0",
     "ts-node": "^8.10.2",
     "tslint": "^5.20.1",
@@ -71,7 +69,6 @@
     }
   },
   "dependencies": {
-    "@types/node": "^14.0.13",
     "acorn": "^8.0.1",
     "acorn-walk": "^8.0.0",
     "tslib": "^2.0.0"

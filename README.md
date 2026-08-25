@@ -49,6 +49,11 @@ The toolchain has three main components:
 - **Virtual machine** — executes that binary without `eval` or generated host
   JavaScript.
 
+The repository keeps the compiler and runtime in one TypeScript package. The
+legacy stack remains available for compatibility, while the register-based V2
+runtime is implemented as an independent path so it can evolve without
+changing the original bytecode contract.
+
 ## Installation
 
 ```sh
@@ -171,8 +176,9 @@ The following boundaries are intentional or currently important:
 - ES modules (`import` and `export`) and classes are not supported.
 - Built-in objects such as `Date`, `RegExp`, and `JSON` come from the host
   context; their exact behavior therefore depends on that host.
-- The binary format is not versioned. Compile bytecode with the same
-  NestScript revision used to build the target VM.
+- The legacy V1 binary format has no version marker. V2 binaries carry an
+  explicit format version. In both cases, compile bytecode with the same
+  NestScript release used to build the target VM.
 - A successfully parsed modern syntax construct is not necessarily part of the
   supported language contract; ES5 is the compatibility target.
 
@@ -243,6 +249,15 @@ Run the TypeScript check without emitting files:
 ```sh
 npx tsc --noEmit
 ```
+
+The important project boundaries are:
+
+- `src/` — parser, optimizer, assembler, public API, and V1/V2 runtimes.
+- `src/cli.ts` — the typed Node.js CLI adapter used by `nsc`.
+- `nsc/bin/` — the minimal npm executable shim; it contains no compiler logic.
+- `dist/vm.js` — the generated browser bundle.
+- `test/` and `test262/` — regression tests and the pinned ES5 conformance
+  runner.
 
 To reproduce the ES5 conformance run, follow
 [test262/README.md](test262/README.md).

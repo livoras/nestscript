@@ -1,5 +1,3 @@
-const fs = require('fs')
-
 export const parseCode = (cd: string): string[][] => {
   const code = cd.trim()
   let operants: string[] = []
@@ -257,17 +255,3 @@ export const parseAssembler = (code: string, isRawString: boolean = false): IPar
 
   return funcs
 }
-
-const test = (): void => {
-  const c = fs.readFileSync(__dirname + "/../example/js.nes", 'utf-8')
-  const funcs = parseAssembler(c)
-  funcs.forEach((f: IParsedFunction): void => {
-    console.log(f, '-->')
-  })
-}
-
-// test()
-// console.log(parseCode(`PUSH "DIE WORLD"`))
-// console.log(parseCode(`PUSH "HELLO WORLD"`))
-// console.log(parseCode('MOV R0 1'))
-// console.log(parseCode(testProgram))
